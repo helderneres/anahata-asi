@@ -66,14 +66,4 @@ public abstract class BlobPart extends AbstractPart {
     protected int getDefaultMaxDepth() {
         return getAgiConfig().getDefaultBlobPartMaxDepth();
     }
-
-    /**
-     * {@inheritDoc}
-     * Heavy blob parts are surgically removable as soon as they expire to 
-     * save memory and tokens.
-     */
-    @Override
-    public boolean isGarbageCollectable() {
-        return isEffectivelyPruned();
-    }
 }
