@@ -201,18 +201,33 @@ public abstract class AbstractToolCall<T extends AbstractTool<?, ?>, R extends A
 
     /**
      * {@inheritDoc}
+     * Overridden to provide a rich, detailed execution summary in the pruned metadata header.
      */
     @Override
-    protected void appendMetadata(StringBuilder sb) {
-        sb.append(String.format(" | Status: %s", response.getStatus()));
-
+    public String getPrunedHint() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Tool: ").append(getToolName());
+        sb.append(" | Status: ").append(response.getStatus());
+        
+        sb.append(" | Args: ").append(TextUtils.formatValue(response.getExecutedArgs()));
+        if (!response.getModifiedArgs().isEmpty()) {
+            sb.append(" | Modified Args: ").append(response.getModifiedArgs().keySet());
+        }
+        
+        if (response.getResult() != null) {
+            sb.append(" | Result: ").append(TextUtils.formatValue(response.getResult()));
+        }
+        
         String feedback = response.getUserFeedback();
         if (feedback != null && !feedback.isBlank()) {
             sb.append(" | User Feedback: ").append(feedback);
         }
-
-        if (isEffectivelyPruned()) {
-            sb.append(" | Result Hint: ").append(TextUtils.formatValue(response.getResult()));
+        
+        if (response.getErrors() != null && !response.getErrors().isBlank()) {
+            sb.append(" | Errors: ").append(TextUtils.formatValue(response.getErrors()));
         }
+        
+        return sb.toString();
     }
+
 }

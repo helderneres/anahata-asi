@@ -300,13 +300,17 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
     }
     
     /**
-     * Gets the effective arguments that were used for execution.
+     * Gets the effective arguments that were used for execution. 
+     * This merges the original immutable call arguments with the snapshot 
+     * of modifications taken at execution time.
      * 
-     * @return A map of effective arguments.
+     * @return A map of executed arguments.
      */
     @JsonIgnore
-    public Map<String, Object> getEffectiveArgs() {
-        return call.getEffectiveArgs();
+    public Map<String, Object> getExecutedArgs() {
+        Map<String, Object> executed = new HashMap<>(call.getArgs());
+        executed.putAll(modifiedArgs);
+        return executed;
     }
 
     /**

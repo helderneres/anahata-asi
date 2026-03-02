@@ -97,7 +97,7 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
             var method = tool.getMethod();
             Parameter[] methodParameters = method.getParameters();
             Object[] argsToInvoke = new Object[methodParameters.length];
-            Map<String, Object> effectiveArgs = getEffectiveArgs();
+            Map<String, Object> effectiveArgs = getCall().getEffectiveArgs();
 
             for (int i = 0; i < methodParameters.length; i++) {
                 Parameter p = methodParameters[i];

@@ -76,8 +76,11 @@ public abstract class AbstractCodeBlockSegmentRenderer extends AbstractTextSegme
 
     /**
      * {@inheritDoc}
+     * <p>
      * Renders the code block with a header containing the language, a copy button,
-     * and an edit toggle.
+     * and an edit toggle. By default, vertical scrollbars are disabled to prevent
+     * double-scrolling within the conversation view.
+     * </p>
      */
     @Override
     public boolean render() {
@@ -86,11 +89,13 @@ public abstract class AbstractCodeBlockSegmentRenderer extends AbstractTextSegme
         if (component == null) {
             innerComponent = createInnerComponent();
             
-            // Consume and redispatch vertical scroll events to prevent horizontal translation
+            // Consume and redispatch vertical scroll events ONLY if local vertical scroll is disabled.
             innerComponent.addMouseWheelListener(e -> {
                 if (e.getScrollType() == MouseWheelEvent.WHEEL_UNIT_SCROLL && e.getWheelRotation() != 0) {
-                    SwingUtils.redispatchMouseWheelEvent(innerComponent, e);
-                    e.consume();
+                    if (scrollPane != null && scrollPane.getVerticalScrollBarPolicy() == JScrollPane.VERTICAL_SCROLLBAR_NEVER) {
+                        SwingUtils.redispatchMouseWheelEvent(innerComponent, e);
+                        e.consume();
+                    }
                 }
             });
 
@@ -117,7 +122,9 @@ public abstract class AbstractCodeBlockSegmentRenderer extends AbstractTextSegme
             copyButton.setFont(new Font("SansSerif", Font.PLAIN, 11));
             copyButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
             copyButton.setFocusPainted(false);
-            copyButton.addActionListener(e -> SwingUtils.copyToClipboard(getCurrentContentFromComponent()));
+            copyButton.addActionListener(e -> {
+                SwingUtils.copyToClipboard(getCurrentContentFromComponent());
+            });
             leftHeaderPanel.add(copyButton);
             
             // Allow subclasses to inject extra buttons
@@ -129,14 +136,16 @@ public abstract class AbstractCodeBlockSegmentRenderer extends AbstractTextSegme
                 editButton.setFont(new Font("SansSerif", Font.PLAIN, 11));
                 editButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
                 editButton.setFocusPainted(false);
-                editButton.addActionListener(e -> toggleEdit());
+                editButton.addActionListener(e -> {
+                    toggleEdit();
+                });
                 leftHeaderPanel.add(editButton);
             }
             
             headerPanel.add(leftHeaderPanel, BorderLayout.WEST);
             container.add(headerPanel, BorderLayout.NORTH);
             
-            // ScrollPane
+            // ScrollPane: Defaults to NEVER for conversation view.
             this.scrollPane = createScrollPane(innerComponent);
             scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
             scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -146,8 +155,10 @@ public abstract class AbstractCodeBlockSegmentRenderer extends AbstractTextSegme
             
             scrollPane.addMouseWheelListener(e -> {
                 if (e.getScrollType() == MouseWheelEvent.WHEEL_UNIT_SCROLL && e.getWheelRotation() != 0) {
-                    SwingUtils.redispatchMouseWheelEvent(scrollPane, e);
-                    e.consume();
+                    if (scrollPane.getVerticalScrollBarPolicy() == JScrollPane.VERTICAL_SCROLLBAR_NEVER) {
+                        SwingUtils.redispatchMouseWheelEvent(scrollPane, e);
+                        e.consume();
+                    }
                 }
             });
             container.add(scrollPane, BorderLayout.CENTER);

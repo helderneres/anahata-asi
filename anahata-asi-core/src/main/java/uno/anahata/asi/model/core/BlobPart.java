@@ -62,6 +62,27 @@ public abstract class BlobPart extends AbstractPart {
         return "[Blob: " + mimeType + ", " + data.length + " bytes" + source + "]";
     }
 
+    /**
+     * {@inheritDoc}
+     * Provides essential binary metadata (MIME and Size) when the content is pruned.
+     */
+    @Override
+    public String getPrunedHint() {
+        return String.format("Mime: %s | Size: %d bytes", mimeType, data.length);
+    }
+
+    /**
+     * {@inheritDoc}
+     * Always includes the source path in the metadata header if available,
+     * ensuring semantic continuity even when pruned.
+     */
+    @Override
+    protected void appendMetadata(StringBuilder sb) {
+        if (sourcePath != null) {
+            sb.append(" | Path: ").append(sourcePath.toString());
+        }
+    }
+
     @Override
     protected int getDefaultMaxDepth() {
         return getAgiConfig().getDefaultBlobPartMaxDepth();

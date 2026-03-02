@@ -259,12 +259,19 @@ public class SwingUtils {
         AbstractCodeBlockSegmentRenderer renderer = agiPanel.getAgiConfig().getEditorKitProvider().createRenderer(agiPanel, text, language);
         renderer.render();
 
-        // For the popup, we want both scrollbars, so we wrap the INNER component
-        JScrollPane popupScrollPane = new JScrollPane(renderer.getInnerComponent());
-        popupScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        popupScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        // THE ARCHITECTURAL FIX: Always use the renderer's own component (which contains 
+        // the high-fidelity container built by NetBeans) instead of extracting the 
+        // inner component and re-wrapping it.
+        dialog.add(renderer.getComponent(), BorderLayout.CENTER);
 
-        dialog.add(popupScrollPane, BorderLayout.CENTER);
+        // THE SCROLL FIX: Override the default 'NEVER' policy used in the conversation.
+        // Dialogs must be fully navigable.
+        JScrollPane scroll = renderer.getScrollPane();
+        if (scroll != null) {
+            scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        }
+        
         dialog.pack();
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);

@@ -5,6 +5,7 @@ import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import uno.anahata.asi.internal.TokenizerUtils;
@@ -58,13 +59,14 @@ public class GeminiContentAdapter {
         Content.Builder builder = Content.builder().role("user");
         List<Part> googleParts = new ArrayList<>();
 
-        boolean shouldCreateMetadata = anahataMessage.shouldCreateMetadata();
-        if (shouldCreateMetadata) {
+        if (anahataMessage.shouldCreateMetadata()) {
             googleParts.add(createMetadataPart(anahataMessage.createMetadataHeader()));
         }
 
-        for (AbstractPart part : anahataMessage.getParts(includePruned)) {
-            addPartWithMetadata(googleParts, part, shouldCreateMetadata);
+        // We iterate over ALL parts (including pruned) because addPartWithMetadata 
+        // handles the intelligent hint generation.
+        for (AbstractPart part : anahataMessage.getParts(true)) {
+            addPartWithMetadata(googleParts, part);
         }
 
         if (googleParts.isEmpty()) {
@@ -88,17 +90,14 @@ public class GeminiContentAdapter {
         Content.Builder modelContentBuilder = Content.builder().role("model");
         List<Part> modelParts = new ArrayList<>();
 
-        boolean shouldCreateMetadata = anahataMessage.shouldCreateMetadata();
-        if (shouldCreateMetadata) {
+        if (anahataMessage.shouldCreateMetadata()) {
             modelParts.add(createMetadataPart(anahataMessage.createMetadataHeader()));
         }
 
-        List<AbstractPart> allParts = anahataMessage.getParts(includePruned);
-        
         // Process ALL parts (Text, Blob, ToolCalls) with interleaved metadata.
         // This ensures the model has immediate context for each part's identity and status.
-        for (AbstractPart part : allParts) {
-            addPartWithMetadata(modelParts, part, shouldCreateMetadata);
+        for (AbstractPart part : anahataMessage.getParts(true)) {
+            addPartWithMetadata(modelParts, part);
         }
 
         if (!modelParts.isEmpty()) {
@@ -106,8 +105,12 @@ public class GeminiContentAdapter {
         }
 
         // --- 2. Synthesize the TOOL role content (Responses) ---
+        // CRITICAL: We only include tool responses if the corresponding tool call 
+        // is visible (not effectively pruned) or if includePruned is explicitly set.
         List<AbstractToolResponse<?>> executedResponses = modelMsg.getToolCalls().stream()
+                .filter(tc -> includePruned || !tc.isEffectivelyPruned())
                 .map(AbstractToolCall::getResponse)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         if (!executedResponses.isEmpty()) {
@@ -135,25 +138,27 @@ public class GeminiContentAdapter {
      * Adds an Anahata part to the Google GenAI list, automatically injecting 
      * metadata headers and handling pruned placeholder hints.
      */
-    private void addPartWithMetadata(List<Part> googleParts, AbstractPart part, boolean shouldCreateMetadata) {
+    private void addPartWithMetadata(List<Part> googleParts, AbstractPart part) {
         boolean isEffectivelyPruned = part.isEffectivelyPruned();
-        
-        if (isEffectivelyPruned && !includePruned) {
-            // METADATA INTERLEAVING: Even if pruned, we provide the metadata header 
-            // as a "Hint" (via createMetadataHeader) to maintain semantic context 
-            // of the conversation flow.
-            Part.Builder placeholderBuilder = createMetadataPartBuilder(part.createMetadataHeader() + "\n[PRUNED: Content removed to save context window tokens]");
-            
-            if (part instanceof ThoughtSignature ts && ts.getThoughtSignature() != null) {
-                placeholderBuilder.thoughtSignature(ts.getThoughtSignature());
-            }
-            
-            googleParts.add(placeholderBuilder.build());
-        } else {
-            if (shouldCreateMetadata) {
-                googleParts.add(createMetadataPart(part.createMetadataHeader()));
-            }
+        boolean shouldIncludeContent = !isEffectivelyPruned || includePruned;
 
+        if (anahataMessage.shouldCreateMetadata()) {
+            // METADATA INTERLEAVING: The metadata header is always created if the 
+            // message allows it. The AbstractPart itself now handles the 
+            // rich "Ghost" hint when effectively pruned.
+            Part.Builder headerBuilder = createMetadataPartBuilder(part.createMetadataHeader());
+            
+            // If we are NOT going to include the actual part (because it's pruned), 
+            // the metadata header must take responsibility for carrying the 
+            // thought signature if one exists.
+            if (!shouldIncludeContent && part instanceof ThoughtSignature ts && ts.getThoughtSignature() != null) {
+                headerBuilder.thoughtSignature(ts.getThoughtSignature());
+            }
+            
+            googleParts.add(headerBuilder.build());
+        }
+
+        if (shouldIncludeContent) {
             Part googlePart = new GeminiPartAdapter(part).toGoogle();
             if (googlePart != null) {
                 part.setTokenCount(TokenizerUtils.countTokens(googlePart.toJson()));

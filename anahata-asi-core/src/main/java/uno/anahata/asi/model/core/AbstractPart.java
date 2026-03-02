@@ -239,6 +239,17 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
     public abstract String asText();
 
     /**
+     * Returns a summarized string representation of the part's content to be 
+     * used as a "Hint" when the part is effectively pruned. 
+     * Defaults to a formatted version of {@link #asText()}.
+     * 
+     * @return The pruned hint string.
+     */
+    public String getPrunedHint() {
+        return TextUtils.formatValue(asText());
+    }
+
+    /**
      * Creates a standardized text header containing metadata for this part.
      * This is used for in-band metadata injection to improve model self-awareness.
      * If the part is effectively pruned, it includes a descriptive hint to maintain
@@ -273,7 +284,7 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
         sb.append(" | expanded: ").append(expanded);
         
         if (isEffectivelyPruned()) {
-            sb.append(" | Hint: ").append(TextUtils.formatValue(asText()));
+            sb.append(" | Hint: ").append(getPrunedHint());
         }
         
         sb.append("]");

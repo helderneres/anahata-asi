@@ -177,7 +177,7 @@ public class FullTextFileCreateRenderer implements ParameterRenderer<FullTextFil
         JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         header.setOpaque(false);
         
-        String labelText = (status == ToolExecutionStatus.PENDING) ? "Proposed New File:" : "Created File:";
+        String labelText = (status == ToolExecutionStatus.EXECUTED) ? "Created File:" : "Proposed File:";
         JLabel label = new JLabel(labelText);
         label.setFont(label.getFont().deriveFont(java.awt.Font.BOLD));
         header.add(label);
