@@ -81,7 +81,7 @@ public class ProjectContextProvider extends AbstractProjectContextProvider {
      */
     @Override
     public String getName() {        
-        return ProjectUtils.getInformation(project).getDisplayName();
+        return ProjectUtils.getInformation(getProject()).getDisplayName();
     }
 
     /**
