@@ -7,6 +7,8 @@
     <link rel="icon" type="image/png" href="https://www.anahata.uno/icons/anahata_16.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Prism Syntax Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script>
         mermaid.initialize({
@@ -55,11 +57,7 @@
             z-index: 10;
         }
 
-        /* Fixed Sidebar Navigation CSS - No horizontal expansion */
-        .sidebar-nav {
-            width: 100%;
-        }
-
+        .sidebar-nav { width: 100%; }
         .sidebar-nav h4 {
             color: var(--barca-gold);
             text-transform: uppercase;
@@ -92,7 +90,78 @@
             border-radius: 0 6px 6px 0;
         }
 
-        /* Metabolic Decay CSS Diagram */
+        /* Technical Visualizers */
+        .metabolic-dashboard {
+            background: #000;
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin: 3rem 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .logic-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 2rem; margin-top: 2rem; }
+        .logic-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 1.5rem; }
+        .logic-card h5 { color: var(--primary-light); margin-top: 0; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
+
+        .equation-block {
+            font-family: 'Fira Code', monospace;
+            background: rgba(0,0,0,0.4);
+            padding: 1rem;
+            border-radius: 6px;
+            color: var(--white);
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            border-left: 3px solid var(--barca-gold);
+        }
+
+        /* Click to Expand UML */
+        .mermaid-card { 
+            background: #000; 
+            padding: 3rem; 
+            border-radius: 20px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            margin: 3rem 0; 
+            cursor: zoom-in;
+            position: relative;
+            transition: var(--transition);
+        }
+        .mermaid-card:hover { border-color: var(--primary-light); box-shadow: 0 0 30px rgba(44, 122, 123, 0.2); }
+        .mermaid-card::after {
+            content: "Click to Expand";
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            color: var(--barca-gold);
+            opacity: 0.5;
+            letter-spacing: 1px;
+        }
+        .mermaid-card.expanded {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90vw;
+            height: 85vh;
+            z-index: 1000;
+            cursor: zoom-out;
+            background: rgba(0,0,0,0.95);
+            padding: 5rem;
+            overflow: auto;
+            border: 2px solid var(--barca-gold);
+            box-shadow: 0 0 100px rgba(0,0,0,0.8);
+        }
+        .uml-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            z-index: 999;
+        }
+
         .metabolic-container {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -102,65 +171,51 @@
             background: #000;
             border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
 
         .decay-step { text-align: center; }
         .decay-label { font-size: 0.7rem; color: var(--barca-gold); margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
-        
-        .message-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            background: rgba(255,255,255,0.02);
-            padding: 10px;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .part-layer {
-            height: 34px;
-            border-radius: 6px;
-            font-size: 0.65rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            text-transform: uppercase;
-            transition: var(--transition);
-        }
-
-        .alive { background: rgba(44, 122, 123, 0.8); color: white; border: 1px solid var(--primary-light); box-shadow: 0 0 10px rgba(44, 122, 123, 0.3); }
+        .message-stack { display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 12px; }
+        .part-layer { height: 34px; border-radius: 6px; font-size: 0.65rem; display: flex; align-items: center; justify-content: center; font-weight: 700; text-transform: uppercase; }
+        .alive { background: rgba(44, 122, 123, 0.8); color: white; border: 1px solid var(--primary-light); }
         .ghost { background: rgba(237, 187, 0, 0.12); color: var(--barca-gold); border: 1px dashed var(--barca-gold); opacity: 0.7; }
         .recycled { background: rgba(165, 0, 68, 0.08); color: var(--barca-red); border: 1px dotted var(--barca-red); opacity: 0.4; }
 
         .main-content { flex-grow: 1; min-width: 0; max-width: 900px; }
         section { padding-top: 20px; margin-bottom: 120px; scroll-margin-top: 140px; }
-
         .main-content h1 { font-size: 4.5rem; margin-bottom: 1rem; background: none; -webkit-text-fill-color: var(--white); }
         .main-content h2 { font-size: 3rem; margin-bottom: 2rem; color: var(--white); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1.2rem;}
         
-        .code-block { background: #0d1117; border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.1); margin: 2rem 0; font-family: 'Fira Code', monospace; }
-        .code-header { color: var(--barca-gold); font-size: 0.8rem; margin-bottom: 1rem; text-transform: uppercase; opacity: 0.6; }
-        .code-content { color: #8b949e; line-height: 1.5; font-size: 0.9rem; white-space: pre-wrap; }
+        pre[class*="language-"] {
+            background: #0d1117 !important;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1.5rem !important;
+            margin: 2rem 0 !important;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
         
-        .mermaid-card { background: #000; padding: 3rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); margin: 3rem 0; overflow-x: auto; }
+        .code-header { color: var(--barca-gold); font-size: 0.8rem; margin-bottom: 1rem; text-transform: uppercase; opacity: 0.6; }
         .info-box { background: rgba(44, 122, 123, 0.15); border-left: 5px solid var(--primary); padding: 2.5rem; border-radius: 10px; margin: 4rem 0; }
-        .comparison-card { background: rgba(255,255,255,0.01); border-left: 5px solid var(--barca-gold); padding: 3rem; border-radius: 12px; margin: 4rem 0; }
 
-        .prompt-card { background: rgba(219, 97, 162, 0.05); border: 1px dashed var(--accent); padding: 2rem; border-radius: 12px; margin: 3rem 0; }
-        .prompt-card h5 { color: var(--accent); margin-top: 0; margin-bottom: 1rem; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1.5px; display: flex; align-items: center; gap: 10px; }
-        .prompt-card h5::after { content: ''; height: 1px; background: var(--accent); flex-grow: 1; opacity: 0.3; }
-        .prompt-text { font-style: italic; color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; }
+        .toolkit-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin: 3rem 0; }
+        .toolkit-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 12px; transition: var(--transition); }
+        .toolkit-card:hover { border-color: var(--primary-light); background: rgba(44, 122, 123, 0.05); transform: translateY(-5px); }
+        .toolkit-card i { color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem; }
+        .toolkit-card h4 { margin: 0 0 0.5rem 0; color: var(--white); }
+        .toolkit-card p { font-size: 0.85rem; margin: 0; opacity: 0.7; line-height: 1.4; }
 
         @media (max-width: 992px) {
             .docs-wrapper { flex-direction: column; padding-top: 120px; }
             .sidebar { width: 100%; height: auto; position: relative; top: 0; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 3rem; }
             .metabolic-container { grid-template-columns: 1fr; }
+            .logic-grid { grid-template-columns: 1fr; }
+            .toolkit-list { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+    <div class="uml-overlay" id="overlay"></div>
     <nav>
         <div class="nav-container container">
             <a href="index.html" class="logo">
@@ -194,7 +249,7 @@
                     <li><a href="#context-providers">Context Providers</a></li>
                     <li><a href="#events">Reactive Events</a></li>
                     <li><a href="#toolkits">Toolkits & Tools</a></li>
-                    <li><a href="#resources">Resource Manager</a></li>
+                    <li><a href="#j2s">Java ↔ JSON Schema</a></li>
                     <li><a href="#flight-recorder">Flight Recorder</a></li>
                 </ul>
             </div>
@@ -213,27 +268,25 @@
 
             <section id="agi-container">
                 <h2>The AGI Container</h2>
-                <p>The <code>Agi</code> class is the root orchestrator. It manages the session blueprint (<code>AgiConfig</code>), high-performance <b>Kryo serialization</b> for passivation/activation, and the lifecycle of all context components.</p>
+                <p>The <code>Agi</code> class is the central orchestrator. It manages the session lifecycle, state persistence, and model communication.</p>
                 <ul>
-                    <li><b>Metabolic Policy:</b> Defined in <code>AgiConfig</code>, setting the default "Turns to Keep" (Max Depth) for different part types: <b>Text (108)</b>, <b>Thoughts (12)</b>, <b>Tools (12)</b>, and <b>Blobs (4)</b>.</li>
-                    <li><b>Transactional State:</b> The container automatically snapshots session state (history, tool attributes, resources) to disk upon tool execution or turn completion.</li>
-                    <li><b>Session Scope:</b> The <code>sessionAttributes</code> map in <code>ToolManager</code> provides turn-persistent storage for tools, enabling stateful automation across a conversation.</li>
+                    <li><b>Transactional States:</b> Automatically triggers <code>autoSave()</code> on turn completion or terminal tool states (EXECUTED/FAILED) to ensure persistence.</li>
+                    <li><b>Non-Blocking Inputs:</b> Implements a <code>stagedUserMessage</code> queue, allowing users to submit input while the ASI is currently processing a turn.</li>
+                    <li><b>Metabolic Policy:</b> The <code>AgiConfig</code> defines default <b>Turns to Keep</b> (Max Depth) for different data types: Text (108), Thoughts (12), Tools (12), and Blobs (4).</li>
                 </ul>
             </section>
 
             <section id="messages-parts">
                 <h2>Messages & Parts</h2>
-                <p>Anahata V2 treats context as a rich graph. A conversation is a sequence of <b>AbstractMessage</b> turns, each containing a collection of <b>AbstractPart</b> objects tracking their own <b>Sequential ID</b> and <b>Metabolic State</b>.</p>
+                <p>Anahata treats context as a rich graph. A conversation is a sequence of <b>AbstractMessage</b> turns, each containing a collection of <b>AbstractPart</b> objects tracking their own metadata and metabolic state.</p>
                 
-                <div class="mermaid-card">
+                <div class="mermaid-card" onclick="this.classList.toggle('expanded')">
                     <div class="mermaid">
                     classDiagram
                         AbstractMessage *-- AbstractPart
                         AbstractPart <|-- TextPart
                         AbstractPart <|-- BlobPart
                         AbstractPart <|-- AbstractToolCall
-                        TextPart <|-- ModelTextPart
-                        BlobPart <|-- UserBlobPart
                         AbstractToolCall *-- AbstractToolResponse
                     </div>
                 </div>
@@ -241,11 +294,9 @@
 
             <section id="metadata">
                 <h2>In-Band Metadata Injection</h2>
-                <p>Self-awareness is achieved by interleaving invisible metadata headers before every component. This allows the model to see its own <b>Part ID</b>, <b>Remaining Depth</b>, and <b>Pruning State</b> (Pinned, Pruned, or Auto).</p>
+                <p>Self-awareness is achieved by interleaving invisible metadata headers before every component. Even when a part is effectively pruned to save tokens, the <b>Pruned Hint</b> ensures the ASI maintains a "Semantic Ghost" of the action.</p>
                 
                 <h3>Metabolic Part Lifecycle</h3>
-                <p>Observe how a single message turn decays over time. The <b>Remaining Depth</b> (TTL) determines when a part transitions from full content to a metadata ghost. A message becomes <b>Garbage Collectable</b> only once every part is effectively pruned.</p>
-
                 <div class="metabolic-container">
                     <div class="decay-step">
                         <div class="decay-label">Depth 0</div>
@@ -285,83 +336,169 @@
                     </div>
                 </div>
 
-                <div class="code-block">
-                    <div class="code-header">Example: Effectively Pruned Tool Call (Semantic Ghost)</div>
-                    <div class="code-content">[<b>x-anahata-part-id: 19</b> | Type: JavaMethodToolCall | Status: EXECUTED | Remaining Depth: 0 | Hint: Tool: NbFiles.updateTextFile | Args: {path=pom.xml} | Result: Success]</div>
-                </div>
-                
-                <p>Even when a part is effectively pruned to save tokens, the <b>Pruned Hint</b> ensures the ASI maintains a "Semantic Ghost" of the action for future reasoning.</p>
+                <div class="code-header">Example: Ghost Metadata Header</div>
+                <pre><code class="language-json">[x-anahata-part-id: 19 | Type: JavaMethodToolCall | Status: EXECUTED | Remaining Depth: 0 | Hint: Tool: NbFiles.updateTextFile | Result: Success]</code></pre>
             </section>
 
             <section id="gc">
                 <h2>Garbage Collection (CwGC)</h2>
-                <p>The <b>Context Window Garbage Collector</b> manages the session's "Metabolism". It transitions parts through three states: <b>ALIVE</b> (Full Content), <b>GHOST</b> (Metadata only), and <b>RECYCLED</b> (Purged from JVM).</p>
-                
-                <div class="comparison-card">
-                    <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="margin-bottom: 2rem; display: flex; gap: 1.5rem;"><i class="fas fa-thumbtack" style="color: var(--barca-gold); font-size: 1.8rem;"></i> <div><b style="color: var(--white); font-size: 1.2rem;">PINNED:</b> <br>Vital awareness (source code, instructions) that is IMMUNE to garbage collection.</div></li>
-                        <li style="margin-bottom: 2rem; display: flex; gap: 1.5rem;"><i class="fas fa-clock" style="color: var(--primary-light); font-size: 1.8rem;"></i> <div><b style="color: var(--white); font-size: 1.2rem;">AUTO:</b> <br>Metabolic state. Soft-pruned into a "Ghost" when <b>Remaining Depth</b> reaches 0.</div></li>
-                        <li style="display: flex; gap: 1.5rem;"><i class="fas fa-ghost" style="color: var(--accent); font-size: 1.8rem;"></i> <div><b style="color: var(--white); font-size: 1.2rem;">PRUNED:</b> <br>Explicitly recycled content. Can be <b>Unpruned</b> back to life until the message turn is GC'd.</div></li>
-                    </ul>
-                </div>
-                
-                <div class="info-box" style="background: rgba(165, 0, 68, 0.08); border-left-color: var(--barca-red);">
-                    <h4>The GC Hard Trigger</h4>
-                    <p>A message turn only becomes <b>Garbage Collectable</b> (permanently purged from JVM memory) once every individual part within that message has reached an effectively pruned state.</p>
-                </div>
+                <div class="metabolic-dashboard">
+                    <h3>Metabolic Logic Dashboard</h3>
+                    <div class="logic-grid">
+                        <div class="logic-card">
+                            <h5>Formula Engine</h5>
+                            <div class="equation-block">
+                                getDepth() = distance from head<br>
+                                turnsToKeep = MaxDepth policy<br>
+                                getRemainingDepth() = turnsToKeep - getDepth()
+                            </div>
+                        </div>
+                        <div class="logic-card">
+                            <h5>Ghost State Trigger</h5>
+                            <div class="equation-block">
+                                isEffectivelyPruned() == true<br>
+                                ↓<br>
+                                1. Omit body content<br>
+                                2. Inject Metadata Hint
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="prompt-card">
-                    <h5><i class="fas fa-layer-group"></i> Visualizing the Context Stack</h5>
-                    <p class="prompt-text"><b>Infographic Prompt:</b> A vertical 3D 'Anahata Context Window Stack' with 4 distinct layers. 
-                    <br>Layer 1 (Top): 'Recent Messages' (Vibrant Teal blocks with Green Leaf icons). 
-                    <br>Layer 2 (Middle-Top): 'Pinned Core' (Solid Gold blocks labeled 'Immune awareness'). 
-                    <br>Layer 3 (Middle-Bottom): 'The Ghost Zone' (Translucent wireframe blocks labeled 'Semantic Memory', showing glowing headers but empty bodies). 
-                    <br>Layer 4 (Basement): 'Garbage Collector' funnel with blocks disintegrating into binary dust. 
-                    <br>Hyper-realistic space navy background, cinematic lighting.</p>
+                    <table class="state-matrix">
+                        <thead>
+                            <tr><th>pruningState</th><th>Symbol</th><th>Behavior</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><span class="state-tag tag-auto">AUTO</span></td><td><i class="fas fa-clock"></i></td><td>Soft-pruned when depth expires.</td></tr>
+                            <tr><td><span class="state-tag tag-pinned">PINNED</span></td><td><i class="fas fa-thumbtack"></i></td><td><b>The Messi State.</b> Immune to GC. Permanent awareness.</td></tr>
+                            <tr><td><span class="state-tag tag-pruned">PRUNED</span></td><td><i class="fas fa-ghost"></i></td><td>Immediately recycled into a Ghost.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
             <section id="context-providers">
                 <h2>Context Providers</h2>
-                <p>The sensors of the ASI. Providers contribute high-salience, just-in-time information to the <b>RAG Message</b> at the end of every turn.</p>
+                <p>Context Providers are the sensors of the ASI. They contribute high-salience information to the <b>RAG Message</b> at the end of every turn.</p>
+                <div class="mermaid-card" onclick="this.classList.toggle('expanded')">
+                    <div class="mermaid">
+                    graph TD
+                        AGI[Agi Container] --> CM[Context Manager]
+                        CM --> P1[CoreContextProvider]
+                        CM --> P2[ToolManager]
+                        CM --> P3[ResourceManager]
+                    </div>
+                </div>
             </section>
 
             <section id="events">
                 <h2>Reactive Events</h2>
-                <p>Built on <code>PropertyChangeSupport</code>, the Core API enables zero-polling UI updates. The <code>StatusManager</code> fires events for transitions between <code>IDLE</code>, <code>THINKING</code>, and <code>EXECUTING_TOOLS</code>.</p>
+                <div class="code-header">Example: Swing UI Binding</div>
+                <pre><code class="language-java">agi.addPropertyChangeListener("status", evt -> {
+    statusIndicator.update((AgiStatus) evt.getNewValue());
+});</code></pre>
             </section>
 
             <section id="toolkits">
                 <h2>Toolkits & Tools</h2>
-                <p>The <code>ToolManager</code> automates capability discovery. Tools are simple Java methods in <code>@AiToolkit</code> annotated classes. Anahata handles the reflective schema generation and deferred execution lifecycle.</p>
+                <div class="toolkit-list">
+                    <div class="toolkit-card"><i class="fas fa-history"></i><h4>Session</h4><p>Metadata & depth governor.</p></div>
+                    <div class="toolkit-card"><i class="fas fa-file-code"></i><h4>Files</h4><p>Atomic cross-platform I/O.</p></div>
+                    <div class="toolkit-card"><i class="fas fa-mug-hot"></i><h4>Java</h4><p>Singularity hot-reload engine.</p></div>
+                    <div class="toolkit-card"><i class="fas fa-terminal"></i><h4>Shell</h4><p>Direct host interaction.</p></div>
+                </div>
+
+                <h3>Advanced State Management</h3>
+                <p>Toolkits manage three scopes of memory: <b>Session</b> (AGI turn), <b>Container</b> (all sessions), and <b>Application</b> (JVM-wide). Deserialization is handled via <code>rebind()</code>.</p>
+                <div class="code-header">Java: Scoped Persistence & Rebinding</div>
+                <pre><code class="language-java">@AiToolkit(value = "Task Orchestration", maxDepth = 12)
+public class TaskToolkit extends AnahataToolkit {
+    private List&lt;String&gt; persistentTasks = new ArrayList&lt;&gt;(); // Serialized by Kryo
+    private transient Map&lt;String, Long&gt; runtimeMetrics; // Cleared on save
+
+    @Override
+    public void rebind() {
+        this.runtimeMetrics = new ConcurrentHashMap&lt;&gt;(); // Restored upon deserialization
+    }
+
+    @AiTool("Shares a task across the ASI Container.")
+    public String createGlobalTask(String task) {
+        getSessionMap().put("last", task);      // Local turn memory
+        getContainerMap().put("latest", task);   // Shared across all app AGIs
+        getApplicationMap().put("sys", "UP");    // Shared across entire JVM
+        return "Broadcasting task...";
+    }
+}</code></pre>
+
+                <h3>Java: On-the-Fly Tool Creation</h3>
+                <p>The <code>Java</code> toolkit enables the <b>Singularity Loop</b>: scouting a new capability and integrating it into the starting XI in just two turns.</p>
+                <div class="mermaid-card" onclick="this.classList.toggle('expanded')">
+                    <h4>The Singularity Loop: 2-Turn Self-Evolution</h4>
+                    <div class="mermaid">
+                    sequenceDiagram
+                        participant AI as ASI Model
+                        participant M as Maven Toolkit
+                        participant J as Java Toolkit
+                        Note over AI, J: TURN 1: Scout & Acquire
+                        AI->>M: downloadDependencyArtifact("org.apache.commons")
+                        M-->>AI: Success: math3.jar saved to disk
+                        Note over AI, J: TURN 2: Integration & Debut
+                        AI->>J: compileAndExecute(source, extraClassPath: "math3.jar")
+                        J-->>AI: Success: Model-generated logic executing Math3 code!
+                    </div>
+                </div>
+
+                <div class="metabolic-dashboard">
+                    <h3>The Hot-Reload Onboarding Engine</h3>
+                    <div class="logic-grid">
+                        <div class="logic-card">
+                            <h5>Child-First Isolation</h5>
+                            <div class="equation-block">
+                                1. In-memory Bytecode Compilation<br>
+                                2. URLClassLoader prepends extraClassPath<br>
+                                3. PARENT-FIRST Filter for ToolContext<br>
+                                4. Onboarding instance into Agi/Asi
+                            </div>
+                        </div>
+                        <div class="logic-card">
+                            <h5>Context Propagation</h5>
+                            <p style="font-size: 0.8rem; opacity: 0.8;">Dynamic tools inherit multi-threaded logging and can call other toolkits using <code>getToolkit(Class)</code>. Other kits can reference the <b>originating call</b> to add rich attachments or errors.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="j2s">
+                <h2>Java ↔ JSON Schema (J2S)</h2>
+                <div class="code-header">Java: Recursive IssueNode DTO</div>
+                <pre><code class="language-java">@Schema(description = "Recursive dependency analysis.")
+public class IssueNode {
+    private String id;
+    private List&lt;IssueNode&gt; children;
+}</code></pre>
+                <div class="code-header">Generated JSON Schema (Recursive)</div>
+                <pre><code class="language-json">{
+  "title": "uno.anahata.asi.model.IssueNode",
+  "properties": {
+    "children": {
+      "type": "array",
+      "items": { "description": "Recursive reference to IssueNode" }
+    }
+  }
+}</code></pre>
             </section>
         </main>
     </div>
 
     <footer>
         <div class="container">
-            <div class="footer-grid">
-                <div class="footer-brand">
-                    <img src="assets/logo-transparent.png" alt="Anahata Logo">
-                    <p>Pioneering the First Artificial Super Intelligence on the shoulders of Java giants.</p>
-                </div>
-                <div class="footer-links">
-                    <h4>Ecosystem</h4>
-                    <a href="core.html">Core API</a>
-                    <a href="apidocs/index.html">Javadocs</a>
-                    <a href="https://github.com/anahata-os/anahata-asi">GitHub</a>
-                </div>
-                <div class="footer-legal">
-                    <h4>Legal</h4>
-                    <a href="ASL_108.html">Anahata License (ASL)</a>
-                    <a href="LICENSE.html">Apache License 2.0</a>
-                </div>
-            </div>
-            <div style="text-align: center; margin-top: 4rem; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 2rem;">
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">
                 &copy; 2026 Anahata Uno. All rights reserved. <br>
                 Messi was, is, and will always be the greatest player of all timelines.
             </div>
         </div>
     </footer>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 </body>
 </html>
