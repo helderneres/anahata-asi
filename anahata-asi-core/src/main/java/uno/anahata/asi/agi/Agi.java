@@ -151,9 +151,9 @@ public class Agi extends BasicPropertyChangeSource {
         log.info("Constructing agi with config: " + config);
         this.executor = AiExecutors.newCachedThreadPoolExecutor(config.getSessionId());
         this.contextManager = new ContextManager(this);
-        this.toolManager = new ToolManager(this);
         this.resourceManager = new ResourceManager(this);
         this.statusManager = new StatusManager(this);
+        this.toolManager = new ToolManager(this);
         this.requestConfig = new RequestConfig(this);
         this.requestConfig.setResponseModalities(new ArrayList<>(config.getDefaultResponseModalities()));
 
