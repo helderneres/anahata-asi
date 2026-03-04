@@ -3,6 +3,7 @@ package uno.anahata.asi.resource.v2;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
@@ -20,6 +21,13 @@ import uno.anahata.asi.model.resource.RefreshPolicy;
  * Coordinates between a {@link ResourceHandle} (Source) and a {@link ResourceView} (Interpreter).
  * Implements {@link uno.anahata.asi.context.ContextProvider} for seamless integration into the RAG pipeline.
  * </p>
+ * <p>
+ * <b>Reactivity:</b> This class fires property change events for its metadata and settings, 
+ * allowing UI components like the {@code Resource2Panel} to maintain a live, synchronized 
+ * view of the resource's state.
+ * </p>
+ * 
+ * @author anahata
  */
 @Slf4j
 @Getter
@@ -29,30 +37,30 @@ public class Resource extends BasicContextProvider implements Rebindable {
     /** The unique identifier for this resource instance. */
     private final String id = UUID.randomUUID().toString();
     
-    /** The source handle for the resource. */
+    /** The source handle providing access to raw data and metadata. */
     private final ResourceHandle handle;
     
-    /** The interpreter view for the resource. */
+    /** The interpreter view responsible for processing and presenting content. */
     private ResourceView view;
 
-    /** Policy for when to reload the content. Defaults to LIVE. */
+    /** Policy for when to reload the content from the handle. Defaults to LIVE. */
     private RefreshPolicy refreshPolicy = RefreshPolicy.LIVE;
     
-    /** Where to inject the resource in the model context. Defaults to PROMPT_AUGMENTATION. */
+    /** The designated position for this resource in the model's prompt. Defaults to PROMPT_AUGMENTATION. */
     private ContextPosition contextPosition = ContextPosition.PROMPT_AUGMENTATION;
     
-    /** The timestamp of the last successful content reload. */
+    /** The timestamp of the last successful content reload from the handle. */
     private long lastLoadTimestamp = -1;
     
     /** Flag indicating the source content has changed (pushed by reactive handles). */
     private boolean sourceDirty = true;
 
-    /** Flag indicating the view configuration has changed and needs reprocessing. */
+    /** Flag indicating the view configuration (viewport) has changed and needs reprocessing. */
     private boolean viewDirty = true;
 
     /**
-     * Constructs a new Resource.
-     * @param handle The source handle.
+     * Constructs a new Resource orchestrator.
+     * @param handle The source handle providing physical/virtual connectivity.
      */
     public Resource(ResourceHandle handle) {
         super(handle.getUri().toString(), handle.getName(), "Managed resource: " + handle.getUri());
@@ -60,8 +68,9 @@ public class Resource extends BasicContextProvider implements Rebindable {
         this.handle.setOwner(this);
     }
 
-    /** {@inheritDoc} 
-     * Delegates name resolution to the handle.
+    /** 
+     * {@inheritDoc} 
+     * <p>Delegates name resolution to the underlying handle.</p>
      */
     @Override
     public String getName() {
@@ -70,7 +79,10 @@ public class Resource extends BasicContextProvider implements Rebindable {
 
     /** 
      * Returns an HTML-formatted display name.
-     * <p>Note: This is not part of the ContextProvider interface to keep the core pure.</p>
+     * <p>
+     * <b>Purity Note:</b> This is not part of the core {@code ContextProvider} interface 
+     * as it is a UI concern. It allows the Swing layer to display IDE status (Git, errors).
+     * </p>
      * @return The HTML display name from the handle, or null.
      */
     public String getHtmlDisplayName() {
@@ -79,22 +91,53 @@ public class Resource extends BasicContextProvider implements Rebindable {
 
     /** 
      * Marks the source content as needing a reload. 
-     * Called by reactive handles when filesystem events are detected.
+     * Typically called by reactive handles when filesystem events are detected.
      */
     public void markSourceDirty() {
-        this.sourceDirty = true;
+        if (!sourceDirty) {
+            this.sourceDirty = true;
+            propertyChangeSupport.firePropertyChange("sourceDirty", false, true);
+        }
     }
 
     /** 
-     * Marks the view as needing a reload due to configuration changes.
+     * Marks the view as needing a reload due to configuration changes (e.g., viewport tweaks).
+     * This signals the orchestrator to re-run the interpreter before the next Turn.
      */
     public void markViewDirty() {
-        this.viewDirty = true;
+        if (!viewDirty) {
+            this.viewDirty = true;
+            propertyChangeSupport.firePropertyChange("viewDirty", false, true);
+        }
+    }
+
+    /**
+     * Sets the refresh policy and fires a property change event if different.
+     * @param policy The new policy (LIVE or SNAPSHOT).
+     */
+    public void setRefreshPolicy(RefreshPolicy policy) {
+        RefreshPolicy old = this.refreshPolicy;
+        if (old != policy) {
+            this.refreshPolicy = policy;
+            propertyChangeSupport.firePropertyChange("refreshPolicy", old, policy);
+        }
+    }
+
+    /**
+     * Sets the context position and fires a property change event if different.
+     * @param position The new position (SYSTEM_INSTRUCTIONS or PROMPT_AUGMENTATION).
+     */
+    public void setContextPosition(ContextPosition position) {
+        ContextPosition old = this.contextPosition;
+        if (old != position) {
+            this.contextPosition = position;
+            propertyChangeSupport.firePropertyChange("contextPosition", old, position);
+        }
     }
 
     /** 
      * {@inheritDoc} 
-     * <p>Orchestrates the reload and delegates population to the active view.</p>
+     * <p>Orchestrates the reload and delegates RAG population to the active view.</p>
      */
     @Override
     public void populateMessage(RagMessage ragMessage) throws Exception {
@@ -109,9 +152,12 @@ public class Resource extends BasicContextProvider implements Rebindable {
     /** 
      * {@inheritDoc} 
      * <p>Orchestrates the reload and delegates instruction generation to the active view.</p>
-     * <p><b>Guideline Protection Shield:</b> If the resource is in the SYSTEM_INSTRUCTIONS 
-     * position but the view is incapable of providing instructions (binary/media), it 
-     * returns a warning instruction to prevent silent disappearance.</p>
+     * <p>
+     * <b>Guideline Protection Shield:</b> If a resource is misconfigured to provide 
+     * system instructions but its view is incapable of providing text (e.g., MediaView), 
+     * this method returns an explicit warning instruction to the model to prevent 
+     * silent information loss.
+     * </p>
      */
     @Override
     public List<String> getSystemInstructions() throws Exception {
@@ -129,14 +175,14 @@ public class Resource extends BasicContextProvider implements Rebindable {
     }
 
     /**
-     * Synchronously reloads the resource content if the source or view is dirty/stale.
+     * Synchronously reloads the resource content if the source or view is dirty or stale.
      * <p>
-     * <b>Auto-Binding:</b> If no view is assigned, this method performs MIME detection 
-     * via the handle and binds the appropriate view (Text vs Media) automatically.
+     * <b>Auto-Binding:</b> If no view is currently assigned, this method performs 
+     * MIME detection via the handle and binds the appropriate interpreter (Text vs Media).
      * </p>
-     * @throws Exception if the reload fails.
+     * @throws Exception if the reload or MIME detection fails.
      */
-    private synchronized void reloadIfNeeded() throws Exception {
+    public synchronized void reloadIfNeeded() throws Exception {
         if (!handle.exists()) {
             return;
         }
@@ -155,11 +201,13 @@ public class Resource extends BasicContextProvider implements Rebindable {
             this.lastLoadTimestamp = handle.getLastModified();
             this.sourceDirty = false;
             this.viewDirty = false;
+            // Notify UI that a physical reload occurred
+            propertyChangeSupport.firePropertyChange("reloaded", false, true); 
         }
     }
 
     /**
-     * Detects the resource capability and binds the correct interpreter view.
+     * Detects the resource capability via MIME type and binds the correct interpreter.
      */
     private void autoBindView() {
         String mime = handle.getMimeType();
@@ -178,7 +226,7 @@ public class Resource extends BasicContextProvider implements Rebindable {
 
     /** 
      * {@inheritDoc} 
-     * <p>Restores the owner back-reference after deserialization.</p>
+     * <p>Restores bidirectional owner links after deserialization.</p>
      */
     @Override
     public void rebind() {
@@ -189,8 +237,7 @@ public class Resource extends BasicContextProvider implements Rebindable {
     }
 
     /** 
-     * Disposes of the handle and its listeners. 
-     * Should be called when the resource is removed from management.
+     * Performs a clean shutdown of the resource, disposing of its handle. 
      */
     public void dispose() {
         handle.dispose();
@@ -223,8 +270,8 @@ public class Resource extends BasicContextProvider implements Rebindable {
     }
 
     /** 
-     * Returns the detected MIME type of the underlying handle.
-     * @return The MIME type.
+     * Returns the detected MIME type of the underlying source.
+     * @return The MIME type string.
      */
     public String getMimeType() {
         return handle.getMimeType();
@@ -232,8 +279,8 @@ public class Resource extends BasicContextProvider implements Rebindable {
 
     /** 
      * {@inheritDoc} 
-     * <p>Appends URI, MIME type, and view-specific metadata to the base header.</p>
-     * <p>Includes a status warning if the resource is in an unsupported context position.</p>
+     * <p>Appends URI, MIME type, and view-specific details to the base header.</p>
+     * <p>Injects a <b>WARNING</b> if a binary resource is assigned to system instructions.</p>
      */
     @Override
     public String getHeader() {
