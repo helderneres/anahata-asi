@@ -8,20 +8,23 @@ import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.context.ContextProvider;
-import uno.anahata.asi.model.core.RagMessage;
+import uno.anahata.asi.model.core.BasicPropertyChangeSource;
 
 
 /**
  * A basic, reusable implementation of the {@link ContextProvider} interface
  * that provides the foundational logic for hierarchical context management.
+ * <p>
+ * It extends {@link BasicPropertyChangeSource} to support reactive UI bindings, 
+ * ensuring that changes to the provider's state are immediately reflected 
+ * in the context tree and details panels.
+ * </p>
  * 
  * @author anahata
  */
 @Getter
 @RequiredArgsConstructor
-public class BasicContextProvider implements ContextProvider {
+public class BasicContextProvider extends BasicPropertyChangeSource implements ContextProvider {
     
     /** The unique identifier for this provider. */
     private final String id;
