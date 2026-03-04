@@ -1,7 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 # Anahata ASI Maven Multi-Module Project
 
-This document provides the high-level strategic overview and rules for all modules under the `anahata-ai-parent` project.
+This document provides the high-level strategic overview and **rules that apply all modules** under the `anahata-ai-parent` project.
 
 ## 2. Core Modules
 
