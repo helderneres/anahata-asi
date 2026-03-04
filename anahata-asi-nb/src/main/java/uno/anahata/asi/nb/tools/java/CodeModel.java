@@ -41,7 +41,8 @@ public class CodeModel extends AnahataToolkit {
                 + "- **Discovery**: Use `findTypes` to search for classes, interfaces, or enums. It returns `JavaType` objects which contain the full `ElementHandle` and `url` for precise identification.\n"
                 + "- **Shortcuts (ByFqn)**: If you already know the fully qualified name (FQN) of a type or member, you can use the `ByFqn` methods to skip the discovery turn. These methods will fail if the FQN is ambiguous (e.g., exists in multiple open projects).\n"
                 + "- **Member FQNs**: Members are identified by an FQN following the pattern `className.memberName` (e.g., `com.foo.MyClass.myMethod`).\n"
-                + "- **Disambiguation**: If a `ByFqn` method fails due to ambiguity, use `findTypes` to get the explicit `JavaType` or `JavaMember` DTO and use the standard methods instead.\n";
+                + "- **Disambiguation**: If a `ByFqn` method fails due to ambiguity, use `findTypes` to get the explicit `JavaType` or `JavaMember` DTO and use the standard methods instead.\n"
+                + "- **Hierarchy**: Use `getSubtypes` and `getSupertypes` to explore the inheritance tree. These return a recursive `JavaHierarchyNode` structure.\n";
         return Collections.singletonList(instructions);
     }
 
@@ -117,7 +118,7 @@ public class CodeModel extends AnahataToolkit {
      * Gets the Javadoc for a type specified by its fully qualified name.
      * @param fqn The fully qualified name of the type.
      * @return the Javadoc comment.
-     * @throws Exception if the type is not found or ambiguous.
+     * @throws Exception if the Javadoc cannot be found or ambiguous.
      */
     @AiTool("Gets the Javadoc for a type specified by its fully qualified name. Fails if the FQN is ambiguous.")
     public String getTypeJavadocsByFqn(
@@ -238,7 +239,7 @@ public class CodeModel extends AnahataToolkit {
             @AiToolParam(value = "The starting index (0-based) for pagination.", required = false) Integer startIndex,
             @AiToolParam(value = "The maximum number of results to return per page.", required = false) Integer pageSize) {
 
-        ClasspathInfo cpInfo = getClasspathInfo();
+        ClasspathInfo cpInfo = getGlobalClasspathInfo();
 
         Set<ElementHandle<javax.lang.model.element.TypeElement>> declaredTypes = cpInfo.getClassIndex().getDeclaredTypes(
                 "", ClassIndex.NameKind.PREFIX, EnumSet.allOf(ClassIndex.SearchScope.class));
@@ -274,7 +275,72 @@ public class CodeModel extends AnahataToolkit {
         return new Page<>(allResults, start, size);
     }
 
-    private static ClasspathInfo getClasspathInfo() {
+    /**
+     * Recursively searches for all subtypes (implementations and subclasses) of a given JavaType.
+     * 
+     * @param javaType The starting type.
+     * @param maxDepth The maximum depth to recurse. Defaults to 3 if null.
+     * @return A recursive JavaHierarchyNode structure.
+     * @throws Exception if the search fails.
+     */
+    @AiTool("Recursively searches for all subtypes (implementations and subclasses) of a given JavaType.")
+    public JavaHierarchyNode getSubtypes(
+            @AiToolParam("The keychain DTO for the starting type.") JavaType javaType,
+            @AiToolParam(value = "The maximum depth to recurse. Defaults to 3.", required = false) Integer maxDepth) throws Exception {
+        return new JavaSubtypeSearch(javaType, maxDepth != null ? maxDepth : 3).getRootNode();
+    }
+
+    /**
+     * Recursively searches for all subtypes of a type specified by its fully qualified name.
+     * 
+     * @param fqn The fully qualified name of the type.
+     * @param maxDepth The maximum depth to recurse. Defaults to 3 if null.
+     * @return A recursive JavaHierarchyNode structure.
+     * @throws Exception if the type is not found or ambiguous.
+     */
+    @AiTool("Recursively searches for all subtypes of a type specified by its fully qualified name. Fails if the FQN is ambiguous.")
+    public JavaHierarchyNode getSubtypesByFqn(
+            @AiToolParam("The fully qualified name of the type.") String fqn,
+            @AiToolParam(value = "The maximum depth to recurse. Defaults to 3.", required = false) Integer maxDepth) throws Exception {
+        return getSubtypes(resolveUniqueType(fqn), maxDepth);
+    }
+
+    /**
+     * Recursively searches for all supertypes (base classes and interfaces) of a given JavaType.
+     * 
+     * @param javaType The starting type.
+     * @param maxDepth The maximum depth to recurse up. Defaults to 3 if null.
+     * @return A recursive JavaHierarchyNode structure.
+     * @throws Exception if the search fails.
+     */
+    @AiTool("Recursively searches for all supertypes (base classes and interfaces) of a given JavaType.")
+    public JavaHierarchyNode getSupertypes(
+            @AiToolParam("The keychain DTO for the starting type.") JavaType javaType,
+            @AiToolParam(value = "The maximum depth to recurse up. Defaults to 3.", required = false) Integer maxDepth) throws Exception {
+        return new JavaSupertypeSearch(javaType, maxDepth != null ? maxDepth : 3).getRootNode();
+    }
+
+    /**
+     * Recursively searches for all supertypes of a type specified by its fully qualified name.
+     * 
+     * @param fqn The fully qualified name of the type.
+     * @param maxDepth The maximum depth to recurse up. Defaults to 3 if null.
+     * @return A recursive JavaHierarchyNode structure.
+     * @throws Exception if the type is not found or ambiguous.
+     */
+    @AiTool("Recursively searches for all supertypes of a type specified by its fully qualified name. Fails if the FQN is ambiguous.")
+    public JavaHierarchyNode getSupertypesByFqn(
+            @AiToolParam("The fully qualified name of the type.") String fqn,
+            @AiToolParam(value = "The maximum depth to recurse up. Defaults to 3.", required = false) Integer maxDepth) throws Exception {
+        return getSupertypes(resolveUniqueType(fqn), maxDepth);
+    }
+
+    /**
+     * Builds a global ClasspathInfo of all SOURCE, COMPILE and BOOT classpaths of all open projects.
+     * 
+     * @return All classpaths of all open projects 
+     */
+    private static ClasspathInfo getGlobalClasspathInfo() {
         Set<ClassPath> sourcePaths = GlobalPathRegistry.getDefault().getPaths(ClassPath.SOURCE);
         Set<ClassPath> compilePaths = GlobalPathRegistry.getDefault().getPaths(ClassPath.COMPILE);
         Set<ClassPath> bootPaths = GlobalPathRegistry.getDefault().getPaths(ClassPath.BOOT);
