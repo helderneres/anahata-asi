@@ -2,10 +2,12 @@
 package uno.anahata.asi.resource.v2;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.tool.AiTool;
 import uno.anahata.asi.tool.AiToolException;
@@ -19,6 +21,8 @@ import uno.anahata.asi.tool.AiToolParam;
  * This toolkit is URI-centric and supports both local and remote sources 
  * through the V2 Universal Resource Pipeline (URP).
  * </p>
+ * 
+ * @author anahata
  */
 @Slf4j
 @AiToolkit("A toolkit for managing V2 URI-centric resources.")
@@ -47,6 +51,7 @@ public class Resources extends AnahataToolkit {
             @AiToolParam("The full URIs of the resources.") List<String> uriStrings,
             @AiToolParam(value = "Initial viewport settings for text resources.", required = false) TextViewportSettings initialSettings) throws Exception {
         
+        List<Resource> toRegister = new ArrayList<>();
         List<String> ids = new ArrayList<>();
         ResourceManager2 manager = getAgi().getResourceManager2();
         
@@ -68,9 +73,11 @@ public class Resources extends AnahataToolkit {
                 resource.setView(new TextView(resource, initialSettings));
             }
             
-            manager.register(resource);
+            toRegister.add(resource);
             ids.add(resource.getId());
         }
+        
+        manager.registerAll(toRegister);
         return ids;
     }
 
@@ -104,5 +111,26 @@ public class Resources extends AnahataToolkit {
         for (String id : resourceIds) {
             getAgi().getResourceManager2().unregister(id);
         }
+    }
+
+    /**
+     * Registers multiple paths as managed resources in a single atomic batch.
+     * <p>
+     * This is a local helper method for UI components to easily register local 
+     * files without manually orchestrating handles and resources.
+     * </p>
+     * 
+     * @param paths The list of paths to register.
+     * @return The list of registered resource orchestrators.
+     */
+    public List<Resource> registerPaths(@NonNull List<Path> paths) {
+        List<Resource> toRegister = new ArrayList<>();
+        for (Path p : paths) {
+            ResourceHandle handle = getAgi().getConfig().createResourceHandle(p.toUri());
+            Resource resource = new Resource(handle);
+            toRegister.add(resource);
+        }
+        getAgi().getResourceManager2().registerAll(toRegister);
+        return toRegister;
     }
 }
