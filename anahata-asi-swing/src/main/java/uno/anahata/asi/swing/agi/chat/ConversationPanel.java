@@ -23,8 +23,8 @@ import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.model.core.AbstractMessage;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.AgiTransferHandler;
-import uno.anahata.asi.swing.agi.render.AbstractMessagePanel;
-import uno.anahata.asi.swing.agi.render.MessagePanelFactory;
+import uno.anahata.asi.swing.agi.message.AbstractMessagePanel;
+import uno.anahata.asi.swing.agi.message.MessagePanelFactory;
 import uno.anahata.asi.swing.components.ScrollablePanel;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 

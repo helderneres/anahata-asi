@@ -11,8 +11,8 @@ import javax.swing.text.rtf.RTFEditorKit;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.internal.TikaUtils;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.render.AbstractCodeBlockSegmentRenderer;
-import uno.anahata.asi.swing.agi.render.RSyntaxTextAreaCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.RSyntaxTextAreaCodeBlockSegmentRenderer;
 
 /**
  * A default implementation of {@link EditorKitProvider} that provides standard

@@ -28,7 +28,7 @@ import uno.anahata.asi.model.tool.AbstractTool;
 import uno.anahata.asi.model.tool.AbstractToolParameter;
 import uno.anahata.asi.model.tool.ToolPermission;
 import uno.anahata.asi.swing.agi.context.ContextPanel;
-import uno.anahata.asi.swing.agi.render.AbstractCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
 
 /**
  * A panel that displays the details and controls for a specific {@link AbstractTool}.

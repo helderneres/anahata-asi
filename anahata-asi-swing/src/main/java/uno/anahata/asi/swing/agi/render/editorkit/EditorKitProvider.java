@@ -5,7 +5,7 @@ package uno.anahata.asi.swing.agi.render.editorkit;
 
 import javax.swing.text.EditorKit;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.render.AbstractCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
 
 /**
  * An interface for providing an EditorKit for a given programming language.

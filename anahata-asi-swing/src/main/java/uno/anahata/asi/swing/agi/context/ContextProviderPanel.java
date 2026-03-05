@@ -22,7 +22,7 @@ import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.context.ContextProvider;
 import uno.anahata.asi.model.core.RagMessage;
 import uno.anahata.asi.swing.agi.context.ContextPanel;
-import uno.anahata.asi.swing.agi.render.RagMessageViewer;
+import uno.anahata.asi.swing.agi.message.RagMessageViewer;
 
 /**
  * A panel that displays the details and context previews for a {@link ContextProvider}.

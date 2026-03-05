@@ -14,7 +14,7 @@ import javax.swing.JScrollPane;
 import lombok.NonNull;
 import uno.anahata.asi.AsiContainer;
 import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.swing.internal.WrapLayout;
+import uno.anahata.asi.swing.components.WrapLayout;
 
 /**
  * A container panel that displays active AI agi sessions as a collection of 

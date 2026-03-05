@@ -41,7 +41,7 @@ import uno.anahata.asi.model.tool.AbstractToolCall;
 import uno.anahata.asi.model.tool.ToolExecutionStatus;
 import uno.anahata.asi.nb.tools.ide.Editor;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.render.ParameterRenderer;
+import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRenderer;
 import uno.anahata.asi.swing.internal.SwingUtils;
 import uno.anahata.asi.toolkit.files.AbstractTextFileWrite;
 import uno.anahata.asi.toolkit.files.Files;

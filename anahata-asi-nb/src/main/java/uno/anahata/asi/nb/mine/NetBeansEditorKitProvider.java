@@ -13,7 +13,7 @@ import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
 import uno.anahata.asi.nb.ui.render.NbCodeBlockSegmentRenderer;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.render.AbstractCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
 import uno.anahata.asi.swing.agi.render.editorkit.EditorKitProvider;
 
 /**

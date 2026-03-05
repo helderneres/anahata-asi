@@ -3,9 +3,8 @@
  */
 package uno.anahata.asi.swing.agi;
 
-import uno.anahata.asi.swing.agi.chat.ToolbarPanel;
 import uno.anahata.asi.swing.agi.support.SupportPanel;
-import uno.anahata.asi.swing.agi.context.CwGcPanel;
+import uno.anahata.asi.swing.agi.context.gc.CwGcPanel;
 import uno.anahata.asi.swing.agi.status.StatusPanel;
 import uno.anahata.asi.swing.agi.chat.ConversationPanel;
 import uno.anahata.asi.swing.agi.input.InputPanel;
@@ -22,7 +21,7 @@ import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.NonNull;
 import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.swing.agi.render.CandidateSelectionPanel;
+import uno.anahata.asi.swing.agi.chat.CandidateSelectionPanel;
 
 /**
  * The main, top-level panel for the Anahata AI Swing UI.

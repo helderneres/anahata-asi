@@ -26,7 +26,7 @@ import org.netbeans.modules.editor.NbEditorUI;
 import org.netbeans.modules.parsing.api.Source;
 import org.openide.filesystems.FileObject;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.render.AbstractCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
 
 /**
  * A NetBeans-specific code block renderer providing 100% IDE fidelity, including

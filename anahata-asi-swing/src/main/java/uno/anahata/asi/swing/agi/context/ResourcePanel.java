@@ -28,7 +28,7 @@ import uno.anahata.asi.model.resource.AbstractResource;
 import uno.anahata.asi.model.resource.RefreshPolicy;
 import uno.anahata.asi.model.resource.files.TextFileResource;
 import uno.anahata.asi.swing.agi.context.ContextPanel;
-import uno.anahata.asi.swing.agi.render.RagMessageViewer;
+import uno.anahata.asi.swing.agi.message.RagMessageViewer;
 
 /**
  * A panel that displays the details and a content preview for an {@link AbstractResource}.

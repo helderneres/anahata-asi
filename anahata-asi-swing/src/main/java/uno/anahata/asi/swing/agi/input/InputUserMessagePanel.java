@@ -19,7 +19,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.model.core.InputUserMessage;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.render.AbstractMessagePanel;
+import uno.anahata.asi.swing.agi.message.AbstractMessagePanel;
 
 /**
  * A panel that provides a live, read-only preview of the user's input message,

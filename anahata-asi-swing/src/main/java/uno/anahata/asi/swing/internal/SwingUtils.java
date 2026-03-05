@@ -3,6 +3,7 @@
  */
 package uno.anahata.asi.swing.internal;
 
+import uno.anahata.asi.swing.components.ExceptionDialog;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -36,7 +37,7 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.internal.JacksonUtils;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.render.AbstractCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
 
 /**
  * A collection of general-purpose Swing utility methods, primarily for image
