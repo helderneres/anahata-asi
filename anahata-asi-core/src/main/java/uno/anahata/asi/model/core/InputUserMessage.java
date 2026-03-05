@@ -1,6 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.model.core;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
@@ -96,6 +97,16 @@ public class InputUserMessage extends UserMessage {
     }
 
     /**
+     * Adds a single {@link File} object as an attachment to this message.
+     * 
+     * @param file The file to attach.
+     * @throws Exception if a BlobPart cannot be created from the file.
+     */
+    public void addAttachment(File file) throws Exception {
+        UserBlobPart.from(this, file);
+    }
+
+    /**
      * Adds a collection of file paths as attachments to this message.
      * 
      * @param paths The collection of file paths to attach.
@@ -103,7 +114,7 @@ public class InputUserMessage extends UserMessage {
      */
     public void addAttachments(Collection<Path> paths) throws Exception {
         for (Path path : paths) {
-            addAttachment(path); // Call the single-path method
+            addAttachment(path); 
         }
     }
 }
