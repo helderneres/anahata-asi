@@ -287,7 +287,7 @@ public class Session extends AnahataToolkit {
         sb.append("- **Summary**: ").append(domainAgi.getConversationSummary() != null ? domainAgi.getConversationSummary() : "N/A").append("\n");
         sb.append("- **Expand Thoughts**: ").append(config.isExpandThoughts()).append(config.isExpandThoughts() ? " (user's ui expands the thought parts with your reasoning when a new part arrives)" : "(**reasonig not showing**)\n");
         sb.append("- **Total Messages**: ").append(domainAgi.getContextManager().getHistory().size()).append("\n");
-        sb.append("- **Context Usage**: ").append(String.format("%.1f%%", domainAgi.getContextWindowUsage() * 100))
+        sb.append("- **Context Usage (previous turn)**: ").append(String.format("%.1f%%", domainAgi.getContextWindowUsage() * 100))
           .append(" (").append(domainAgi.getLastTotalTokenCount()).append(" / ").append(config.getTokenThreshold()).append(" tokens)\n");
         
         sb.append("\n Default Max Depth Policies:\n");

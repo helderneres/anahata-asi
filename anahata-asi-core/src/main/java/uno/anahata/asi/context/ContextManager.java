@@ -53,6 +53,11 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
     private final List<AbstractMessage> history = new CopyOnWriteArrayList<>();
 
     /**
+     * The specialized garbage collector for this context.
+     */
+    private final ContextWindowGarbageCollector garbageCollector = new ContextWindowGarbageCollector(this);
+
+    /**
      * Counter for assigning unique, sequential IDs to messages.
      */
     private final AtomicLong messageIdCounter = new AtomicLong(0);
@@ -100,6 +105,7 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
         history.clear();
         messageIdCounter.set(0);
         partIdCounter.set(0);
+        garbageCollector.clearLog();
         log.info("ContextManager cleared for session {}", agi.getConfig().getSessionId());
         propertyChangeSupport.firePropertyChange("history", null, history);
     }
@@ -156,6 +162,18 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
 
         log.info("Built visible history with {} messages (total history: {})", visibleHistory.size(), history.size());
 
+        visibleHistory.add(buildRagMessage());
+
+        return visibleHistory;
+    }
+
+    /**
+     * Constructs the RAG (Retrieval-Augmented Generation) message by aggregating 
+     * content from all enabled context providers.
+     * 
+     * @return A fully populated RagMessage.
+     */
+    public RagMessage buildRagMessage() {
         RagMessage augmentedMessage = new RagMessage(agi);
         augmentedMessage.addTextPart("--- RAG message ---\n"
                 + "The following is high-salience, just-in-time context provided by the host environment for this turn. "
@@ -170,7 +188,7 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
                     if (provider instanceof AbstractResource ar && ar.getContextPosition() != ContextPosition.PROMPT_AUGMENTATION) {
                         continue;
                     }
-                    
+
                     long start = System.currentTimeMillis();
                     try {
                         augmentedMessage.addTextPart(provider.getHeader());
@@ -185,9 +203,7 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
                 }
             }
         }
-        visibleHistory.add(augmentedMessage);
-
-        return visibleHistory;
+        return augmentedMessage;
     }
 
     /**
@@ -262,42 +278,14 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
                 .collect(Collectors.toList());
         
         for (AbstractMessage msg : toRemove) {
-            int tokens = msg.getTokenCount(true);
-            log.info("Garbage collecting message turn {} ({} tokens recycled)", msg.getSequentialId(), tokens);
+            log.info("Garbage collecting message turn {} ({} tokens recycled)", msg.getSequentialId(), msg.getTokenCount(true));
+            garbageCollector.recordCollection(msg);
             history.remove(msg);
         }
         
         if (!toRemove.isEmpty()) {
             propertyChangeSupport.firePropertyChange("history", null, history);
         }
-    }
-
-    /**
-     * Calculates the total token count of all parts in the history that 
-     * are currently effectively pruned.
-     * 
-     * @return The total pruned token count.
-     */
-    public int getAllEffectivelyPrunedPartsTokenCount() {
-        return history.stream()
-                .flatMap(m -> m.getParts().stream())
-                .filter(AbstractPart::isEffectivelyPruned)
-                .mapToInt(AbstractPart::getTokenCount)
-                .sum();
-    }
-
-    /**
-     * Calculates the total token count of the metadata headers for all parts 
-     * in the history that are currently effectively pruned.
-     * 
-     * @return The total pruned metadata token count.
-     */
-    public int getAllEffectivelyPrunedMetadataTokenCount() {
-        return history.stream()
-                .flatMap(m -> m.getParts().stream())
-                .filter(AbstractPart::isEffectivelyPruned)
-                .mapToInt(AbstractPart::getMetadataTokenCount)
-                .sum();
     }
 
     /**
@@ -314,7 +302,7 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
      *
      * @return The total token count.
      */
-    public int getTotalTokenCount() {
+    public int getLastTotalTokenCount() {
         return agi.getLastTotalTokenCount();
     }
 
@@ -333,6 +321,7 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
     @Override
     public void rebind() {
         super.rebind();
+        /*
         log.info("Rebinding ContextManager for session: {}", agi.getConfig().getSessionId());
 
         boolean hasCore = false;
@@ -359,6 +348,6 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
         }
         if (!hasResources) {
             registerContextProvider(agi.getResourceManager());
-        }
+        }*/
     }
 }

@@ -84,10 +84,8 @@ public final class RequestConfigAdapter {
         
         // Adapt Thinking Config based on session settings and thinking level
         ThinkingConfig.Builder thinkingBuilder = ThinkingConfig.builder();
-        boolean includeThoughts = false;
-        if (anahataConfig.getAgi() != null) {
-            includeThoughts = anahataConfig.getAgi().getConfig().isIncludeThoughts();
-        }
+        boolean includeThoughts = anahataConfig.getAgi().getConfig().isIncludeThoughts();
+        
 
         ThinkingLevel ourLevel = anahataConfig.getThinkingLevel();
         if (ourLevel != null && ourLevel != ThinkingLevel.THINKING_LEVEL_UNSPECIFIED) {

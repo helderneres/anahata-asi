@@ -71,7 +71,7 @@ public class ContextUsageBar extends JPanel {
         this.status = statusManager.getCurrentStatus();
         
         // Use the total token count from the ContextManager (which includes the last response)
-        this.totalTokens = contextManager.getTotalTokenCount();
+        this.totalTokens = contextManager.getLastTotalTokenCount();
         
         this.maxTokens = contextManager.getTokenThreshold();
         this.percentage = (maxTokens == 0) ? 0.0 : (double) totalTokens / maxTokens;
