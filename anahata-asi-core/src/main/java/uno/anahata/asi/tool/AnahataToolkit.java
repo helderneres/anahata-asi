@@ -3,40 +3,45 @@
  */
 package uno.anahata.asi.tool;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.context.ContextProvider;
-import uno.anahata.asi.model.core.RagMessage;
+import uno.anahata.asi.model.core.PropertyChangeSource;
 import uno.anahata.asi.model.core.Rebindable;
-import uno.anahata.asi.tool.ToolContext;
 
 
 /**
  * The base class for all AI toolkits. It integrates the tool execution context
  * with the hierarchical context provider system, allowing toolkits to natively
  * contribute system instructions and RAG data.
+ * <p>
+ * This class is designed for autonomy: toolkits manage their own state and can 
+ * notify the UI of changes via the {@link PropertyChangeSource} interface.
+ * </p>
  * 
  * @author anahata
  */
 @Slf4j
 @RequiredArgsConstructor
-public abstract class AnahataToolkit extends ToolContext implements ContextProvider, Rebindable {
+public abstract class AnahataToolkit extends ToolContext implements ContextProvider, Rebindable, PropertyChangeSource {
     
     /** Whether this toolkit is currently providing context augmentation. */
     @Setter
     @Getter
     private boolean providing = true;
     
+    /**
+     * Support for firing property change events. 
+     * Marked transient to avoid serializing listeners.
+     */
+    protected transient PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
+
     /**
      * The list of child context providers managed by this toolkit.
      * Uses CopyOnWriteArrayList for thread-safe concurrent access during IDE events.
@@ -78,13 +83,13 @@ public abstract class AnahataToolkit extends ToolContext implements ContextProvi
      * <p>
      * This method is called by the framework during session activation to restore 
      * transient state, reconnect listeners, or refresh cached project instances. 
-     * It should not be used for initial setup logic that applies to new sessions.
+     * It ensures the {@code propertyChangeSupport} is re-initialized.
      * </p>
      */
     @Override
     public void rebind() {
         log.info("Rebinding toolkit: {}", getName());
-        // Toolkits can override this to restore transient state
+        this.propertyChangeSupport = new PropertyChangeSupport(this);
     }
 
     /**
@@ -99,6 +104,12 @@ public abstract class AnahataToolkit extends ToolContext implements ContextProvi
      */
     public void initialize() {
         log.info("Initializing toolkit: {}", getName());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public PropertyChangeSupport getPropertyChangeSupport() {
+        return propertyChangeSupport;
     }
     
 }

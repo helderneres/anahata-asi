@@ -24,7 +24,7 @@ import uno.anahata.asi.swing.icons.LoadSessionIcon;
 import uno.anahata.asi.swing.icons.SaveSessionIcon;
 import uno.anahata.asi.swing.icons.SearchIcon;
 import uno.anahata.asi.swing.internal.SwingTask;
-import uno.anahata.asi.swing.provider.ProviderRegistryViewer;
+import uno.anahata.asi.swing.provider.AgiProviderRegistryViewer;
 
 /**
  * The header panel for the agi UI, containing the agi nickname, session controls,
@@ -176,7 +176,7 @@ public class HeaderPanel extends JPanel {
 
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "AI Provider & Model Registry", JDialog.ModalityType.MODELESS);
         
-        ProviderRegistryViewer viewer = new ProviderRegistryViewer(allModels, selectedModel -> {
+        AgiProviderRegistryViewer viewer = new AgiProviderRegistryViewer(allModels, selectedModel -> {
             // Handle model selection: set the model in the combo box and close the dialog
             modelComboBox.setSelectedItem(selectedModel);
             dialog.dispose();

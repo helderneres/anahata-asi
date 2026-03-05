@@ -139,6 +139,7 @@ public class ResourceManager2 extends BasicPropertyChangeSource implements Rebin
     @Override
     public void rebind() {
         log.info("Rebinding ResourceManager2 for session: {}", agi.getConfig().getSessionId());
+        super.rebind();
         // Internal link restoration is handled by Kryo + RebindableWrapperSerializer
     }
 

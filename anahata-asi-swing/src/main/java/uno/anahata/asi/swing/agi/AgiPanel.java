@@ -3,6 +3,14 @@
  */
 package uno.anahata.asi.swing.agi;
 
+import uno.anahata.asi.swing.agi.chat.ToolbarPanel;
+import uno.anahata.asi.swing.agi.support.SupportPanel;
+import uno.anahata.asi.swing.agi.context.CwGcPanel;
+import uno.anahata.asi.swing.agi.status.StatusPanel;
+import uno.anahata.asi.swing.agi.chat.ConversationPanel;
+import uno.anahata.asi.swing.agi.input.InputPanel;
+import uno.anahata.asi.swing.agi.context.ContextPanel;
+import uno.anahata.asi.swing.agi.config.RequestConfigPanel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import javax.swing.BorderFactory;
@@ -98,7 +106,7 @@ public class AgiPanel extends JPanel {
         toolbarPanel.initComponents();
 
         // Configure Tabbed Pane
-        tabbedPane.addTab("Agi", conversationPanel);
+        tabbedPane.addTab("Chat", conversationPanel);
         tabbedPane.addTab("Config", createScrollPane(configPanel));
         tabbedPane.addTab("Context", contextPanel);
         tabbedPane.addTab("CwGC", cwGcPanel);

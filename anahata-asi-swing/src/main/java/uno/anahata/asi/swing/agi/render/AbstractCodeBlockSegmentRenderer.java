@@ -54,6 +54,13 @@ public abstract class AbstractCodeBlockSegmentRenderer extends AbstractTextSegme
     /** Whether this code block is allowed to be edited. Defaults to false. */
     @Getter @Setter
     protected boolean editable = false;
+
+    /** 
+     * Whether vertical scrolling is enabled in the scroll pane. 
+     * Defaults to false for conversation view, set to true for full resource views.
+     */
+    @Getter @Setter
+    protected boolean verticalScrollEnabled = false;
     
     /** The button used to toggle between edit and view modes. */
     protected JButton editButton;
@@ -147,7 +154,7 @@ public abstract class AbstractCodeBlockSegmentRenderer extends AbstractTextSegme
             
             // ScrollPane: Defaults to NEVER for conversation view.
             this.scrollPane = createScrollPane(innerComponent);
-            scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+            scrollPane.setVerticalScrollBarPolicy(verticalScrollEnabled ? JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED : JScrollPane.VERTICAL_SCROLLBAR_NEVER);
             scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
             scrollPane.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
             scrollPane.setOpaque(false);

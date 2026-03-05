@@ -19,7 +19,7 @@ import lombok.NonNull;
 import uno.anahata.asi.model.core.BlobPart;
 import uno.anahata.asi.internal.TextUtils;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.media.util.AudioPlaybackPanel;
+import uno.anahata.asi.swing.audio.AudioPlaybackPanel;
 
 /**
  * Renders a {@link uno.anahata.asi.model.core.BlobPart} into a JComponent,

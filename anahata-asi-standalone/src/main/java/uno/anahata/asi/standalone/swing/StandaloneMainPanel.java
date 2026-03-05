@@ -18,9 +18,9 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.AsiSwitcherContainerPanel;
-import uno.anahata.asi.swing.agi.SessionController;
+import uno.anahata.asi.swing.AsiSwitcherContainerPanel;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
+import uno.anahata.asi.swing.AgiController;
 
 /**
  * The main container for the Anahata AI Swing UI, managing multiple agi sessions.
@@ -29,7 +29,7 @@ import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
  * @author gemini-3-flash-preview
  */
 @Slf4j
-public class StandaloneMainPanel extends JPanel implements SessionController {
+public class StandaloneMainPanel extends JPanel implements AgiController {
 
     /** The parent ASI container managing the global state. */
     private final StandaloneAsiContainer asiContainer;

@@ -17,6 +17,7 @@ import uno.anahata.asi.resource.v2.PathHandle;
 import uno.anahata.asi.resource.v2.ResourceHandle;
 import uno.anahata.asi.resource.v2.Resources;
 import uno.anahata.asi.resource.v2.UrlHandle;
+import uno.anahata.asi.toolkit.Audio;
 import uno.anahata.asi.toolkit.Session;
 import uno.anahata.asi.toolkit.files.Files;
 import uno.anahata.asi.toolkit.Java;
@@ -47,14 +48,11 @@ public class AgiConfig extends BasicPropertyChangeSource {
 
     /**
      * The list of AI provider classes available for this agi session.
-     * The Agi orchestrator will use this list to discover and instantiate providers.
      */
     private List<Class<? extends AbstractAgiProvider>> providerClasses = new ArrayList<>();
     
     /**
      * The list of tool classes to be used in this agi session.
-     * This is pre-populated with core tools and can be modified by the user
-     * before the Agi session is created.
      */
     private final List<Class<?>> toolClasses = new ArrayList<>();
 
@@ -65,6 +63,7 @@ public class AgiConfig extends BasicPropertyChangeSource {
         toolClasses.add(Files.class);
         toolClasses.add(Java.class);        
         toolClasses.add(Shell.class);
+        toolClasses.add(Audio.class);
     }
 
     /**
@@ -95,14 +94,6 @@ public class AgiConfig extends BasicPropertyChangeSource {
     public void rebind(@NonNull AsiContainer container) {
         this.container = container;
     }
-
-    //<editor-fold defaultstate="collapsed" desc="Audio Configuration">
-    /** The ID of the selected audio input device. */
-    private String selectedInputDeviceId;
-
-    /** The ID of the selected audio output device. */
-    private String selectedOutputDeviceId;
-    //</editor-fold>
 
     //<editor-fold defaultstate="collapsed" desc="Session Loop">
     /** If true, local Java tools are enabled. */
@@ -137,7 +128,7 @@ public class AgiConfig extends BasicPropertyChangeSource {
 
     //<editor-fold defaultstate="collapsed" desc="Context Management">
     /** The maximum number of tokens allowed in the context window. */
-    private int tokenThreshold = 250000; // Moved from ContextManager
+    private int tokenThreshold = 250000; 
     
     /** The default maximum depth a TextPart should be kept in context. */
     private int defaultTextPartMaxDepth = 108;
@@ -156,30 +147,7 @@ public class AgiConfig extends BasicPropertyChangeSource {
     private List<String> defaultResponseModalities = new ArrayList<>(List.of("TEXT"));
     
     /**
-     * Sets the selected audio input device ID.
-     * 
-     * @param id The device ID.
-     */
-    public void setSelectedInputDeviceId(String id) {
-        String old = this.selectedInputDeviceId;
-        this.selectedInputDeviceId = id;
-        propertyChangeSupport.firePropertyChange("selectedInputDeviceId", old, id);
-    }
-
-    /**
-     * Sets the selected audio output device ID.
-     * 
-     * @param id The device ID.
-     */
-    public void setSelectedOutputDeviceId(String id) {
-        String old = this.selectedOutputDeviceId;
-        this.selectedOutputDeviceId = id;
-        propertyChangeSupport.firePropertyChange("selectedOutputDeviceId", old, id);
-    }
-
-    /**
-     * Sets whether local tools are enabled. Enabling local tools automatically
-     * disables server-side tools.
+     * Sets whether local tools are enabled.
      * 
      * @param enabled true to enable local tools.
      */
@@ -189,13 +157,11 @@ public class AgiConfig extends BasicPropertyChangeSource {
         if (enabled) {
             this.hostedToolsEnabled = false;
         }
-        // Only fire hostedToolsEnabled to trigger a single UI sync
         propertyChangeSupport.firePropertyChange("hostedToolsEnabled", oldServer, this.hostedToolsEnabled);
     }
 
     /**
-     * Sets whether server-side tools are enabled. Enabling server-side tools
-     * automatically disables local tools.
+     * Sets whether server-side tools are enabled.
      * 
      * @param enabled true to enable server-side tools.
      */

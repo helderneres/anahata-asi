@@ -18,12 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.swing.internal.SwingTask;
 
 /**
- * A reusable TransferHandler for Anahata ASI panels that allows dragging and 
- * dropping files to automatically attach them to the active Agi session's 
- * input message.
- * <p>
- * This implementation supports delegation to a default handler to preserve 
- * standard component behaviors (like text copy/paste).
+ * A TransferHandler for Anahata ASI panels that automatically registers dropped 
+ * files as managed V2 resources in the current agi session.
  * 
  * @author anahata
  */
@@ -59,10 +55,8 @@ public class AgiTransferHandler extends TransferHandler {
                 if (files != null && !files.isEmpty()) {
                     List<Path> paths = files.stream().map(File::toPath).collect(Collectors.toList());
                     
-                    // Execute the attachment as a background task to keep the UI responsive
                     new SwingTask<>(agiPanel, "Drop Files", () -> {
-                        agiPanel.getInputPanel().getCurrentMessage().addAttachments(paths);
-                        agiPanel.getInputPanel().scrollToBottomPreview();
+                        agiPanel.getInputPanel().registerPathsAsResources(paths);
                         return null;
                     }).execute();
 

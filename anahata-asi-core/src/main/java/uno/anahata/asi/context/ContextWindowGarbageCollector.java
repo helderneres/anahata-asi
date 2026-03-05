@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.internal.TokenizerUtils;
 import uno.anahata.asi.model.core.AbstractMessage;
 import uno.anahata.asi.model.core.AbstractPart;
@@ -20,11 +21,12 @@ import uno.anahata.asi.model.tool.AbstractTool;
  * This class calculates high-fidelity metrics for prompt load and recycling efficiency
  * using a one-pass calculation strategy.
  */
+@Slf4j
 @Getter
 public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
 
     private final ContextManager contextManager;
-    private final List<GarbageCollectorRecord> log = new CopyOnWriteArrayList<>();
+    private final List<GarbageCollectorRecord> logRecords = new CopyOnWriteArrayList<>();
     
     /** The results of the last token calculation pass. */
     private Stats stats = Stats.builder().build();
@@ -39,6 +41,7 @@ public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
      * metadata, and various history states.
      */
     public void calculate() {
+        log.info("Calculating high-fidelity token metabolism for session {}", contextManager.getAgi().getShortId());
         Stats.StatsBuilder sb = Stats.builder();
 
         // 1. System Instructions
@@ -78,6 +81,12 @@ public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
         // 4. RAG Message Pass - High Fidelity
         RagMessage ragMessage = contextManager.buildRagMessage();
         sb.ragTokens(ragMessage.getTokenCount(true));
+        
+        // 5. Cumulative Garbage Collected (from Logs)
+        int totalGarbageCollected = logRecords.stream()
+                .mapToInt(GarbageCollectorRecord::getTokenCount)
+                .sum();
+        sb.garbageCollectedTokens(totalGarbageCollected);
 
         Stats oldStats = this.stats;
         this.stats = sb.build();
@@ -96,16 +105,16 @@ public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
                 .type(message.getClass().getSimpleName())
                 .tokenCount(message.getTokenCount(true))
                 .build();
-        log.add(record);
-        propertyChangeSupport.firePropertyChange("log", null, log);
+        logRecords.add(record);
+        propertyChangeSupport.firePropertyChange("log", null, logRecords);
     }
 
     /**
      * Clears the collection logs.
      */
     public void clearLog() {
-        log.clear();
-        propertyChangeSupport.firePropertyChange("log", null, log);
+        logRecords.clear();
+        propertyChangeSupport.firePropertyChange("log", null, logRecords);
     }
 
     /**
@@ -114,7 +123,7 @@ public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
      * @return The list of collection records.
      */
     public List<GarbageCollectorRecord> getRecords() {
-        return Collections.unmodifiableList(log);
+        return Collections.unmodifiableList(logRecords);
     }
 
     /**
@@ -129,6 +138,7 @@ public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
         private final int activeHistoryTokens;
         private final int prunedHistoryTokens;
         private final int ragTokens;
+        private final int garbageCollectedTokens;
 
         /**
          * Calculates the total prompt load (tokens sent to the model).

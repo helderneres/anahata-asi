@@ -20,7 +20,6 @@ import uno.anahata.asi.swing.icons.IconProvider;
 import uno.anahata.asi.toolkit.files.FullTextFileCreate;
 import uno.anahata.asi.yam.tools.Chrome;
 import uno.anahata.asi.yam.tools.Speech;
-import uno.anahata.asi.yam.tools.audio.Audio;
 
 /**
  * A concrete AgiConfig for standalone Swing applications, providing UI-specific settings like themes and colors.
@@ -54,7 +53,6 @@ public class SwingAgiConfig extends AgiConfig {
         // Register the Yam tools for all Swing-based configurations
         getToolClasses().add(Speech.class);
         getToolClasses().add(Chrome.class);
-        getToolClasses().add(Audio.class);
     }
 
     /**

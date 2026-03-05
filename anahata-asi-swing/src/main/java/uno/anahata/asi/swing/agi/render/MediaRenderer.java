@@ -27,7 +27,7 @@ import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.swing.internal.SwingUtils;
-import uno.anahata.asi.swing.media.util.AudioPlaybackPanel;
+import uno.anahata.asi.swing.audio.AudioPlaybackPanel;
 
 /**
  * A utility class for rendering media content (images, audio) in a consistent way
