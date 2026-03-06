@@ -5,6 +5,7 @@ package uno.anahata.asi.swing.agi.context;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.HashMap;
@@ -12,6 +13,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JMenuItem;
@@ -36,6 +38,7 @@ import uno.anahata.asi.swing.agi.message.part.PartPanelFactory;
 import uno.anahata.asi.swing.icons.DeleteIcon;
 import uno.anahata.asi.swing.icons.RestartIcon;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
+import uno.anahata.asi.swing.toolkits.ToolkitUiRegistry;
 import uno.anahata.asi.tool.ToolManager;
 
 /**
@@ -105,9 +108,9 @@ public class ContextPanel extends JPanel {
         this.resourcePanel = new ResourcePanel(this);
         this.messagePartDetailPanel = new JPanel(new BorderLayout());
         
-        detailContainer.add(toolPanel, "tool");
-        detailContainer.add(toolkitPanel, "toolkit");
-        detailContainer.add(providerPanel, "provider");
+        detailContainer.add(createScrollPane(toolPanel), "tool");
+        detailContainer.add(createScrollPane(toolkitPanel), "toolkit");
+        detailContainer.add(createScrollPane(providerPanel), "provider");
         detailContainer.add(resourcePanel, "resource");
         detailContainer.add(new JScrollPane(messagePartDetailPanel), "messagePart");
         detailContainer.add(new JPanel(), "empty");
@@ -118,6 +121,18 @@ public class ContextPanel extends JPanel {
         registerDefaultCustomConfigs();
     }
     
+    /**
+     * Standardizes a component within a borderless scroll pane.
+     * @param component The component to wrap.
+     * @return The scroll pane.
+     */
+    private JScrollPane createScrollPane(Component component) {
+        JScrollPane sp = new JScrollPane(component);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        sp.setViewportBorder(BorderFactory.createEmptyBorder());
+        return sp;
+    }
+
     /**
      * Registers the default configuration UIs for core components.
      */

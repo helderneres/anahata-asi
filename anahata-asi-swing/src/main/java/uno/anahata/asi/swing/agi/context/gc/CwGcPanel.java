@@ -21,9 +21,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTable;
-import javax.swing.Timer;
 import javax.swing.table.DefaultTableModel;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
@@ -35,11 +32,18 @@ import uno.anahata.asi.context.GarbageCollectorRecord;
 import uno.anahata.asi.internal.TimeUtils;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.icons.DeleteIcon;
+import uno.anahata.asi.swing.icons.RestartIcon;
+import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
+import uno.anahata.asi.swing.internal.SwingTask;
 
 /**
  * A specialized panel for monitoring the Context Window Garbage Collection (CwGC) 
  * status, showing token recycling metrics and pruned content overhead with 
  * a high-fidelity donut chart and a recycling log.
+ * <p>
+ * This panel is reactive: it listens to history and resource changes to update 
+ * the metabolism chart automatically using a background {@link SwingTask}.
+ * </p>
  * 
  * @author anahata
  */
@@ -49,7 +53,6 @@ public class CwGcPanel extends JPanel {
 
     private final AgiPanel agiPanel;
     private Agi agi;
-    private final Timer refreshTimer;
 
     private JLabel systemTokensLabel;
     private JLabel toolTokensLabel;
@@ -63,14 +66,37 @@ public class CwGcPanel extends JPanel {
     private DefaultTableModel logModel;
     private MetabolicDonutChart donutChart;
 
+    /** Reactive listener for history changes. */
+    private EdtPropertyChangeListener historyListener;
+    /** Reactive listener for resource changes. */
+    private EdtPropertyChangeListener resourcesListener;
+
+    /**
+     * Constructs a new CwGcPanel.
+     * @param agiPanel The parent agi panel.
+     */
     public CwGcPanel(@NonNull AgiPanel agiPanel) {
         setLayout(new BorderLayout());
         this.agiPanel = agiPanel;
         this.agi = agiPanel.getAgi();
         
         initComponents();
+        setupListeners();
+    }
+
+    /**
+     * Sets up the reactive listeners for history and resources.
+     */
+    private void setupListeners() {
+        if (historyListener != null) {
+            historyListener.unbind();
+        }
+        if (resourcesListener != null) {
+            resourcesListener.unbind();
+        }
         
-        this.refreshTimer = new Timer(2000, e -> refresh());
+        this.historyListener = new EdtPropertyChangeListener(this, agi.getContextManager(), "history", evt -> refresh());
+        this.resourcesListener = new EdtPropertyChangeListener(this, agi.getResourceManager2(), "resources", evt -> refresh());
     }
 
     private void initComponents() {
@@ -113,9 +139,9 @@ public class CwGcPanel extends JPanel {
         totalPromptLoadLabel.setFont(valueFont.deriveFont(18f));
         metricsPanel.add(totalPromptLoadLabel, "wrap");
 
-        metricsPanel.add(new JLabel("<html><br><b>Prompt Threshold</b><br>"
-                + "CwGC ensures your active prompt stays under the token threshold "
-                + "by recycling history into hints.</html>"), "span 2, growx");
+        JButton refreshBtn = new JButton("Refresh Now", new RestartIcon(16));
+        refreshBtn.addActionListener(e -> refresh());
+        metricsPanel.add(refreshBtn, "span 2, gaptop 10");
 
         topPanel.add(metricsPanel, "top");
 
@@ -168,32 +194,40 @@ public class CwGcPanel extends JPanel {
         return label;
     }
 
+    /**
+     * Reloads the panel with the new agi session state.
+     */
     public void reload() {
         this.agi = agiPanel.getAgi();
+        setupListeners();
         refresh();
     }
 
+    /**
+     * Performs a high-fidelity metabolism refresh using a background {@link SwingTask}.
+     */
     public void refresh() {
         ContextManager cm = agi.getContextManager();
         ContextWindowGarbageCollector gc = cm.getGarbageCollector();
         
-        // Trigger high-fidelity calculation
-        gc.calculate();
-        ContextWindowGarbageCollector.Stats stats = gc.getStats();
-        
-        int threshold = cm.getTokenThreshold();
+        new SwingTask<ContextWindowGarbageCollector.Stats>(this, "CwGC Metabolism Check", () -> {
+            gc.calculate();
+            return gc.getStats();
+        }, stats -> {
+            int threshold = cm.getTokenThreshold();
 
-        systemTokensLabel.setText(NUMBER_FORMAT.format(stats.getSystemInstructionsTokens()));
-        toolTokensLabel.setText(NUMBER_FORMAT.format(stats.getToolDeclarationsTokens()));
-        metadataTokensLabel.setText(NUMBER_FORMAT.format(stats.getMetadataTokens()));
-        activeHistoryTokensLabel.setText(NUMBER_FORMAT.format(stats.getActiveHistoryTokens()));
-        prunedHistoryTokensLabel.setText(NUMBER_FORMAT.format(stats.getPrunedHistoryTokens()));
-        ragTokensLabel.setText(NUMBER_FORMAT.format(stats.getRagTokens()));
-        
-        totalPromptLoadLabel.setText(NUMBER_FORMAT.format(stats.getTotalPromptLoad()) + " / " + NUMBER_FORMAT.format(threshold));
-        
-        donutChart.update(stats, threshold);
-        refreshLogTable();
+            systemTokensLabel.setText(NUMBER_FORMAT.format(stats.getSystemInstructionsTokens()));
+            toolTokensLabel.setText(NUMBER_FORMAT.format(stats.getToolDeclarationsTokens()));
+            metadataTokensLabel.setText(NUMBER_FORMAT.format(stats.getMetadataTokens()));
+            activeHistoryTokensLabel.setText(NUMBER_FORMAT.format(stats.getActiveHistoryTokens()));
+            prunedHistoryTokensLabel.setText(NUMBER_FORMAT.format(stats.getPrunedHistoryTokens()));
+            ragTokensLabel.setText(NUMBER_FORMAT.format(stats.getRagTokens()));
+            
+            totalPromptLoadLabel.setText(NUMBER_FORMAT.format(stats.getTotalPromptLoad()) + " / " + NUMBER_FORMAT.format(threshold));
+            
+            donutChart.update(stats, threshold);
+            refreshLogTable();
+        }).execute();
     }
 
     private void refreshLogTable() {
@@ -213,18 +247,6 @@ public class CwGcPanel extends JPanel {
         }
     }
 
-    @Override
-    public void addNotify() {
-        super.addNotify();
-        refreshTimer.start();
-    }
-
-    @Override
-    public void removeNotify() {
-        refreshTimer.stop();
-        super.removeNotify();
-    }
-
     /**
      * A high-fidelity donut chart visualizing the categorized token distribution.
      */
@@ -241,7 +263,9 @@ public class CwGcPanel extends JPanel {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            if (stats == null) return;
+            if (stats == null) {
+                return;
+            }
 
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -257,7 +281,9 @@ public class CwGcPanel extends JPanel {
             g2d.drawOval(x + stroke/2, y + stroke/2, size - stroke, size - stroke);
 
             double total = stats.getTotalPromptLoad();
-            if (total == 0) total = 1;
+            if (total == 0) {
+                total = 1;
+            }
 
             double currentAngle = 90;
 
@@ -297,7 +323,9 @@ public class CwGcPanel extends JPanel {
         }
 
         private double drawArc(Graphics2D g2d, int x, int y, int size, int stroke, double startAngle, double pct, Color color) {
-            if (pct <= 0) return startAngle;
+            if (pct <= 0) {
+                return startAngle;
+            }
             double angle = pct * 360.0;
             g2d.setColor(color);
             g2d.draw(new Arc2D.Double(x + stroke/2, y + stroke/2, size - stroke, size - stroke, startAngle, -angle, Arc2D.OPEN));

@@ -41,6 +41,7 @@ public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
      * metadata, and various history states.
      */
     public void calculate() {
+        long startTime = System.currentTimeMillis();
         log.info("Calculating high-fidelity token metabolism for session {}", contextManager.getAgi().getShortId());
         Stats.StatsBuilder sb = Stats.builder();
 
@@ -91,6 +92,8 @@ public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
         Stats oldStats = this.stats;
         this.stats = sb.build();
         propertyChangeSupport.firePropertyChange("stats", oldStats, this.stats);
+        
+        log.info("Token metabolism calculation for session {} took {}ms", contextManager.getAgi().getShortId(), (System.currentTimeMillis() - startTime));
     }
 
     /**
