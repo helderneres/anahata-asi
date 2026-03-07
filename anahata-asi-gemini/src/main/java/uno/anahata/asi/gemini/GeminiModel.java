@@ -312,7 +312,7 @@ public class GeminiModel extends AbstractModel {
         log.info("Streaming request to Gemini model: {} {} content elements", getModelId(), prepared.history().size());
         for (int i = 0; i < prepared.history().size(); i++) {
             Content c = prepared.history().get(i);
-            log.info("  Message {}: role={}, parts={}", i, c.role().orElse("N/A"), c.parts().map(List::size).orElse(0));
+            log.debug("  Message {}: role={}, parts={}", i, c.role().orElse("N/A"), c.parts().map(List::size).orElse(0));
         }
 
         try {
