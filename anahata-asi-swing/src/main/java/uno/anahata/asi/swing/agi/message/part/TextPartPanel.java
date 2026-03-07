@@ -3,21 +3,20 @@
  */
 package uno.anahata.asi.swing.agi.message.part;
 
-import java.awt.Color;
 import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.swing.Box;
 import javax.swing.JComponent;
-import javax.swing.border.Border;
 import lombok.Getter;
 import lombok.NonNull;
 import uno.anahata.asi.model.core.TextPart;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import javax.swing.BorderFactory; 
+import uno.anahata.asi.swing.agi.message.part.text.CodeBlockSegmentRenderer;
 import uno.anahata.asi.swing.agi.message.part.text.AbstractTextSegmentRenderer;
 import uno.anahata.asi.swing.agi.message.part.text.TextSegmentDescriptor;
 import uno.anahata.asi.swing.agi.message.part.text.TextSegmentType;
@@ -25,6 +24,11 @@ import uno.anahata.asi.swing.agi.message.part.text.TextSegmentType;
 /**
  * Renders a {@link uno.anahata.asi.model.core.TextPart} into a list of JComponents,
  * handling markdown and code block rendering.
+ * <p>
+ * This panel supports incremental updates and <b>Higher-Level Persistence</b>: 
+ * if a user edits a code block segment, this panel detects the save event, 
+ * rebuilds the full markdown text, and updates the underlying model.
+ * </p>
  *
  * @author anahata
  */
@@ -171,6 +175,13 @@ public class TextPartPanel extends AbstractPartPanel<TextPart> {
             cachedSegmentRenderers.clear();
             for (TextSegmentDescriptor descriptor : newSegmentDescriptors) {
                 AbstractTextSegmentRenderer renderer = descriptor.createRenderer(agiPanel, isThought);
+                
+                // HIGHER-LEVEL PERSISTENCE: Listen for save events in code blocks
+                if (renderer instanceof CodeBlockSegmentRenderer acb) {
+                    acb.setEditable(true);
+                    acb.setOnSave(content -> updateModelFromSegments());
+                }
+                
                 renderer.render(); // CRITICAL: Initialize the component
                 cachedSegmentRenderers.add(renderer);
             }
@@ -184,5 +195,21 @@ public class TextPartPanel extends AbstractPartPanel<TextPart> {
                 cachedRenderer.render(); // Call render to update the component if content changed
             }
         }
+    }
+
+    /**
+     * Rebuilds the full markdown string from all current segment renderers 
+     * and updates the underlying {@link TextPart} model.
+     */
+    private void updateModelFromSegments() {
+        String fullText = cachedSegmentRenderers.stream().map(r -> {
+            if (r instanceof CodeBlockSegmentRenderer acb) {
+                return "```" + acb.getLanguage() + "\n" + acb.getCurrentContent() + "\n```";
+            }
+            return r.getCurrentContent();
+        }).collect(Collectors.joining());
+        
+        lastRenderedMarkdownText = fullText;
+        part.setText(fullText);
     }
 }

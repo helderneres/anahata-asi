@@ -1,6 +1,8 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.resource.v2;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -106,7 +108,6 @@ public class ResourceManager2 extends BasicPropertyChangeSource implements Rebin
 
     /**
      * Returns an unmodifiable list of currently managed resources.
-     * @return The resource list.
      */
     public List<Resource> getResourcesList() {
         synchronized (resources) {
@@ -127,6 +128,15 @@ public class ResourceManager2 extends BasicPropertyChangeSource implements Rebin
         }
     }
 
+    /**
+     * Finds a managed resource by its physical path.
+     * @param path The absolute path to search for.
+     * @return Optional containing the resource if found.
+     */
+    public Optional<Resource> findByPath(@NonNull String path) {
+        return findByUri(Paths.get(path).toUri().toString());
+    }
+
     /** {@inheritDoc} */
     @Override
     public List<ContextProvider> getChildrenProviders() {
@@ -140,7 +150,6 @@ public class ResourceManager2 extends BasicPropertyChangeSource implements Rebin
     public void rebind() {
         log.info("Rebinding ResourceManager2 for session: {}", agi.getConfig().getSessionId());
         super.rebind();
-        // Internal link restoration is handled by Kryo + RebindableWrapperSerializer
     }
 
     /** {@inheritDoc} 
@@ -184,5 +193,5 @@ public class ResourceManager2 extends BasicPropertyChangeSource implements Rebin
     @Override
     public ContextProvider getParentProvider() {
         return null; // Root level provider
-    }
+}
 }

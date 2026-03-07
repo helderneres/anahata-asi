@@ -1,22 +1,21 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.agi.message.part.tool.param;
 
-import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRenderer;
 import javax.swing.JComponent;
 import uno.anahata.asi.model.tool.AbstractToolCall;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.CodeBlockSegmentRenderer;
 
 /**
  * A parameter renderer that displays string values as code blocks with syntax highlighting.
- * It wraps an {@link AbstractCodeBlockSegmentRenderer} and supports editing by syncing
+ * It wraps an {@link CodeBlockSegmentRenderer} and supports editing by syncing
  * changes back to the {@link AbstractToolCall}.
  * 
  * @author anahata
  */
 public class CodeBlockParameterRenderer implements ParameterRenderer<String> {
     
-    private AbstractCodeBlockSegmentRenderer renderer;
+    private CodeBlockSegmentRenderer renderer;
     private String language;
 
     /** No-arg constructor for factory instantiation. */
@@ -38,10 +37,14 @@ public class CodeBlockParameterRenderer implements ParameterRenderer<String> {
      */
     public void init(AgiPanel agiPanel, AbstractToolCall<?, ?> call, String paramName, String value, String language) {
         this.language = language;
-        // Use the authoritative EditorKitProvider from the config to create the renderer.
-        this.renderer = agiPanel.getAgiConfig().getEditorKitProvider().createRenderer(agiPanel, value, language);
+        
+        // THE SINGULARITY PATH: Directly instantiate the concrete worker. 
+        // It authoritatively leverages the Universal Resource Pipeline.
+        this.renderer = new CodeBlockSegmentRenderer(agiPanel, value, language);
         this.renderer.setEditable(true);
-        this.renderer.setOnSave(newContent -> call.setModifiedArgument(paramName, newContent));
+        this.renderer.setOnSave(newContent -> {
+            call.setModifiedArgument(paramName, newContent);
+        });
     }
 
     @Override

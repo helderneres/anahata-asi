@@ -1,12 +1,11 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.resource.v2;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.context.BasicContextProvider;
@@ -66,6 +65,48 @@ public class Resource extends BasicContextProvider implements Rebindable {
         super(handle.getUri().toString(), handle.getName(), "Managed resource: " + handle.getUri());
         this.handle = handle;
         this.handle.setOwner(this);
+    }
+
+    /** 
+     * Returns the full content of the resource as a String.
+     * <p>
+     * <b>Handy API:</b> Delegates to the handle's {@code asText()} which 
+     * manages streams and charsets.
+     * </p>
+     * @return The full text content.
+     * @throws IOException if reading fails.
+     */
+    public String asText() throws IOException {
+        return handle.asText();
+    }
+
+    /**
+     * Returns the full content of the resource as a byte array.
+     * @return The full binary content.
+     * @throws IOException if reading fails.
+     */
+    public byte[] asBytes() throws IOException {
+        return handle.asBytes();
+    }
+
+    /**
+     * Agnostically writes text content back to the source handle.
+     * Automatically triggers {@link #markSourceDirty()} upon success.
+     * 
+     * @param content The text to write.
+     * @throws IOException if the write fails.
+     */
+    public void write(String content) throws IOException {
+        handle.write(content);
+        markSourceDirty();
+    }
+
+    /**
+     * Checks if the resource is writable in the current environment.
+     * @return true if the underlying handle supports writing.
+     */
+    public boolean isWritable() {
+        return handle.isWritable();
     }
 
     /** 
@@ -152,12 +193,6 @@ public class Resource extends BasicContextProvider implements Rebindable {
     /** 
      * {@inheritDoc} 
      * <p>Orchestrates the reload and delegates instruction generation to the active view.</p>
-     * <p>
-     * <b>Guideline Protection Shield:</b> If a resource is misconfigured to provide 
-     * system instructions but its view is incapable of providing text (e.g., MediaView), 
-     * this method returns an explicit warning instruction to the model to prevent 
-     * silent information loss.
-     * </p>
      */
     @Override
     public List<String> getSystemInstructions() throws Exception {
@@ -195,6 +230,11 @@ public class Resource extends BasicContextProvider implements Rebindable {
         if (sourceDirty || viewDirty || (refreshPolicy == RefreshPolicy.LIVE && sourceStale)) {
             log.info("Reloading resource: {} ({}) [SourceDirty: {}, ViewDirty: {}, SourceStale: {}]", 
                     getName(), id, sourceDirty, viewDirty, sourceStale);
+            
+            // SYNCHRONIZE IDENTITY: Notify UI of URI or Name changes (e.g. from physical renames)
+            propertyChangeSupport.firePropertyChange("name", null, handle.getName());
+            propertyChangeSupport.firePropertyChange("uri", null, handle.getUri());
+            
             if (view != null) {
                 view.reload(handle);
             }
@@ -279,8 +319,6 @@ public class Resource extends BasicContextProvider implements Rebindable {
 
     /** 
      * {@inheritDoc} 
-     * <p>Appends URI, MIME type, and view-specific details to the base header.</p>
-     * <p>Injects a <b>WARNING</b> if a binary resource is assigned to system instructions.</p>
      */
     @Override
     public String getHeader() {

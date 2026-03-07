@@ -88,6 +88,16 @@ public abstract class AbstractTextSegmentRenderer {
     }
 
     /**
+     * Pushes incremental content updates to the visual component.
+     * This is the authoritative ingestion point for streaming responses.
+     * 
+     * @param content The new segment content.
+     */
+    protected void updateComponentContent(String content) {
+        // Default implementation does nothing. Subclasses override to provide streaming fidelity.
+    }
+
+    /**
      * Determines if this renderer can handle the given segment descriptor.
      * Subclasses must implement this to specify their compatibility.
      *

@@ -15,6 +15,7 @@ import org.openide.util.actions.Presenter;
 import uno.anahata.asi.AgiTopComponent;
 import uno.anahata.asi.AnahataInstaller;
 import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.nb.tools.files.nb.v2.FilesContextActionLogic2;
 
 /**
  * A presenter for the dynamic "AI Context" context menu.
@@ -22,6 +23,10 @@ import uno.anahata.asi.agi.Agi;
  * This class implements {@link Presenter.Popup} to generate a hierarchical menu 
  * that allows users to add or remove selected files from active AI sessions. 
  * It centralizes the menu logic, replacing static MIME-type based actions.
+ * </p>
+ * <p>
+ * <b>V2 Migration:</b> This presenter authoritatively uses the 
+ * {@link FilesContextActionLogic2} to interface with the V2 resource engine.
  * </p>
  * 
  * @author anahata
@@ -81,7 +86,8 @@ public class AnahataContextActionPresenter extends AbstractAction implements Pre
             tc.open();
             tc.requestActive();
             for (FileObject fo : files) {
-                FilesContextActionLogic.addRecursively(fo, newAgi, false);
+                // V2 MIGRATION
+                FilesContextActionLogic2.addRecursively(fo, newAgi, false);
             }
         });
         addMenu.add(newAgiItem);
@@ -91,7 +97,8 @@ public class AnahataContextActionPresenter extends AbstractAction implements Pre
             JMenuItem item = new JMenuItem(agi.getDisplayName());
             item.addActionListener(e -> {
                 for (FileObject fo : files) {
-                    FilesContextActionLogic.addRecursively(fo, agi, false);
+                    // V2 MIGRATION
+                    FilesContextActionLogic2.addRecursively(fo, agi, false);
                 }
             });
             addMenu.add(item);
@@ -108,7 +115,8 @@ public class AnahataContextActionPresenter extends AbstractAction implements Pre
         for (Agi agi : activeAgis) {
             boolean hasAny = false;
             for (FileObject fo : files) {
-                if (FilesContextActionLogic.isInContext(fo, agi)) {
+                // V2 MIGRATION
+                if (FilesContextActionLogic2.isInContext(fo, agi)) {
                     hasAny = true;
                     break;
                 }
@@ -118,7 +126,8 @@ public class AnahataContextActionPresenter extends AbstractAction implements Pre
                 JMenuItem item = new JMenuItem(agi.getDisplayName());
                 item.addActionListener(e -> {
                     for (FileObject fo : files) {
-                        FilesContextActionLogic.removeRecursively(fo, agi, false);
+                        // V2 MIGRATION
+                        FilesContextActionLogic2.removeRecursively(fo, agi, false);
                     }
                 });
                 removeMenu.add(item);

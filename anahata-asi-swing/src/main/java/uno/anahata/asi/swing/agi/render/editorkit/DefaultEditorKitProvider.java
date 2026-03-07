@@ -10,9 +10,6 @@ import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.rtf.RTFEditorKit;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.internal.TikaUtils;
-import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
-import uno.anahata.asi.swing.agi.message.part.text.RSyntaxTextAreaCodeBlockSegmentRenderer;
 
 /**
  * A default implementation of {@link EditorKitProvider} that provides standard
@@ -27,6 +24,7 @@ import uno.anahata.asi.swing.agi.message.part.text.RSyntaxTextAreaCodeBlockSegme
 @Slf4j
 public class DefaultEditorKitProvider implements EditorKitProvider {
 
+    /** Maps file extensions to internal language identifiers. */
     private static final Map<String, String> EXT_MAP = Map.ofEntries(
         Map.entry("java", "java"),
         Map.entry("py", "python"),
@@ -44,27 +42,8 @@ public class DefaultEditorKitProvider implements EditorKitProvider {
     );
 
     /**
-     * {@inheritDoc}
+     * {@inheritDoc} 
      * <p>
-     * Implementation details:
-     * Provides support for HTML and RTF using standard JDK kits.
-     * </p>
-     */
-    @Override
-    public EditorKit getEditorKitForLanguage(String language) {
-        if ("html".equalsIgnoreCase(language)) {
-            return new HTMLEditorKit();
-        }
-        if ("rtf".equalsIgnoreCase(language)) {
-            return new RTFEditorKit();
-        }
-        return null;
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Implementation details:
      * Robust language detection that prioritizes file extensions (for proposed files)
      * and falls back to Apache Tika for existing files.
      * </p>
@@ -101,18 +80,5 @@ public class DefaultEditorKitProvider implements EditorKitProvider {
 
         log.info("Language detection failed for [{}], falling back to 'text'.", filename);
         return "text";
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Implementation details:
-     * Returns an {@link RSyntaxTextAreaCodeBlockSegmentRenderer} for 
-     * cross-platform, high-quality syntax highlighting without IDE dependencies.
-     * </p>
-     */
-    @Override
-    public AbstractCodeBlockSegmentRenderer createRenderer(AgiPanel agiPanel, String content, String language) {
-        return new RSyntaxTextAreaCodeBlockSegmentRenderer(agiPanel, content, language);
     }
 }

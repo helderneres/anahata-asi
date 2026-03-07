@@ -6,14 +6,21 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import org.apache.commons.io.IOUtils;
 import uno.anahata.asi.model.core.Rebindable;
 
 /**
- * The Source of Truth for a resource. 
+ * A strategy interface for physical or virtual connectivity to resource data.
  * <p>
- * Encapsulates the logic for accessing raw data and metadata from a URI. 
- * Handles are responsible for the "Physical/Virtual" connectivity.
+ * Handles encapsulate the details of how to read, write, and identify the 
+ * source content (e.g., local files, IDE objects, or memory strings).
  * </p>
+ * <p>
+ * <b>Virtual vs. Physical:</b> Use {@link #isVirtual()} to distinguish between 
+ * memory-backed content (snippets, tool args) and persistent storage (files).
+ * </p>
+ * 
+ * @author anahata
  */
 public interface ResourceHandle extends Rebindable {
     /** 
@@ -33,7 +40,9 @@ public interface ResourceHandle extends Rebindable {
      * Used by IDE environments to show status (e.g. Git colors).
      * @return The HTML display name, or null.
      */
-    default String getHtmlDisplayName() { return null; }
+    default String getHtmlDisplayName() { 
+        return null; 
+    }
 
     /** 
      * Returns the detected MIME type of the resource. 
@@ -60,11 +69,63 @@ public interface ResourceHandle extends Rebindable {
      */
     InputStream openStream() throws IOException;
     
-    /** 
-     * Indicates if the resource is local to the host filesystem. 
-     * @return true if the resource is a local file.
+    /**
+     * Returns the full content of the resource as a String.
+     * <p>
+     * <b>Handy API:</b> This uses the handle's detected charset and ensures 
+     * proper stream closure.
+     * </p>
+     * @return The text content.
+     * @throws IOException if reading fails.
      */
-    boolean isLocal();
+    default String asText() throws IOException {
+        try (InputStream is = openStream()) {
+            return IOUtils.toString(is, getCharset());
+        }
+    }
+
+    /**
+     * Returns the full content of the resource as a byte array.
+     * @return The binary content.
+     * @throws IOException if reading fails.
+     */
+    default byte[] asBytes() throws IOException {
+        try (InputStream is = openStream()) {
+            return IOUtils.toByteArray(is);
+        }
+    }
+
+    /**
+     * Determines if the resource is writable in the current environment.
+     * @return true if the handle supports the {@link #write(String)} operation.
+     */
+    default boolean isWritable() {
+        return false;
+    }
+
+    /**
+     * Agnostically writes text content back to the resource.
+     * <p>
+     * <b>Purity Note:</b> Read-only handles should throw {@link UnsupportedOperationException}.
+     * </p>
+     * 
+     * @param content The text to write.
+     * @throws IOException if the write fails.
+     */
+    default void write(String content) throws IOException {
+        throw new UnsupportedOperationException("Resource handle is read-only: " + getUri());
+    }
+
+    /** 
+     * Determines if this is a virtual, memory-backed handle.
+     * <p>
+     * <b>High-Fidelity Strategy:</b> Virtual handles (snippets) typically 
+     * trigger the 'Preview-as-Editor' mode in viewers to ensure constant 
+     * IDE fidelity without card-swapping.
+     * </p>
+     * @return true if virtual (in-memory content).
+     */
+    boolean isVirtual();
 
     /** 
      * Returns the detected or configured charset. Defaults to UTF-8. 

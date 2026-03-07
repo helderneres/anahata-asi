@@ -7,11 +7,13 @@ import java.util.logging.Logger;
 import org.openide.modules.ModuleInstall;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
+import uno.anahata.asi.nb.ui.resources.NbResourceUI;
 import uno.anahata.asi.nb.util.ElementHandleModule;
 import uno.anahata.asi.tool.schema.SchemaProvider;
 import uno.anahata.asi.nb.ui.render.FullTextFileUpdateRenderer;
 import uno.anahata.asi.nb.ui.render.TextFileReplacementsRenderer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
+import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.internal.SwingUtils;
 import uno.anahata.asi.toolkit.files.FullTextFileUpdate;
 import uno.anahata.asi.toolkit.files.TextFileReplacements;
@@ -51,6 +53,9 @@ public class AnahataInstaller extends ModuleInstall {
     @Override
     public void restored() {
         log.info("Anahata ASI V2 Module Restored");
+        /*
+        // Register the NetBeans-native resource UI strategy
+        ResourceUiRegistry.getInstance().setResourceUI(new NbResourceUI());
         
         // Register specialized parameter renderers for file operations
         ParameterRendererFactory.register(FullTextFileUpdate.class, FullTextFileUpdateRenderer.class);        
@@ -58,7 +63,7 @@ public class AnahataInstaller extends ModuleInstall {
         
         // Register the ElementHandle module for global JSON support in the IDE
         SchemaProvider.OBJECT_MAPPER.registerModule(new ElementHandleModule());
-        
+        */
         // Load active sessions from disk. This must happen before TopComponents are restored.
         int failed = getContainer().loadSessions();
         if (failed > 0) {

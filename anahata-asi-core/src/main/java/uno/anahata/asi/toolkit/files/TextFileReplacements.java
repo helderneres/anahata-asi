@@ -2,14 +2,21 @@
 package uno.anahata.asi.toolkit.files;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.resource.v2.Resource;
 import uno.anahata.asi.tool.AiToolException;
 
 /**
@@ -62,6 +69,24 @@ public class TextFileReplacements extends AbstractTextFileWrite {
             newContent = newContent.replace(target, replacement.getReplacement());
         }
         return newContent;
+    }
+
+    /** {@inheritDoc} 
+     * Validates the replacements against the current state of the resource handle.
+     */
+    @Override
+    public void validate(Agi agi) throws AiToolException {
+        super.validate(agi);
+        
+        Optional<Resource> res = agi.getResourceManager2().findByUri(Paths.get(path).toUri().toString());
+        try (InputStream is = res.get().getHandle().openStream()) {
+            String content = IOUtils.toString(is, res.get().getHandle().getCharset());
+            performReplacements(content); // Test replacements to validate occurrences
+        } catch (AiToolException ae) {
+            throw ae;
+        } catch (Exception e) {
+            throw new AiToolException("Replacement validation failed: " + e.getMessage());
+        }
     }
 
 }

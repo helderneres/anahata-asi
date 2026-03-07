@@ -28,7 +28,7 @@ import uno.anahata.asi.model.tool.AbstractTool;
 import uno.anahata.asi.model.tool.AbstractToolParameter;
 import uno.anahata.asi.model.tool.ToolPermission;
 import uno.anahata.asi.swing.agi.context.ContextPanel;
-import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.CodeBlockSegmentRenderer;
 
 /**
  * A panel that displays the details and controls for a specific {@link AbstractTool}.
@@ -55,12 +55,12 @@ public class ToolPanel extends JPanel {
     /** Panel containing the list of parameter sections. */
     private final JPanel paramsListPanel;
     /** Renderer for the response schema. */
-    private final AbstractCodeBlockSegmentRenderer responseSchemaRenderer;
+    private final CodeBlockSegmentRenderer responseSchemaRenderer;
     /** Renderer for the native provider declaration. */
-    private final AbstractCodeBlockSegmentRenderer nativeDeclarationRenderer;
+    private final CodeBlockSegmentRenderer nativeDeclarationRenderer;
     
     /** Cache of parameter renderers to avoid redundant creation. */
-    private final List<AbstractCodeBlockSegmentRenderer> paramRenderers = new ArrayList<>();
+    private final List<CodeBlockSegmentRenderer> paramRenderers = new ArrayList<>();
 
     /**
      * Constructs a new ToolPanel.
@@ -122,10 +122,9 @@ public class ToolPanel extends JPanel {
      * Creates a code block renderer configured for JSON.
      * @return The configured renderer.
      */
-    private AbstractCodeBlockSegmentRenderer createJsonRenderer() {
-        // Use the authoritative EditorKitProvider from the config.
-        AbstractCodeBlockSegmentRenderer renderer = parentPanel.getAgiPanel().getAgiConfig().getEditorKitProvider()
-                .createRenderer(parentPanel.getAgiPanel(), "", "json");
+    private CodeBlockSegmentRenderer createJsonRenderer() {
+        // THE SINGULARITY PATH: Directly instantiate the concrete worker.
+        CodeBlockSegmentRenderer renderer = new CodeBlockSegmentRenderer(parentPanel.getAgiPanel(), "", "json");
         renderer.setEditable(false);
         renderer.render(); // Ensure the component is created before adding to JTabbedPane
         return renderer;
@@ -190,7 +189,7 @@ public class ToolPanel extends JPanel {
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD));
         section.add(nameLabel, BorderLayout.NORTH);
 
-        AbstractCodeBlockSegmentRenderer renderer = createJsonRenderer();
+        CodeBlockSegmentRenderer renderer = createJsonRenderer();
         renderer.updateContent(JacksonUtils.prettyPrintJsonString(param.getJsonSchema()));
         renderer.render();
         section.add(renderer.getComponent(), BorderLayout.CENTER);

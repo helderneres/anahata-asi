@@ -110,6 +110,13 @@ public class AgiPanel extends JPanel {
         tabbedPane.addTab("Context", contextPanel);
         tabbedPane.addTab("CwGC", cwGcPanel);
         tabbedPane.addTab("Support", createScrollPane(supportPanel));
+        
+        // TAB SELECTION LISTENER: Just-in-time refresh for metabolism metrics
+        tabbedPane.addChangeListener(e -> {
+            if (tabbedPane.getSelectedComponent() == cwGcPanel) {
+                cwGcPanel.refresh();
+            }
+        });
 
         // Create a panel to hold CandidateSelectionPanel, InputPanel and StatusPanel
         JPanel southPanel = new JPanel(new BorderLayout());

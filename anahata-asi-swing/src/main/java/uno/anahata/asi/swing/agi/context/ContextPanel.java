@@ -31,14 +31,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdesktop.swingx.JXTreeTable;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.context.ContextProvider;
-import uno.anahata.asi.model.resource.AbstractResource;
+import uno.anahata.asi.resource.v2.Resource;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.message.MessagePanelFactory;
 import uno.anahata.asi.swing.agi.message.part.PartPanelFactory;
+import uno.anahata.asi.swing.agi.resources.Resource2Node;
+import uno.anahata.asi.swing.agi.resources.Resource2Panel;
+import uno.anahata.asi.swing.agi.resources.ResourceUI;
+import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.icons.DeleteIcon;
 import uno.anahata.asi.swing.icons.RestartIcon;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
-import uno.anahata.asi.swing.toolkits.ToolkitUiRegistry;
 import uno.anahata.asi.tool.ToolManager;
 
 /**
@@ -75,8 +78,8 @@ public class ContextPanel extends JPanel {
     private final ToolkitPanel toolkitPanel;
     /** Panel for displaying context provider details. */
     private final ContextProviderPanel providerPanel;
-    /** Panel for displaying resource details. */
-    private final ResourcePanel resourcePanel;
+    /** Panel for displaying V2 resource details. */
+    private final Resource2Panel resource2Panel;
     /** Container for dynamically created message or part panels. */
     private final JPanel messagePartDetailPanel;
     
@@ -105,13 +108,13 @@ public class ContextPanel extends JPanel {
         this.toolPanel = new ToolPanel(this);
         this.toolkitPanel = new ToolkitPanel(this);
         this.providerPanel = new ContextProviderPanel(this);
-        this.resourcePanel = new ResourcePanel(this);
+        this.resource2Panel = new Resource2Panel(agiPanel);
         this.messagePartDetailPanel = new JPanel(new BorderLayout());
         
         detailContainer.add(createScrollPane(toolPanel), "tool");
         detailContainer.add(createScrollPane(toolkitPanel), "toolkit");
         detailContainer.add(createScrollPane(providerPanel), "provider");
-        detailContainer.add(resourcePanel, "resource");
+        detailContainer.add(resource2Panel, "resource2");
         detailContainer.add(new JScrollPane(messagePartDetailPanel), "messagePart");
         detailContainer.add(new JPanel(), "empty");
         
@@ -189,7 +192,7 @@ public class ContextPanel extends JPanel {
         }
         
         this.historyListener = new EdtPropertyChangeListener(this, agi.getContextManager(), "history", evt -> refresh(false));
-        this.resourcesListener = new EdtPropertyChangeListener(this, agi.getResourceManager(), "resources", evt -> refresh(false));
+        this.resourcesListener = new EdtPropertyChangeListener(this, agi.getResourceManager2(), "resources", evt -> refresh(false));
     }
 
     /**
@@ -268,9 +271,9 @@ public class ContextPanel extends JPanel {
                 } else if (cn instanceof PartNode pn) {
                     updateMessagePartDetail(PartPanelFactory.createPartPanel(agiPanel, pn.getUserObject()));
                     detailLayout.show(detailContainer, "messagePart");
-                } else if (cn instanceof ResourceNode rn) {
-                    resourcePanel.setResource(rn.getUserObject());
-                    detailLayout.show(detailContainer, "resource");
+                } else if (cn instanceof Resource2Node r2n) {
+                    resource2Panel.setResource(r2n.getUserObject());
+                    detailLayout.show(detailContainer, "resource2");
                 } else if (cn instanceof ResourcesNode rsn) {
                     providerPanel.setContextProvider(rsn.getUserObject());
                     detailLayout.show(detailContainer, "provider");
@@ -302,8 +305,8 @@ public class ContextPanel extends JPanel {
             int row = treeTable.getSelectedRow();
             if (row != -1) {
                 Object node = treeTable.getPathForRow(row).getLastPathComponent();
-                if (node instanceof ResourceNode rn) {
-                    openResourceInEditor(rn.getUserObject());
+                if (node instanceof Resource2Node r2n) {
+                    openResource(r2n.getUserObject());
                 }
             }
         });
@@ -313,8 +316,8 @@ public class ContextPanel extends JPanel {
             int row = treeTable.getSelectedRow();
             if (row != -1) {
                 Object node = treeTable.getPathForRow(row).getLastPathComponent();
-                if (node instanceof ResourceNode rn) {
-                    agi.getResourceManager().unregister(rn.getUserObject().getId());
+                if (node instanceof Resource2Node r2n) {
+                    agi.getResourceManager2().unregister(r2n.getUserObject().getId());
                 }
             }
         });
@@ -328,8 +331,8 @@ public class ContextPanel extends JPanel {
                     pn.getUserObject().setProviding(!pn.getUserObject().isProviding());
                 } else if (node instanceof ToolkitNode tkn) {
                     tkn.getUserObject().setEnabled(!tkn.getUserObject().isEnabled());
-                } else if (node instanceof ResourceNode rn) {
-                    rn.getUserObject().setProviding(!rn.getUserObject().isProviding());
+                } else if (node instanceof Resource2Node r2n) {
+                    r2n.getUserObject().setProviding(!r2n.getUserObject().isProviding());
                 }
                 refresh(false);
             }
@@ -347,8 +350,8 @@ public class ContextPanel extends JPanel {
                     int row = treeTable.rowAtPoint(e.getPoint());
                     if (row != -1) {
                         Object node = treeTable.getPathForRow(row).getLastPathComponent();
-                        if (node instanceof ResourceNode rn) {
-                            openResourceInEditor(rn.getUserObject());
+                        if (node instanceof Resource2Node r2n) {
+                            openResource(r2n.getUserObject());
                         }
                     }
                 }
@@ -371,7 +374,7 @@ public class ContextPanel extends JPanel {
                         treeTable.setRowSelectionInterval(row, row);
                         Object node = treeTable.getPathForRow(row).getLastPathComponent();
                         
-                        boolean isResource = node instanceof ResourceNode;
+                        boolean isResource = node instanceof Resource2Node;
                         boolean isToolkit = node instanceof ToolkitNode;
                         boolean isProvider = node instanceof ProviderNode;
                         
@@ -395,13 +398,13 @@ public class ContextPanel extends JPanel {
     }
 
     /**
-     * Attempts to open the given resource in the host environment's preferred 
-     * editor by delegating to the container.
-     * 
-     * @param res The resource to open.
+     * Delegates resource opening to the active ResourceUI strategy.
      */
-    private void openResourceInEditor(AbstractResource<?, ?> res) {
-        agi.getConfig().getContainer().openResource(res);
+    private void openResource(Resource res) {
+        ResourceUI ui = ResourceUiRegistry.getInstance().getResourceUI();
+        if (ui != null) {
+            ui.open(res, agiPanel);
+        }
     }
 
     /**
@@ -478,9 +481,6 @@ public class ContextPanel extends JPanel {
      */
     public final void refresh(boolean structural) {
         SwingUtilities.invokeLater(() -> {
-            // FIXED: Removed !isShowing() check to ensure model is updated even if tab is hidden.
-            // This prevents stale state when the user switches to the Context tab.
-            
             log.info("Refreshing ContextPanel tree (structural={}) for agi: {}", structural, agi.getShortId());
             
             // 1. Capture current expansion state

@@ -15,10 +15,16 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * A resource handle that points to a remote URL or a protocol-based entry.
  * <p>
- * This implementation includes Metadata Caching to prevent "Connection Storms". 
+ * This implementation includes Metadata Caching to prevent 'Connection Storms'. 
  * It performs a single efficient check to capture MIME type, existence, and 
  * last-modified status in one network round-trip.
  * </p>
+ * <p>
+ * <b>Virtual Strategy:</b> This handle represents physical remote content, 
+ * so it returns {@code false} for {@link #isVirtual()}.
+ * </p>
+ * 
+ * @author anahata
  */
 @Slf4j
 @Getter
@@ -32,11 +38,17 @@ public class UrlHandle extends AbstractResourceHandle {
     /** Cached metadata to prevent redundant connections. */
     private transient Metadata cache;
 
-    /** Record for holding captured metadata. */
+    /** 
+     * Record for holding captured metadata. 
+     * @param mimeType The detected MIME type.
+     * @param lastModified The remote last modified timestamp.
+     * @param exists Whether the remote source is reachable.
+     */
     private record Metadata(String mimeType, long lastModified, boolean exists) {}
 
     /**
-     * Refreshes the metadata cache if it is null.
+     * Refreshes the metadata cache if it is null by performing a HEAD request.
+     * This is a private implementation detail for network efficiency.
      */
     private synchronized void refreshMetadata() {
         if (cache != null) {
@@ -69,7 +81,10 @@ public class UrlHandle extends AbstractResourceHandle {
         }
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Extracts the display name from the URL path or host.</p>
+     */
     @Override
     public String getName() {
         URI uri = getUri();
@@ -80,34 +95,49 @@ public class UrlHandle extends AbstractResourceHandle {
         return uri.getHost() != null ? uri.getHost() : uri.getScheme();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the URI representation of the URL string.</p>
+     */
     @Override
     public URI getUri() {
         return URI.create(urlString);
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Triggers a metadata refresh and returns the cached MIME type.</p>
+     */
     @Override
     public String getMimeType() {
         refreshMetadata();
         return cache.mimeType();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Triggers a metadata refresh and returns the cached modification timestamp.</p>
+     */
     @Override
     public long getLastModified() {
         refreshMetadata();
         return cache.lastModified();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Triggers a metadata refresh and returns true if the remote source is reachable.</p>
+     */
     @Override
     public boolean exists() {
         refreshMetadata();
         return cache.exists();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Opens a fresh input stream to the remote URL.</p>
+     */
     @Override
     public InputStream openStream() throws IOException {
         log.info("Opening remote byte stream for: {}", urlString);
@@ -117,16 +147,23 @@ public class UrlHandle extends AbstractResourceHandle {
         return conn.getInputStream();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: returns {@code false} as URLs represent 
+     * persistent remote resources, not memory-backed snippets.</p>
+     */
     @Override
-    public boolean isLocal() {
-        return urlString.startsWith("file:");
+    public boolean isVirtual() {
+        return false;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Clears the metadata cache to force a fresh HEAD request on next access.</p>
+     */
     @Override
     public void rebind() {
         super.rebind();
-        this.cache = null; // Force refresh after deserialization
+        this.cache = null; 
     }
 }

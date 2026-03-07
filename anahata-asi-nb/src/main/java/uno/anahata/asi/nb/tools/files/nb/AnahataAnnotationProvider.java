@@ -2,6 +2,7 @@
 package uno.anahata.asi.nb.tools.files.nb;
 
 import java.awt.Image;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
@@ -295,24 +296,24 @@ public class AnahataAnnotationProvider extends AnnotationProvider {
     /**
      * Fires a refresh event to redraw nodes for specific files across all AnnotationProviders.
      * <p>
-     * Implementation details:
-     * Uses {@link SwingUtils#runInEDT} to ensure the status change is fired on the 
-     * Event Dispatch Thread immediately. Notifies all {@link AnahataAnnotationProvider} 
-     * instances to update their visual state.
+     * <b>Global Refresh:</b> If {@code files} is null, this method triggers a broad 
+     * IDE status change to force a repaint of all project views.
      * </p>
      * 
-     * @param fs The filesystem of the target files.
-     * @param files The set of files requiring a redraw.
+     * @param fs The filesystem of the target files (can be null).
+     * @param files The set of files requiring a redraw (can be null).
      */
     public static void fireRefresh(FileSystem fs, Set<FileObject> files) {
-        if (files == null || files.isEmpty() || fs == null) {
-            return;
-        }
         SwingUtils.runInEDT(() -> {
             try {
                 for (AnnotationProvider ap : Lookup.getDefault().lookupAll(AnnotationProvider.class)) {
                     if (ap instanceof AnahataAnnotationProvider aap) {
-                        aap.fireFileStatusChanged(new FileStatusEvent(fs, files, true, true));
+                        if (files == null || files.isEmpty()) {
+                            // Broad refresh: trigger status change on all providers
+                            aap.fireFileStatusChanged(new FileStatusEvent(null, Collections.emptySet(), true, true));
+                        } else {
+                            aap.fireFileStatusChanged(new FileStatusEvent(fs, files, true, true));
+                        }
                     }
                 }
             } catch (Exception ex) {

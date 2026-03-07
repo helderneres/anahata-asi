@@ -6,14 +6,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.text.EditorKit;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
-import uno.anahata.asi.nb.ui.render.NbCodeBlockSegmentRenderer;
-import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
 import uno.anahata.asi.swing.agi.render.editorkit.EditorKitProvider;
 
 /**
@@ -29,6 +25,7 @@ import uno.anahata.asi.swing.agi.render.editorkit.EditorKitProvider;
 public class NetBeansEditorKitProvider implements EditorKitProvider {
     private static final Logger logger = Logger.getLogger(NetBeansEditorKitProvider.class.getName());
 
+    /** Internal cache mapping language identifiers to NetBeans MIME types. */
     private final Map<String, String> languageToMimeTypeMap;
 
     /**
@@ -68,32 +65,10 @@ public class NetBeansEditorKitProvider implements EditorKitProvider {
      * {@inheritDoc}
      * <p>
      * Implementation details:
-     * Resolves the NetBeans MIME type for the given language ID and retrieves 
-     * the corresponding {@link EditorKit} from the global {@code MimeLookup}.
-     * </p>
-     */
-    @Override
-    public EditorKit getEditorKitForLanguage(String language) {
-        String langLower = (language == null) ? "" : language.toLowerCase().trim();
-        String mimeType = languageToMimeTypeMap.get(langLower);
-
-        if (mimeType != null) {
-            EditorKit kit = MimeLookup.getLookup(mimeType).lookup(EditorKit.class);
-            if (kit != null) {
-                return kit;
-            }
-        }
-        return MimeLookup.getLookup("text/plain").lookup(EditorKit.class);
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Implementation details:
-     * Authoritatively resolves the language for a filename:
-     * 1. If the file exists on disk, uses its real MIME type.
-     * 2. If the file is virtual (e.g., createTextFile proposal), uses a 
-     *    transient Memory-FS probe to resolve the type via NetBeans resolvers.
+     * Authoritatively resolves the language for a filename by performing a two-stage probe:
+     * 1. If the file exists on disk, it uses the IDE's real MIME detection.
+     * 2. If the file is virtual (e.g., a tool proposal), it uses a transient 
+     *    Memory-FS probe to trigger the NetBeans MIME resolver hierarchy.
      * </p>
      */
     @Override
@@ -135,18 +110,5 @@ public class NetBeansEditorKitProvider implements EditorKitProvider {
         int slash = mime.lastIndexOf('/');
         String sub = (slash != -1) ? mime.substring(slash + 1) : mime;
         return sub.replace("x-", "");
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Implementation details:
-     * Instantiates a {@link NbCodeBlockSegmentRenderer} to provide 
-     * full NetBeans editor fidelity.
-     * </p>
-     */
-    @Override
-    public AbstractCodeBlockSegmentRenderer createRenderer(AgiPanel agiPanel, String content, String language) {
-        return new NbCodeBlockSegmentRenderer(agiPanel, content, language, getEditorKitForLanguage(language));
     }
 }

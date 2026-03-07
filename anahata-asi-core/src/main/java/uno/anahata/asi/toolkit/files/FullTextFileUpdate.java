@@ -7,8 +7,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
+import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.tool.AiToolException;
 
 /**
  * A rich DTO for updating a text file with its full new content. It encapsulates the new content, 
@@ -41,5 +42,11 @@ public class FullTextFileUpdate extends AbstractTextFileWrite {
         super(path, lastModified);
         this.newContent = newContent;
         this.lineComments = lineComments;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void validate(Agi agi) throws AiToolException {
+        super.validate(agi);
     }
 }

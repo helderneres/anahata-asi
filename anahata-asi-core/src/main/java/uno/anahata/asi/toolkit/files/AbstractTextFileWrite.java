@@ -3,11 +3,18 @@ package uno.anahata.asi.toolkit.files;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.resource.v2.Resource;
+import uno.anahata.asi.tool.AiToolException;
 
 /**
  * Base DTO for text file operations, providing common fields for path, 
@@ -51,5 +58,37 @@ public abstract class AbstractTextFileWrite {
     public AbstractTextFileWrite(String path, long lastModified) {
         this.path = path;
         this.lastModified = lastModified;
+    }
+
+    /**
+     * Performs pre-flight validation of the update operation against the V2 resource context.
+     * 
+     * @param agi The parent agi session.
+     * @throws AiToolException if validation fails.
+     */
+    public void validate(Agi agi) throws AiToolException {
+        Path p = Paths.get(path);
+        
+        // 1. Basic Path Validation
+        if (!Files.exists(p)) {
+             throw new AiToolException("File not found on host filesystem: " + path);
+        }
+
+        // 2. Resource Context Check - Operation MUST be performed on a managed resource
+        Optional<Resource> res = agi.getResourceManager2().findByUri(p.toUri().toString());
+        if (res.isEmpty()) {
+             throw new AiToolException("Resource is not in context. You must load the file before attempting to update it: " + path);
+        }
+
+        // 3. Capability Check
+        if (!res.get().getHandle().isTextual()) {
+             throw new AiToolException("Resource is not a text resource and cannot be updated via text tools: " + path);
+        }
+
+        // 4. Optimistic Locking Check
+        long actualLm = res.get().getHandle().getLastModified();
+        if (lastModified > 0 && lastModified != actualLm) {
+            throw new AiToolException("Optimistic locking failure for " + path + ". The file has been modified by another process since it was last loaded (disk=" + actualLm + ", expected=" + lastModified + "). Please re-read the file.");
+        }
     }
 }

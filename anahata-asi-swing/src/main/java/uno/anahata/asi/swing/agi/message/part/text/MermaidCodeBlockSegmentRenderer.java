@@ -3,6 +3,7 @@
  */
 package uno.anahata.asi.swing.agi.message.part.text;
 
+import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Font;
@@ -12,11 +13,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Objects;
 import javax.imageio.ImageIO;
+import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.swing.agi.AgiPanel;
@@ -25,14 +28,20 @@ import uno.anahata.asi.swing.internal.SwingUtils;
 
 /**
  * A specialized renderer for Mermaid diagrams.
+ * <p>
  * This renderer translates Mermaid code blocks into visual diagrams using the 
  * mermaid.ink service. It supports a visual 'Diagram' mode and an 'Editor' mode 
  * for modifying the source.
+ * </p>
+ * <p>
+ * <b>Persistence:</b> Switching from 'Edit Source' back to 'View Diagram' 
+ * authoritatively triggers the save callback, updating the ASI's message history.
+ * </p>
  * 
  * @author anahata
  */
 @Slf4j
-public class MermaidCodeBlockSegmentRenderer extends AbstractCodeBlockSegmentRenderer {
+public class MermaidCodeBlockSegmentRenderer extends CodeBlockSegmentRenderer {
 
     /** Card layout for switching between the diagram image and the code editor. */
     private final CardLayout cardLayout = new CardLayout();
@@ -41,7 +50,7 @@ public class MermaidCodeBlockSegmentRenderer extends AbstractCodeBlockSegmentRen
     /** Label used to display the rendered diagram or status messages. */
     private final JLabel imageLabel = new JLabel("Loading diagram...", SwingConstants.CENTER);
     /** The inner editor used for modifying the Mermaid code. */
-    private AbstractCodeBlockSegmentRenderer innerEditor;
+    private CodeBlockSegmentRenderer innerEditor;
     
     /** Button to copy the rendered image to the clipboard. */
     private JButton copyImageButton;
@@ -63,20 +72,40 @@ public class MermaidCodeBlockSegmentRenderer extends AbstractCodeBlockSegmentRen
     }
 
     /**
-     * Creates the inner component for this renderer, which is a card panel 
-     * containing the image label and an RSyntax editor.
+     * {@inheritDoc}
+     * <p>
+     * Implementation details:
+     * Creates a card panel containing a scrollable visual diagram label and a 
+     * nested CodeBlockSegmentRenderer for source editing. The inner editor 
+     * is configured to be headerless to prevent redundant UI controls.
+     * </p>
      */
     @Override
     protected JComponent createInnerComponent() {
-        // 1. The Image Card: Shows the rendered diagram
+        // 1. The Image Card: Shows the rendered diagram inside a scroll pane
         imageLabel.setOpaque(true);
         imageLabel.setBackground(Color.WHITE);
-        cardPanel.add(imageLabel, "IMAGE");
+        
+        JScrollPane imageScroll = new JScrollPane(imageLabel);
+        imageScroll.setBorder(BorderFactory.createEmptyBorder());
+        imageScroll.setOpaque(false);
+        imageScroll.getViewport().setOpaque(false);
+        // Ensure vertical scrolling is disabled to pass through to conversation
+        imageScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        imageScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        
+        imageScroll.addMouseWheelListener(e -> SwingUtils.redispatchMouseWheelEvent(imageScroll, e));
+        
+        cardPanel.add(imageScroll, "IMAGE");
 
         // 2. The Editor Card: Use the authoritative provider to get line numbers/IDE fidelity
-        innerEditor = agiConfig.getEditorKitProvider().createRenderer(agiPanel, currentContent, "mermaid");
+        // RECURSION FIX: Directly instantiate a generic code renderer for the source 
+        // to avoid infinitely calling the mermaid renderer.
+        innerEditor = new CodeBlockSegmentRenderer(agiPanel, currentContent, "text");
+        innerEditor.setHeaderVisible(false); // Fix: prevent double header
+        innerEditor.setEditable(true);
         innerEditor.render(); 
-        cardPanel.add(innerEditor.getInnerComponent(), "EDITOR");
+        cardPanel.add(innerEditor.getComponent(), "EDITOR");
 
         cardPanel.setOpaque(false);
         
@@ -114,7 +143,9 @@ public class MermaidCodeBlockSegmentRenderer extends AbstractCodeBlockSegmentRen
         }
 
         imageLabel.setText("Generating diagram...");
-        if (copyImageButton != null) copyImageButton.setEnabled(false);
+        if (copyImageButton != null) {
+            copyImageButton.setEnabled(false);
+        }
         
         // Use standard SwingTask with showError=false to prevent popups during transient failures
         new SwingTask<Image>(null, "Mermaid Renderer", () -> {
@@ -122,29 +153,44 @@ public class MermaidCodeBlockSegmentRenderer extends AbstractCodeBlockSegmentRen
             String urlString = "https://mermaid.ink/img/" + encoded;
             URL url = new URL(urlString);
             Image image = ImageIO.read(url);
-            if (image == null) throw new Exception("Failed to decode image from server.");
+            if (image == null) {
+                throw new Exception("Failed to decode image from server.");
+            }
             return image;
         }, image -> {
             this.currentImage = image;
             this.lastRenderedDiagramContent = currentContent;
             imageLabel.setText("");
             imageLabel.setIcon(new ImageIcon(image));
-            if (copyImageButton != null) copyImageButton.setEnabled(true);
+            if (copyImageButton != null) {
+                copyImageButton.setEnabled(true);
+            }
             imageLabel.revalidate();
             imageLabel.repaint();
         }, e -> {
             log.error("Failed to render Mermaid diagram", e);
             imageLabel.setText("<html><center>Failed to render diagram<br>" + e.getMessage() + "</center></html>");
             imageLabel.setIcon(null);
-            if (copyImageButton != null) copyImageButton.setEnabled(false);
+            if (copyImageButton != null) {
+                copyImageButton.setEnabled(false);
+            }
         }, false).execute();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details:
+     * Propagates streaming content updates to the internal source editor card 
+     * and handles the automatic transition to Diagram mode once generation 
+     * is complete.
+     * </p>
+     */
     @Override
     protected void updateComponentContent(String content) {
         if (innerEditor != null) {
             innerEditor.updateContent(content);
+            innerEditor.render(); // Propagation: Ensure high-fidelity streaming in source view
         }
         
         // Automatic transition: if we just closed, show the image card and update
@@ -156,19 +202,39 @@ public class MermaidCodeBlockSegmentRenderer extends AbstractCodeBlockSegmentRen
         }
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details:
+     * Retrieves the current source code from the internal editor card.
+     * </p>
+     */
     @Override
     protected String getCurrentContentFromComponent() {
-        return innerEditor != null ? innerEditor.getCurrentContentFromComponent() : currentContent;
+        return (innerEditor != null) ? innerEditor.getCurrentContentFromComponent() : currentContent;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details:
+     * Toggles the editability of the internal source editor component.
+     * </p>
+     */
     @Override
     protected void setComponentEditable(boolean editable) {
-        // Handled by card switching and inner editor
+        if (innerEditor != null) {
+            innerEditor.setComponentEditable(editable);
+        }
     }
     
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details:
+     * Injects the 'Copy Image' button into the control header.
+     * </p>
+     */
     @Override
     protected void addExtraHeaderButtons(JPanel leftHeaderPanel) {
         copyImageButton = new JButton("Copy Image");
@@ -182,21 +248,45 @@ public class MermaidCodeBlockSegmentRenderer extends AbstractCodeBlockSegmentRen
     }
     
     /**
-     * Overrides the default toggle logic to switch between cards and trigger 
-     * diagram updates.
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details:
+     * Extends the base toggle logic to switch between Diagram/Editor cards. 
+     * Returning to Diagram mode authoritatively captures the source, resets 
+     * the feedback label, and triggers the save callback to update the 
+     * message history.
+     * </p>
      */
     @Override
     protected void toggleEdit() {
+        if (editing) {
+            // CAPTURE TRANSITION: capture before changing state to prevent sync-reversion
+            currentContent = getCurrentContentFromComponent();
+            
+            // AUTHORITATIVE UPDATE: update handle immediately so sync loop sees new data
+            updateComponentContent(currentContent);
+        }
+
         editing = !editing;
-        editButton.setText(editing ? "View Diagram" : "Edit Source");
+        setComponentEditable(editing);
+        
+        if (editButton != null) {
+            editButton.setText(editing ? "View Diagram" : "Edit Source");
+        }
         
         if (editing) {
             cardLayout.show(cardPanel, "EDITOR");
         } else {
             // User clicked 'Save' (View Diagram)
-            currentContent = getCurrentContentFromComponent();
+            imageLabel.setIcon(null);
+            imageLabel.setText("Generating diagram...");
             updateDiagram();
             cardLayout.show(cardPanel, "IMAGE");
+            
+            // AUTHORITATIVE SYNC: Trigger the save callback to update message history
+            if (onSave != null) {
+                onSave.accept(currentContent);
+            }
         }
         
         component.revalidate();

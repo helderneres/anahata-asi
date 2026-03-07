@@ -25,7 +25,7 @@ public abstract class AbstractResourceView implements ResourceView {
      * Triggers a markViewDirty on the owner resource to signal that 
      * the view's settings have changed.
      */
-    protected void markViewDirty() {
+    public void markViewDirty() {
         if (owner != null) {
             owner.markViewDirty();
         }

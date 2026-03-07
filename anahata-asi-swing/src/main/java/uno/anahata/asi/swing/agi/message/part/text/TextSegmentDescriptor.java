@@ -5,10 +5,9 @@ package uno.anahata.asi.swing.agi.message.part.text;
 
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.render.editorkit.EditorKitProvider;
 
 /**
- * A record that describes a segment of text within a {@link TextPartPanel}.
+ * A record that describes a segment of text within a {@link uno.anahata.asi.swing.agi.message.part.TextPartPanel}.
  * It includes the segment's type, its content, and optionally the language for code blocks.
  *
  * @param type The {@link TextSegmentType} of the segment (TEXT or CODE).
@@ -42,18 +41,8 @@ public record TextSegmentDescriptor(TextSegmentType type, String content, String
             return new MermaidCodeBlockSegmentRenderer(agiPanel, content, language);
         }
         
-        EditorKitProvider editorKitProvider = agiPanel.getAgiConfig().getEditorKitProvider();
-        if (editorKitProvider != null) {
-            try {
-                // THE ARCHITECTURAL GATEWAY: Always use the provider's factory to allow
-                // platform-specific renderers (like NetBeans' NbCodeBlockSegmentRenderer)
-                // to be instantiated with full IDE integration.
-                return editorKitProvider.createRenderer(agiPanel, content, language);
-            } catch (Exception e) {
-                log.error("Failed to create code block renderer via provider for language: {}", language, e);
-            }
-        }
-        // Fallback for standalone mode without a specialized provider
-        return new RSyntaxTextAreaCodeBlockSegmentRenderer(agiPanel, content, language);
+        // THE SINGULARITY PATH: Directly instantiate the concrete, host-agnostic worker.
+        // It will use the ResourceUiRegistry to resolve the proper visual component.
+        return new CodeBlockSegmentRenderer(agiPanel, content, language);
     }
 }

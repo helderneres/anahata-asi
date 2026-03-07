@@ -10,6 +10,12 @@ import lombok.Setter;
 
 /**
  * Encapsulates adjustable viewport configuration for V2 text resources.
+ * <p>
+ * Controls pagination, tailing, grep filtering, and visual markers for 
+ * large resource files.
+ * </p>
+ * 
+ * @author anahata
  */
 @Getter
 @Setter
@@ -61,9 +67,9 @@ public class TextViewportSettings {
         } else {
             sb.append(String.format("Range: %d-%d ", startChar, startChar + pageSizeInChars));
         }
-        if (includeLineNumbers) {
-            sb.append("(+Lines) ");
-        }
+        
+        sb.append(includeLineNumbers ? "(+Lines) " : "(-Lines) ");
+        
         if (columnWidth != 1024) {
             sb.append("Cols: ").append(columnWidth).append(" ");
         }

@@ -91,9 +91,11 @@ public class Radio extends AnahataToolkit {
         initOutputLineFromDefault();
         
         // Select a random station by default as requested
-        List<String> urls = new ArrayList<>(STATIONS.values());
-        if (!urls.isEmpty()) {
-            this.currentStationUrl = urls.get(new Random().nextInt(urls.size()));
+        if (this.currentStationUrl == null) {
+            List<String> urls = new ArrayList<>(STATIONS.values());
+            if (!urls.isEmpty()) {
+                this.currentStationUrl = urls.get(new Random().nextInt(urls.size()));
+            }
         }
     }
 

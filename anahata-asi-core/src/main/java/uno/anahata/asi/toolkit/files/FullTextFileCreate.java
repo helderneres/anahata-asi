@@ -2,10 +2,14 @@
 package uno.anahata.asi.toolkit.files;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.tool.AiToolException;
 
 /**
  * A rich DTO for creating a new text file. It encapsulates the path 
@@ -31,5 +35,17 @@ public class FullTextFileCreate {
      */
     @Schema(description = "The initial content for the file.", required = true)
     private String content;
+
+    /**
+     * Performs pre-flight validation of the creation operation.
+     * 
+     * @param agi The parent agi session.
+     * @throws AiToolException if validation fails.
+     */
+    public void validate(Agi agi) throws AiToolException {
+        if (Files.exists(Paths.get(path))) {
+            throw new AiToolException("File already exists and cannot be created: " + path);
+        }
+    }
 
 }

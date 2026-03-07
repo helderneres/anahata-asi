@@ -62,6 +62,7 @@ public class CwGcPanel extends JPanel {
     private JLabel ragTokensLabel;
     private JLabel totalPromptLoadLabel;
     
+    private JButton refreshBtn;
     private JXTable logTable;
     private DefaultTableModel logModel;
     private MetabolicDonutChart donutChart;
@@ -139,7 +140,7 @@ public class CwGcPanel extends JPanel {
         totalPromptLoadLabel.setFont(valueFont.deriveFont(18f));
         metricsPanel.add(totalPromptLoadLabel, "wrap");
 
-        JButton refreshBtn = new JButton("Refresh Now", new RestartIcon(16));
+        refreshBtn = new JButton("Refresh Now", new RestartIcon(16));
         refreshBtn.addActionListener(e -> refresh());
         metricsPanel.add(refreshBtn, "span 2, gaptop 10");
 
@@ -205,8 +206,14 @@ public class CwGcPanel extends JPanel {
 
     /**
      * Performs a high-fidelity metabolism refresh using a background {@link SwingTask}.
+     * <p>The refresh button is disabled and updated with feedback during the process.</p>
      */
     public void refresh() {
+        if (refreshBtn != null) {
+            refreshBtn.setEnabled(false);
+            refreshBtn.setText("Refreshing...");
+        }
+
         ContextManager cm = agi.getContextManager();
         ContextWindowGarbageCollector gc = cm.getGarbageCollector();
         
@@ -227,6 +234,16 @@ public class CwGcPanel extends JPanel {
             
             donutChart.update(stats, threshold);
             refreshLogTable();
+            
+            if (refreshBtn != null) {
+                refreshBtn.setEnabled(true);
+                refreshBtn.setText("Refresh Now");
+            }
+        }, error -> {
+            if (refreshBtn != null) {
+                refreshBtn.setEnabled(true);
+                refreshBtn.setText("Refresh Now");
+            }
         }).execute();
     }
 
@@ -331,5 +348,14 @@ public class CwGcPanel extends JPanel {
             g2d.draw(new Arc2D.Double(x + stroke/2, y + stroke/2, size - stroke, size - stroke, startAngle, -angle, Arc2D.OPEN));
             return startAngle - angle;
         }
+    }
+
+    /** {@inheritDoc} 
+     * Initial refresh on display.
+     */
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        refresh();
     }
 }

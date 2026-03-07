@@ -22,6 +22,15 @@
             <version>${project.version}</version>
         </dependency>
         
+        <!-- Core Test Utilities for MockAsiContainer -->
+        <dependency>
+            <groupId>uno.anahata</groupId>
+            <artifactId>anahata-asi-core</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Google Gemini API Client -->
         <dependency>
             <groupId>com.google.genai</groupId>

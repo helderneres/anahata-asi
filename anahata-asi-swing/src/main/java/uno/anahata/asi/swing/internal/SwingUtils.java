@@ -31,17 +31,23 @@ import java.util.Objects;
 import javax.imageio.ImageIO;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.internal.JacksonUtils;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.message.part.text.AbstractCodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.CodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.agi.message.part.text.MermaidCodeBlockSegmentRenderer;
 
 /**
  * A collection of general-purpose Swing utility methods, primarily for image
  * manipulation and UI component creation.
+ * <p>
+ * This utility provides high-fidelity component discovery and specialized 
+ * event redispatching to ensure a seamless interaction between nested 
+ * host-assembled frames and the core conversation UI.
+ * </p>
  *
  * @author anahata
  */
@@ -133,6 +139,28 @@ public class SwingUtils {
     }
 
     /**
+     * Recursively finds the innermost "leaf" component that is not a container,
+     * or a container that specifically doesn't have components.
+     * <p>
+     * For high-fidelity frames, this method traverses viewports to find the 
+     * actual text area (RSyntaxTextArea or JEditorPane).
+     * </p>
+     * 
+     * @param component The root component to start search from.
+     * @return The innermost leaf component.
+     */
+    public static Component findComponentLeaf(Component component) {
+        if (component instanceof Container container && container.getComponentCount() > 0) {
+            // Special case: for JScrollPane, we want to look inside the viewport
+            if (container instanceof JScrollPane sp && sp.getViewport().getView() != null) {
+                return findComponentLeaf(sp.getViewport().getView());
+            }
+            return findComponentLeaf(container.getComponent(0));
+        }
+        return component;
+    }
+
+    /**
      * Copies the given text to the system clipboard.
      *
      * @param text The text to copy.
@@ -206,26 +234,51 @@ public class SwingUtils {
     }
 
     /**
-     * Redispatches a {@link MouseWheelEvent} to the first ancestor {@link JScrollPane} that
-     * actually supports vertical scrolling. This is used to "pass through" scroll events
-     * from nested components (like code blocks) to the main conversation scroll pane.
+     * Redispatches a {@link MouseWheelEvent} to the appropriate ancestor scroll pane.
+     * <p>
+     * <b>Boundary Awareness:</b> If the immediately enclosing scroll pane has vertical 
+     * scrolling enabled, the event is only forwarded if the scroll pane is at its 
+     * boundary (Top while rolling up, or Bottom while rolling down). 
+     * </p>
      * 
      * @param component The component receiving the event.
      * @param e The mouse wheel event.
      */
     public static void redispatchMouseWheelEvent(Component component, MouseWheelEvent e) {
+        if (e.getScrollType() != MouseWheelEvent.WHEEL_UNIT_SCROLL || e.getWheelRotation() == 0) {
+            return;
+        }
+
         Container parent = component.getParent();
         while (parent != null) {
             if (parent instanceof JScrollPane sp) {
-                // We search for an ancestor scroll pane that allows vertical scrolling.
-                // This skips the local scroll pane of the code block (which has policy NEVER).
-                if (sp.getVerticalScrollBarPolicy() != JScrollPane.VERTICAL_SCROLLBAR_NEVER && 
-                    sp.getVerticalScrollBar().isEnabled()) {
-                    sp.dispatchEvent(SwingUtilities.convertMouseEvent(component, e, sp));
-                    return;
+                boolean verticalEnabled = sp.getVerticalScrollBarPolicy() != JScrollPane.VERTICAL_SCROLLBAR_NEVER && 
+                                        sp.getVerticalScrollBar().isEnabled();
+                
+                if (verticalEnabled) {
+                    JScrollBar vBar = sp.getVerticalScrollBar();
+                    int rotation = e.getWheelRotation();
+                    // We use small epsilon/inclusive checks for boundary detection
+                    boolean atTop = vBar.getValue() <= vBar.getMinimum();
+                    boolean atBottom = (vBar.getValue() + vBar.getVisibleAmount()) >= vBar.getMaximum();
+                    
+                    // If not at boundary, this scroll pane consumes the event
+                    if ((rotation < 0 && !atTop) || (rotation > 0 && !atBottom)) {
+                        sp.dispatchEvent(SwingUtilities.convertMouseEvent(component, e, sp));
+                        return;
+                    }
+                    // If at boundary, we continue searching for the NEXT ancestor to forward to
+                } else {
+                    // Vertical is disabled, always forward to next ancestor
                 }
             }
             parent = parent.getParent();
+        }
+        
+        // Final fallback: dispatch to the root scroll pane if we reached the top of the hierarchy
+        JScrollPane rootScroll = (JScrollPane) SwingUtilities.getAncestorOfClass(JScrollPane.class, component);
+        if (rootScroll != null) {
+            rootScroll.dispatchEvent(SwingUtilities.convertMouseEvent(component, e, rootScroll));
         }
     }
 
@@ -257,7 +310,16 @@ public class SwingUtils {
         dialog.setLayout(new BorderLayout());
         dialog.setPreferredSize(new Dimension(1000, 800));
 
-        AbstractCodeBlockSegmentRenderer renderer = agiPanel.getAgiConfig().getEditorKitProvider().createRenderer(agiPanel, text, language);
+        // THE SINGULARITY PATH: Directly instantiate the renderer.
+        CodeBlockSegmentRenderer renderer;
+        if ("mermaid".equalsIgnoreCase(language)) {
+            renderer = new MermaidCodeBlockSegmentRenderer(agiPanel, text, language);
+        } else {
+            renderer = new CodeBlockSegmentRenderer(agiPanel, text, language);
+        }
+        
+        // Dialogs require vertical scrolling for full navigation
+        renderer.setVerticalScrollEnabled(true);
         renderer.render();
 
         // THE ARCHITECTURAL FIX: Always use the renderer's own component (which contains 
@@ -265,14 +327,6 @@ public class SwingUtils {
         // inner component and re-wrapping it.
         dialog.add(renderer.getComponent(), BorderLayout.CENTER);
 
-        // THE SCROLL FIX: Override the default 'NEVER' policy used in the conversation.
-        // Dialogs must be fully navigable.
-        JScrollPane scroll = renderer.getScrollPane();
-        if (scroll != null) {
-            scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        }
-        
         dialog.pack();
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);

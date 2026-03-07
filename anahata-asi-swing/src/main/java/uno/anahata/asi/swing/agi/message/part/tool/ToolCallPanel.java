@@ -59,40 +59,71 @@ import uno.anahata.asi.swing.internal.SwingUtils;
 
 /**
  * A specialized panel for rendering an {@link AbstractToolCall} and its associated
- * {@link AbstractToolResponse} within a model message. It provides a vertical
- * layout where arguments are presented in tabs (one for each parameter), 
- * followed by a titled, expandable response area.
+ * {@link AbstractToolResponse} within a model message. 
+ * <p>
+ * It provides a vertical layout where arguments are presented in tabs, followed 
+ * by an expandable response area. 
+ * </p>
+ * <p>
+ * <b>Layout Integrity:</b> It automatically adjusts tabbed pane heights to 
+ * accommodate host-assembled frames (NetBeans/RSyntax), preventing redundant 
+ * scrollbars.
+ * </p>
  * 
  * @author anahata
  */
 public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
 
+    /** Container for the arguments tabbed pane. */
     private JPanel argsContainer;
+    /** Tabbed pane displaying individual parameter renderers. */
     private JTabbedPane argsTabbedPane;
     /** Cache of renderers for arguments to support incremental updates and editing. */
     private final Map<String, ParameterRenderer<?>> argRenderers = new HashMap<>();
     
+    /** titled panel containing the tool execution results. */
     private JXTitledPanel responseTitledPanel;
+    /** Tabbed pane for Output, Logs, Errors, and Attachments. */
     private JTabbedPane resultsTabbedPane;
+    /** Scroll pane for the raw text output. */
     private JScrollPane outputScrollPane;
+    /** Scroll pane for the execution error log. */
     private JScrollPane errorScrollPane;
+    /** Scroll pane for the execution logs. */
     private JScrollPane logsScrollPane;
     
+    /** Text area for the primary tool output. */
     private JTextArea outputArea;
+    /** Text area for the tool error stream. */
     private JTextArea errorArea;
+    /** Text area for the tool's diagnostic logs. */
     private JTextArea logsArea;
+    /** Panel for displaying binary attachments. */
     private ToolResponseAttachmentsPanel attachmentsPanel;
     
+    /** Field for providing feedback back to the model. */
     private JTextField feedbackField;
+    /** Hyperlink for inspecting the raw JSON response. */
     private CodeHyperlink jsonLink;
     
+    /** Control for tool execution permission. */
     private JComboBox<ToolPermission> permissionCombo;
+    /** Control for viewing/overriding tool execution status. */
     private JComboBox<ToolExecutionStatus> statusCombo;
+    /** Button to execute or stop the tool. */
     private JButton runButton;
+    /** Button to decline the tool call. */
     private JButton declineButton;
+    /** Button to revert the response to a pending/declined state. */
     private JButton revertButton;
+    /** Progress bar visible during execution. */
     private JProgressBar toolProgressBar;
 
+    /**
+     * Constructs a new ToolCallPanel.
+     * @param agiPanel The parent panel.
+     * @param part The tool call part.
+     */
     public ToolCallPanel(@NonNull AgiPanel agiPanel, @NonNull AbstractToolCall<?, ?> part) {
         super(agiPanel, part);
         // Listen to both the call and its response for state changes
@@ -100,6 +131,10 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         new EdtPropertyChangeListener(this, part.getResponse(), null, evt -> render());
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Orchestrates the update of arguments, results, and bottom controls.</p>
+     */
     @Override
     protected void renderContent() {
         if (argsContainer == null) {
@@ -119,6 +154,9 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         updateControls(call, response);
     }
 
+    /**
+     * Performs initial UI component assembly and sets up layout constraints.
+     */
     private void initComponents() {
         getCentralContainer().setLayout(new MigLayout("fillx, insets 0", "[grow]", "[]0[]0[]"));
 
@@ -238,6 +276,9 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         getCentralContainer().add(controlBar, "growx");
     }
 
+    /**
+     * Renders the parameter arguments using the appropriate renderers.
+     */
     private void renderArguments(AbstractToolCall<?, ?> call, AbstractToolResponse<?> response) {
         Map<String, Object> effectiveArgs = call.getEffectiveArgs();
         AbstractTool<?, ?> tool = call.getTool();
@@ -298,6 +339,9 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         }
     }
 
+    /**
+     * Renders the execution results (output, logs, errors, attachments).
+     */
     private void renderResults(AbstractToolResponse<?> response) {
         // 1. Prepare content
         String output = response.getResult() != null ? response.getResult().toString() : "";
@@ -376,6 +420,9 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         }
     }
 
+    /**
+     * Returns the sort rank for result tabs.
+     */
     private int getRank(Component comp) {
         if (comp == outputScrollPane) return 0;
         if (comp == attachmentsPanel) return 1;
@@ -384,6 +431,9 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         return 99;
     }
 
+    /**
+     * Updates the status and action buttons based on tool execution state.
+     */
     private void updateControls(AbstractToolCall<?, ?> call, AbstractToolResponse<?> response) {
         permissionCombo.setSelectedItem(call.getTool().getPermission());
         statusCombo.setSelectedItem(response.getStatus());
@@ -436,6 +486,9 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         }
     }
 
+    /**
+     * Helper to create a styled text area for tool results.
+     */
     private JTextArea createTextArea(Color fg, Color bg) {
         JTextArea area = new JTextArea();
         area.setEditable(false);
@@ -454,21 +507,23 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
 
     /**
      * Executes the tool associated with this panel on a background thread using 
-the Agi's dedicated executor.
+     * the Agi's dedicated executor.
      */
     private void executeTool() {
         agiPanel.getAgi().getExecutor().execute(() -> getPart().getResponse().execute());
     }
 
+    /**
+     * Authoritatively adjusts the height of the tabbed pane by reaching inside 
+     * host-assembled frames (NetBeans/RSyntax) to find the actual content height.
+     */
     private void adjustTabbedPaneHeight(JTabbedPane tabbedPane) {
         Component selected = tabbedPane.getSelectedComponent();
         if (selected != null) {
-            Component content = selected;
-            if (selected instanceof JScrollPane sp) {
-                content = sp.getViewport().getView();
-            }
+            // REACH INSIDE: Find the innermost leaf component (the text area) to get the true height
+            Component leaf = SwingUtils.findComponentLeaf(selected);
+            Dimension prefSize = leaf.getPreferredSize();
             
-            Dimension prefSize = content.getPreferredSize();
             // 40px for tab headers, 40px extra buffer for padding/borders.
             int targetHeight = prefSize.height + 80; 
             
@@ -491,6 +546,11 @@ the Agi's dedicated executor.
         }
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Updates the header with a Java-like tool signature 
+     * and execution status metadata.</p>
+     */
     @Override
     protected void updateHeaderInfoText() {
         AbstractToolCall<?, ?> call = getPart();

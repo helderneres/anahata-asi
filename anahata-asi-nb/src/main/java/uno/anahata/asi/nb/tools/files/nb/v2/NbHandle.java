@@ -3,11 +3,12 @@ package uno.anahata.asi.nb.tools.files.nb.v2;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.Charset;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.netbeans.api.queries.FileEncodingQuery;
 import org.openide.filesystems.FileAttributeEvent;
@@ -16,10 +17,12 @@ import org.openide.filesystems.FileEvent;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileRenameEvent;
 import org.openide.filesystems.FileUtil;
+import org.openide.filesystems.URLMapper;
 import org.openide.loaders.DataObject;
 import uno.anahata.asi.internal.TikaUtils;
 import uno.anahata.asi.model.core.Rebindable;
 import uno.anahata.asi.resource.v2.AbstractResourceHandle;
+import uno.anahata.asi.resource.v2.Resource;
 
 /**
  * A NetBeans-native resource handle that wraps a {@link FileObject}.
@@ -29,15 +32,21 @@ import uno.anahata.asi.resource.v2.AbstractResourceHandle;
  * It is reactive: it listens for IDE events and notifies the owner Resource 
  * when the content is modified or moved.
  * </p>
+ * <p>
+ * <b>Archive Awareness:</b> It correctly identifies JAR and Read-Only 
+ * filesystems to disable writability.
+ * </p>
  */
 @Slf4j
-@RequiredArgsConstructor
 public class NbHandle extends AbstractResourceHandle implements FileChangeListener, Rebindable {
 
-    /** 
-     * The path used to resolve the FileObject if it's lost. 
-     */
+    /** The unique identifier URI for the resource. */
     @NonNull
+    @Getter
+    private URI uri;
+
+    /** Cached path for secondary resolution. */
+    @Getter
     private String path;
 
     /** The live NetBeans FileObject. */
@@ -47,14 +56,55 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
     private transient FileChangeListener weakListener;
 
     /**
+     * Constructs a new NbHandle from a path string.
+     * @param path The local filesystem path.
+     */
+    public NbHandle(String path) {
+        this.path = path;
+        this.uri = new java.io.File(path).toURI();
+    }
+
+    /**
+     * Constructs a new NbHandle from a URI.
+     * @param uri The resource URI (file:, jar:, etc.).
+     */
+    public NbHandle(URI uri) {
+        this.uri = uri;
+        this.path = uri.getScheme().equalsIgnoreCase("file") ? uri.getPath() : null;
+    }
+
+    /**
+     * Direct constructor for an existing FileObject.
+     * @param fileObject The NetBeans FileObject to wrap.
+     */
+    public NbHandle(FileObject fileObject) {
+        this.fileObject = fileObject;
+        this.uri = fileObject.toURI();
+        this.path = uri.getScheme().equalsIgnoreCase("file") ? uri.getPath() : null;
+        setupListener();
+    }
+
+    /**
      * Ensures the FileObject is resolved and listeners are attached.
      * @return The FileObject instance.
      */
-    private FileObject getFileObject() {
-        if (fileObject == null) {
-            fileObject = FileUtil.toFileObject(new java.io.File(path));
-            if (fileObject != null) {
-                setupListener();
+    public synchronized FileObject getFileObject() {
+        if (fileObject == null || !fileObject.isValid()) {
+            try {
+                // 1. Try URI resolution (Handles JARs and remote protocols)
+                URL url = uri.toURL();
+                fileObject = URLMapper.findFileObject(url);
+                
+                // 2. Fallback to path resolution for local files
+                if (fileObject == null && path != null) {
+                    fileObject = FileUtil.toFileObject(new java.io.File(path));
+                }
+                
+                if (fileObject != null) {
+                    setupListener();
+                }
+            } catch (Exception e) {
+                log.debug("Failed to resolve FileObject for URI: {}", uri);
             }
         }
         return fileObject;
@@ -70,14 +120,26 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
         }
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Resolves name via the NetBeans FileObject 
+     * or the URI path component.</p>
+     */
     @Override
     public String getName() {
         FileObject fo = getFileObject();
-        return (fo != null) ? fo.getNameExt() : new java.io.File(path).getName();
+        if (fo != null) {
+            return fo.getNameExt();
+        }
+        String p = uri.getPath();
+        return (p != null && !p.isBlank()) ? new java.io.File(p).getName() : uri.toString();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Extracts the HTML display name from the 
+     * IDE's DataObject delegate to show Git status or compiler errors.</p>
+     */
     @Override
     public String getHtmlDisplayName() {
         FileObject fo = getFileObject();
@@ -91,76 +153,142 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
         return null;
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public URI getUri() {
-        FileObject fo = getFileObject();
-        return (fo != null) ? fo.toURI() : URI.create("file://" + path);
-    }
-
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Leverages NetBeans native FileObject MIME 
+     * detection with a Tika fallback for unrecognized types.</p>
+     */
     @Override
     public String getMimeType() {
         FileObject fo = getFileObject();
         String mime = (fo != null) ? fo.getMIMEType() : null;
         
-        // High-fidelity Fallback: If NB doesn't know, ask Tika
         if (mime == null || "content/unknown".equals(mime)) {
             try {
-                return TikaUtils.detectMimeType(new java.io.File(path));
+                if (path != null) {
+                    return TikaUtils.detectMimeType(new java.io.File(path));
+                }
             } catch (Exception e) {
                 return "application/octet-stream";
             }
         }
-        return mime;
+        return mime != null ? mime : "application/octet-stream";
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Retrieves the authoritative last modified 
+     * timestamp from the NetBeans VFS.</p>
+     */
     @Override
     public long getLastModified() {
         FileObject fo = getFileObject();
         return (fo != null) ? fo.lastModified().getTime() : 0;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Checks the validity of the NetBeans FileObject.</p>
+     */
     @Override
     public boolean exists() {
         FileObject fo = getFileObject();
         return fo != null && fo.isValid();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Opens an InputStream directly via the NetBeans FileObject.</p>
+     */
     @Override
     public InputStream openStream() throws IOException {
         FileObject fo = getFileObject();
         if (fo == null) {
-            throw new IOException("FileObject not found: " + path);
+            throw new IOException("Resource not resolvable in IDE: " + uri);
         }
         return fo.getInputStream();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Checks both filesystem read-only status 
+     * (e.g., JARs) and FileObject OS-level writability.</p>
+     */
     @Override
-    public boolean isLocal() {
-        return true;
+    public boolean isWritable() {
+        FileObject fo = getFileObject();
+        if (fo == null || !fo.isValid()) {
+            return false;
+        }
+        
+        // 1. Check if the filesystem itself is read-only (e.g. JAR, Read-only mount)
+        try {
+            if (fo.getFileSystem().isReadOnly()) {
+                return false;
+            }
+        } catch (IOException ex) {
+            return false;
+        }
+
+        // 2. Check if the file object allows writing
+        return fo.canWrite();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Writes content via the NetBeans FileObject 
+     * output stream, using the handle's detected charset.</p>
+     */
+    @Override
+    public void write(String content) throws IOException {
+        if (!isWritable()) {
+            throw new IOException("Resource is read-only: " + uri);
+        }
+
+        FileObject fo = getFileObject();
+        try (OutputStream os = fo.getOutputStream()) {
+            os.write(content.getBytes(getCharset()));
+        }
+    }
+
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: returns {@code false} as this represents a 
+     * physical persistent resource within the IDE.</p>
+     */
+    @Override
+    public boolean isVirtual() {
+        return false;
+    }
+
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Resolves the charset using the NetBeans 
+     * {@link FileEncodingQuery} to ensure project alignment.</p>
+     */
     @Override
     public Charset getCharset() {
         FileObject fo = getFileObject();
         return (fo != null) ? FileEncodingQuery.getEncoding(fo) : super.getCharset();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Refreshes the FileObject resolution and 
+     * re-attaches listeners after deserialization.</p>
+     */
     @Override
     public void rebind() {
         super.rebind();
-        log.debug("Rebinding NbHandle for: {}", path);
+        log.debug("Rebinding NbHandle for: {}", uri);
         getFileObject();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Detaches the weak IDE filesystem listener 
+     * to prevent leaks.</p>
+     */
     @Override
     public void dispose() {
         if (fileObject != null && weakListener != null) {
@@ -171,8 +299,10 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
 
     // --- FileChangeListener Implementation ---
 
-    /** {@inheritDoc} 
-     * Signals the owner resource that the source content has changed.
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Notifies the owner resource of content changes 
+     * detected by the IDE.</p>
      */
     @Override
     public void fileChanged(FileEvent fe) {
@@ -181,12 +311,17 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
         }
     }
 
-    /** {@inheritDoc} 
-     * Updates the path and resource name upon a move/rename operation in the IDE.
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Updates internal URI/Path and notifies owner 
+     * of the identity change within the IDE.</p>
      */
     @Override
     public void fileRenamed(FileRenameEvent fe) {
-        this.path = fe.getFile().getPath();
+        // Path/URI have changed
+        this.uri = fe.getFile().toURI();
+        this.path = uri.getScheme().equalsIgnoreCase("file") ? uri.getPath() : null;
+        
         if (owner != null) {
             owner.markSourceDirty();
         }
@@ -196,7 +331,9 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
     @Override public void fileDataCreated(FileEvent fe) {}
     /** {@inheritDoc} */
     @Override public void fileFolderCreated(FileEvent fe) {}
-    /** {@inheritDoc} */
+    /** {@inheritDoc} 
+     * <p>Implementation details: Notifies owner that the source is gone.</p>
+     */
     @Override public void fileDeleted(FileEvent fe) { if (owner != null) { owner.markSourceDirty(); } }
     /** {@inheritDoc} */
     @Override public void fileAttributeChanged(FileAttributeEvent fe) {}

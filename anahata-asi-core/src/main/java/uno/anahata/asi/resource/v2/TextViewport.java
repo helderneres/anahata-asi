@@ -25,6 +25,13 @@ import org.apache.commons.lang3.StringUtils;
  * {@link ResourceHandle}. It ensures that huge resources never kill the JVM 
  * heap by streaming content directly from the source.
  * </p>
+ * <p>
+ * <b>Virtual Fidelity:</b> For virtual resources (snippets), this engine 
+ * skips viewport processing and returns the full content to ensure 
+ * consistent IDE fidelity.
+ * </p>
+ * 
+ * @author anahata
  */
 @Slf4j
 @Getter
@@ -57,8 +64,8 @@ public class TextViewport {
     public String process(ResourceHandle handle) throws Exception {
         log.debug("Processing viewport for: {}", handle.getUri());
         
-        // 1. Initial metadata update (if local and small)
-        if (handle.isLocal() && handle instanceof PathHandle ph) {
+        // 1. Initial metadata update (if physical and small)
+        if (!handle.isVirtual() && handle instanceof PathHandle ph) {
             java.io.File file = new java.io.File(ph.getPath());
             this.totalChars = file.length();
             this.totalLines = (totalChars < 1024 * 1024) ? (int) java.nio.file.Files.lines(file.toPath(), handle.getCharset()).count() : -1;
@@ -79,9 +86,14 @@ public class TextViewport {
         return finalizeOutput(lines);
     }
 
-    /** Memory-efficient tail implementation. */
+    /** 
+     * Memory-efficient tail implementation. 
+     * @param handle The source handle.
+     * @return The list of trailing lines.
+     * @throws Exception if reading fails.
+     */
     private List<String> processTail(ResourceHandle handle) throws Exception {
-        if (handle.isLocal() && handle instanceof PathHandle ph) {
+        if (!handle.isVirtual() && handle instanceof PathHandle ph) {
             // High-performance backward read for local files
             List<String> lines = new ArrayList<>();
             Pattern pattern = (settings.getGrepPattern() != null) ? Pattern.compile(settings.getGrepPattern()) : null;
@@ -118,7 +130,12 @@ public class TextViewport {
         }
     }
 
-    /** Memory-efficient grep implementation. */
+    /** 
+     * Memory-efficient grep implementation. 
+     * @param handle The source handle.
+     * @return The list of matching lines.
+     * @throws Exception if reading fails.
+     */
     private List<String> processGrep(ResourceHandle handle) throws Exception {
         List<String> lines = new ArrayList<>();
         Pattern pattern = Pattern.compile(settings.getGrepPattern());
@@ -139,7 +156,12 @@ public class TextViewport {
         return lines;
     }
 
-    /** Character-based pagination. */
+    /** 
+     * Character-based pagination. 
+     * @param handle The source handle.
+     * @return The list of lines in the page.
+     * @throws Exception if reading fails.
+     */
     private List<String> processPagination(ResourceHandle handle) throws Exception {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(handle.openStream(), handle.getCharset()))) {
             reader.skip(settings.getStartChar());
@@ -151,7 +173,11 @@ public class TextViewport {
         }
     }
 
-    /** Finalizes output with line numbers and truncation. */
+    /** 
+     * Finalizes output with line numbers and truncation. 
+     * @param lines The raw processed lines.
+     * @return The formatted output string.
+     */
     private String finalizeOutput(List<String> lines) {
         this.truncatedLinesCount = 0;
         List<String> processed = new ArrayList<>();
@@ -174,8 +200,12 @@ public class TextViewport {
         return String.join("\n", processed);
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns a descriptive string representing the current state of the viewport engine.</p>
+     */
     @Override
     public String toString() {
-        return "TextViewport{" + "settings=" + settings + ", chars=" + totalChars + ", lines=" + totalLines + '}';
+        return "TextViewport{" + "settings=" + settings + ", chars=" + totalChars + ", lines=" + totalLines + ", matched=" + matchingLineCount + ", truncated=" + truncatedLinesCount + '}';
     }
 }

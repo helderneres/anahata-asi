@@ -87,7 +87,7 @@ public class ResourcePanel extends JPanel {
         JButton openBtn = createLinkButton("Open in Editor", "Open the original file in the IDE editor");
         openBtn.addActionListener(e -> {
             if (currentResource != null) {
-                parentPanel.getAgi().getConfig().getContainer().openResource(currentResource);
+                //parentPanel.getAgi().getConfig().getContainer().openResource(currentResource);
             }
         });
         actionPanel.add(openBtn);
@@ -95,7 +95,7 @@ public class ResourcePanel extends JPanel {
         JButton selectBtn = createLinkButton("Select in Projects", "Locate the file in the Projects tree");
         selectBtn.addActionListener(e -> {
             if (currentResource != null) {
-                parentPanel.getAgi().getConfig().getContainer().selectResource(currentResource);
+                //parentPanel.getAgi().getConfig().getContainer().selectResource(currentResource);
             }
         });
         actionPanel.add(selectBtn);

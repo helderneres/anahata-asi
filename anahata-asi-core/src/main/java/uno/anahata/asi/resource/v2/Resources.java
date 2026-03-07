@@ -2,7 +2,11 @@
 package uno.anahata.asi.resource.v2;
 
 import java.net.URI;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,12 +18,17 @@ import uno.anahata.asi.tool.AiToolException;
 import uno.anahata.asi.tool.AiToolkit;
 import uno.anahata.asi.tool.AnahataToolkit;
 import uno.anahata.asi.tool.AiToolParam;
+import uno.anahata.asi.toolkit.files.FullTextFileCreate;
+import uno.anahata.asi.toolkit.files.FullTextFileUpdate;
+import uno.anahata.asi.toolkit.files.TextFileReplacements;
+import uno.anahata.asi.toolkit.files.TextReplacement;
 
 /**
  * The definitive V2 toolkit for managing multimodal resources.
  * <p>
- * This toolkit is URI-centric and supports both local and remote sources 
- * through the V2 Universal Resource Pipeline (URP).
+ * This toolkit is URI-centric and handles both reading (RAG) and writing 
+ * (persistent mutations). It leverages the Handy Resource API for elegant 
+ * content management.
  * </p>
  * 
  * @author anahata
@@ -34,17 +43,14 @@ public class Resources extends AnahataToolkit {
         return Collections.singletonList(
             "**Resources (V2) Toolkit Instructions**:\n" +
             "- Use `loadResources` to bring local or remote assets into context.\n" +
-            "- Use `updateViewport` to toggle line numbers, grep patterns, or tailing."
+            "- Use `updateViewport` to toggle line numbers, grep patterns, or tailing.\n" +
+            "- Use `createTextFile` and `updateTextFile` for persistent storage operations.\n" +
+            "- **CRITICAL**: You must load a file using `loadResources` before attempting to update it."
         );
     }
 
     /**
      * Loads multiple resources into the agi context in a single turn.
-     * 
-     * @param uriStrings The list of full URIs to load.
-     * @param initialSettings Optional initial viewport settings for text resources.
-     * @return The list of unique resource IDs for the loaded sources.
-     * @throws Exception if loading fails for any resource.
      */
     @AiTool(value = "Loads multiple resources into the context by their URIs.", maxDepth = 12)
     public List<String> loadResources(
@@ -83,10 +89,6 @@ public class Resources extends AnahataToolkit {
 
     /**
      * Updates the viewport configuration for an existing text resource.
-     * 
-     * @param resourceId The unique identifier of the resource.
-     * @param settings The new settings to apply.
-     * @throws AiToolException if the resource is not found or is not textual.
      */
     @AiTool("Updates the viewport configuration for a text resource.")
     public void updateViewport(
@@ -103,8 +105,6 @@ public class Resources extends AnahataToolkit {
 
     /**
      * Unloads multiple resources from the context.
-     * 
-     * @param resourceIds The list of unique identifiers to unload.
      */
     @AiTool("Unloads multiple resources from the context.")
     public void unloadResources(@AiToolParam("The list of resource identifiers.") List<String> resourceIds) {
@@ -114,14 +114,64 @@ public class Resources extends AnahataToolkit {
     }
 
     /**
-     * Registers multiple paths as managed resources in a single atomic batch.
-     * <p>
-     * This is a local helper method for UI components to easily register local 
-     * files without manually orchestrating handles and resources.
-     * </p>
-     * 
-     * @param paths The list of paths to register.
-     * @return The list of registered resource orchestrators.
+     * Creates a new text file on the host filesystem and automatically registers it as a resource.
+     */
+    @AiTool("Creates a new text file and registers it as a resource.")
+    public String createTextFile(@AiToolParam("The file creation details.") FullTextFileCreate create) throws Exception {
+        create.validate(getAgi());
+        
+        Path path = Paths.get(create.getPath());
+        Files.createDirectories(path.getParent());
+        
+        // Final write always uses UTF-8 unless otherwise specified
+        Files.writeString(path, create.getContent(), StandardCharsets.UTF_8);
+        
+        ResourceHandle handle = getAgi().getConfig().createResourceHandle(path.toUri());
+        Resource resource = new Resource(handle);
+        getAgi().getResourceManager2().register(resource);
+        
+        log("Created text file: " + create.getPath());
+        return resource.getId();
+    }
+
+    /**
+     * Updates an existing text file with full new content.
+     */
+    @AiTool("Updates an existing text file using full content replacement.")
+    public void updateTextFile(@AiToolParam("The update details.") FullTextFileUpdate update) throws Exception {
+        update.validate(getAgi());
+        
+        Path path = Paths.get(update.getPath());
+        Optional<Resource> res = getAgi().getResourceManager2().findByPath(path.toString());
+        Charset charset = res.get().getHandle().getCharset();
+
+        Files.writeString(path, update.getNewContent(), charset);
+        res.get().markSourceDirty();
+        
+        log("Updated text file: " + update.getPath());
+    }
+
+    /**
+     * Performs surgical text replacements in an existing file.
+     */
+    @AiTool("Performs multiple text replacements in a file.")
+    public void replaceInTextFile(@AiToolParam("The set of replacements.") TextFileReplacements replacements) throws Exception {
+        replacements.validate(getAgi());
+        
+        Path path = Paths.get(replacements.getPath());
+        Optional<Resource> res = getAgi().getResourceManager2().findByPath(path.toString());
+        
+        String content = res.get().asText();
+        String updated = replacements.performReplacements(content);
+        
+        Files.writeString(path, updated, res.get().getHandle().getCharset());
+        res.get().markSourceDirty();
+        
+        log("Performed replacements in: " + replacements.getPath());
+    }
+
+    /**
+     * Registers multiple paths as managed resources in a single turn.
      */
     public List<Resource> registerPaths(@NonNull List<Path> paths) {
         List<Resource> toRegister = new ArrayList<>();

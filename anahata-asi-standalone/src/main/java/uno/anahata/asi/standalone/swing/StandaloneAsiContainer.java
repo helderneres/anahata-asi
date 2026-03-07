@@ -3,13 +3,12 @@
  */
 package uno.anahata.asi.standalone.swing;
 
-import java.io.File;
 import uno.anahata.asi.AsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.cli.CommandLineArgs;
-import uno.anahata.asi.model.resource.AbstractPathResource;
-import uno.anahata.asi.model.resource.AbstractResource;
 import lombok.extern.slf4j.Slf4j;
+import uno.anahata.asi.swing.agi.resources.DefaultResourceUI;
+import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 
 /**
  * A specialized {@link AsiContainer} for the standalone Swing application.
@@ -21,6 +20,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class StandaloneAsiContainer extends AsiContainer {
     
+    static {
+        log.info("Performing global Standalone environment configuration...");
+        // Register the universal/standalone resource UI strategy
+        ResourceUiRegistry.getInstance().setResourceUI(new DefaultResourceUI());
+    }
+
     /** The raw command-line arguments passed to the application. */
     private final String[] cmdLineArgs;
     
@@ -59,24 +64,5 @@ public class StandaloneAsiContainer extends AsiContainer {
     @Override
     public Agi createNewAgi() {
         return new Agi(new StandaloneAgiConfig(this));
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Opens the file associated with the resource using the system's default 
-     * application via {@link java.awt.Desktop}.
-     * </p>
-     */
-    @Override
-    public void openResource(AbstractResource<?, ?> resource) {
-        if (resource instanceof AbstractPathResource<?> apr) {
-            try {
-                log.info("Opening resource via system desktop: {}", apr.getPath());
-                java.awt.Desktop.getDesktop().open(new File(apr.getPath()));
-            } catch (Exception e) {
-                log.error("Failed to open resource via system desktop: " + apr.getPath(), e);
-            }
-        }
     }
 }
