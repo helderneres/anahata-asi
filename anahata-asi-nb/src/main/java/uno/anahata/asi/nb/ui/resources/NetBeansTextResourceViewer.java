@@ -21,7 +21,7 @@ import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import uno.anahata.asi.resource.v2.Resource;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.resources.AbstractTextResourceViewer;
+import uno.anahata.asi.swing.agi.resources.view.AbstractTextResourceViewer;
 
 /**
  * A NetBeans-native text resource viewer that provides 100% IDE fidelity.

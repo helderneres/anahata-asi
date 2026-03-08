@@ -1,6 +1,12 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.agi.resources;
 
+import uno.anahata.asi.swing.agi.resources.view.MediaViewPanel;
+import uno.anahata.asi.swing.agi.resources.view.TextViewPanel;
+import uno.anahata.asi.swing.agi.resources.view.RSyntaxTextAreaTextResourceViewer;
+import uno.anahata.asi.swing.agi.resources.handle.UrlHandlePanel;
+import uno.anahata.asi.swing.agi.resources.handle.PathHandlePanel;
+import uno.anahata.asi.swing.agi.resources.handle.StringHandlePanel;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
 import java.awt.Desktop;
@@ -10,10 +16,12 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.resource.v2.MediaView;
-import uno.anahata.asi.resource.v2.PathHandle;
+import uno.anahata.asi.resource.v2.view.MediaView;
+import uno.anahata.asi.resource.v2.handle.PathHandle;
 import uno.anahata.asi.resource.v2.Resource;
-import uno.anahata.asi.resource.v2.UrlHandle;
+import uno.anahata.asi.resource.v2.handle.StringHandle;
+import uno.anahata.asi.resource.v2.view.TextView;
+import uno.anahata.asi.resource.v2.handle.UrlHandle;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.render.MediaRenderer;
 import uno.anahata.asi.swing.icons.IconUtils;
@@ -90,6 +98,48 @@ public class DefaultResourceUI implements ResourceUI {
             openBtn.addActionListener(e -> open(resource, agiPanel));
             actionContainer.add(openBtn);
         }
+    }
+
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Provides specialized metadata panels based 
+     * on the handle's connectivity type.</p>
+     */
+    @Override
+    public JPanel createHandlePanel(Resource resource, AgiPanel agiPanel) {
+        if (resource.getHandle() instanceof PathHandle ph) {
+            PathHandlePanel php = new PathHandlePanel();
+            php.setHandle(ph);
+            return php;
+        } else if (resource.getHandle() instanceof UrlHandle uh) {
+            UrlHandlePanel uhp = new UrlHandlePanel();
+            uhp.setHandle(uh);
+            return uhp;
+        } else if (resource.getHandle() instanceof StringHandle sh) {
+            StringHandlePanel shp = new StringHandlePanel();
+            shp.setHandle(sh);
+            return shp;
+        }
+        return new JPanel();
+    }
+
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Provides specialized metadata panels based 
+     * on the view's semantic interpreter type.</p>
+     */
+    @Override
+    public JPanel createViewPanel(Resource resource, AgiPanel agiPanel) {
+        if (resource.getView() instanceof TextView tv) {
+            TextViewPanel tvp = new TextViewPanel();
+            tvp.setView(tv);
+            return tvp;
+        } else if (resource.getView() instanceof MediaView mv) {
+            MediaViewPanel mvp = new MediaViewPanel();
+            mvp.setView(mv);
+            return mvp;
+        }
+        return new JPanel();
     }
 
     /** 

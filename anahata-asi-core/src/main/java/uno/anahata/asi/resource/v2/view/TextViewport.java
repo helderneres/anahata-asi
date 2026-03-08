@@ -1,6 +1,8 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.resource.v2;
+package uno.anahata.asi.resource.v2.view;
 
+import uno.anahata.asi.resource.v2.handle.ResourceHandle;
+import uno.anahata.asi.resource.v2.handle.PathHandle;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -17,6 +19,8 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.input.ReversedLinesFileReader;
 import org.apache.commons.lang3.StringUtils;
+import uno.anahata.asi.resource.v2.handle.PathHandle;
+import uno.anahata.asi.resource.v2.handle.ResourceHandle;
 
 /**
  * The V2 Universal Streaming Viewport Engine.

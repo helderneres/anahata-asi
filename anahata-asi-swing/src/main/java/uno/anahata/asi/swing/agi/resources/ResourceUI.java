@@ -1,6 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.agi.resources;
 
+import uno.anahata.asi.swing.agi.resources.view.AbstractTextResourceViewer;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import uno.anahata.asi.resource.v2.Resource;
@@ -11,8 +12,8 @@ import uno.anahata.asi.swing.agi.AgiPanel;
  * for V2 {@link Resource}s.
  * <p>
  * Implementations are responsible for creating the content visualization, 
- * injecting environment-specific actions, and handling resource-level navigation 
- * (opening and selection).
+ * injecting environment-specific actions, and providing modular metadata 
+ * panels for handles and views.
  * </p>
  * <p>
  * This interface also defines the Edit/Save lifecycle, allowing the UI to 
@@ -40,6 +41,24 @@ public interface ResourceUI {
      * @param agiPanel The parent AgiPanel.
      */
     void populateActions(JPanel actionContainer, Resource resource, AgiPanel agiPanel);
+
+    /**
+     * Creates a specialized metadata panel for the resource's handle.
+     * 
+     * @param resource The resource instance.
+     * @param agiPanel The parent AgiPanel.
+     * @return A JPanel configured to show handle-specific attributes.
+     */
+    JPanel createHandlePanel(Resource resource, AgiPanel agiPanel);
+
+    /**
+     * Creates a specialized metadata panel for the resource's view.
+     * 
+     * @param resource The resource instance.
+     * @param agiPanel The parent AgiPanel.
+     * @return A JPanel configured to show view-specific attributes.
+     */
+    JPanel createViewPanel(Resource resource, AgiPanel agiPanel);
 
     /**
      * Opens the resource in the host environment's preferred viewer or editor.

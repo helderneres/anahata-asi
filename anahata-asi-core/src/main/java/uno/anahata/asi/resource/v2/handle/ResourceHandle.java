@@ -1,5 +1,5 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.resource.v2;
+package uno.anahata.asi.resource.v2.handle;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,6 +8,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import org.apache.commons.io.IOUtils;
 import uno.anahata.asi.model.core.Rebindable;
+import uno.anahata.asi.resource.v2.Resource;
 
 /**
  * A strategy interface for physical or virtual connectivity to resource data.

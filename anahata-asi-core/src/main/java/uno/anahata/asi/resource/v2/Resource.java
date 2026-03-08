@@ -1,6 +1,11 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.resource.v2;
 
+import uno.anahata.asi.resource.v2.view.ResourceView;
+import uno.anahata.asi.resource.v2.view.AbstractResourceView;
+import uno.anahata.asi.resource.v2.view.MediaView;
+import uno.anahata.asi.resource.v2.view.TextView;
+import uno.anahata.asi.resource.v2.handle.ResourceHandle;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;

@@ -1,12 +1,14 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.resource.v2;
+package uno.anahata.asi.resource.v2.view;
 
+import uno.anahata.asi.resource.v2.handle.ResourceHandle;
 import java.io.InputStream;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.model.core.RagMessage;
+import uno.anahata.asi.resource.v2.handle.ResourceHandle;
 
 /**
  * A resource view that interprets content as binary media (images, audio, etc.).

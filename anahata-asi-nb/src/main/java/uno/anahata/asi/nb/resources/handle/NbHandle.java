@@ -1,5 +1,5 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.nb.tools.files.nb.v2;
+package uno.anahata.asi.nb.resources.handle;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,7 +21,7 @@ import org.openide.filesystems.URLMapper;
 import org.openide.loaders.DataObject;
 import uno.anahata.asi.internal.TikaUtils;
 import uno.anahata.asi.model.core.Rebindable;
-import uno.anahata.asi.resource.v2.AbstractResourceHandle;
+import uno.anahata.asi.resource.v2.handle.AbstractResourceHandle;
 import uno.anahata.asi.resource.v2.Resource;
 
 /**

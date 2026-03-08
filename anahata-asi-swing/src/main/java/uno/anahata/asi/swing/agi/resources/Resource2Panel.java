@@ -3,6 +3,8 @@
  */
 package uno.anahata.asi.swing.agi.resources;
 
+import uno.anahata.asi.swing.agi.resources.view.AbstractViewPanel;
+import uno.anahata.asi.swing.agi.resources.handle.AbstractHandlePanel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -18,13 +20,14 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
+import javax.swing.border.TitledBorder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import uno.anahata.asi.context.ContextPosition;
 import uno.anahata.asi.model.core.RagMessage;
 import uno.anahata.asi.model.resource.RefreshPolicy;
 import uno.anahata.asi.resource.v2.Resource;
+import uno.anahata.asi.resource.v2.view.TextView;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.message.RagMessageViewer;
 import uno.anahata.asi.swing.icons.RestartIcon;
@@ -34,13 +37,14 @@ import uno.anahata.asi.swing.internal.SwingTask;
 /**
  * A specialized panel for managing and viewing a V2 {@link Resource}.
  * <p>
- * This panel acts as a high-level orchestrator. It displays resource metadata
- * and context strategy controls, while delegating content rendering and 
- * host-specific actions to the active {@link ResourceUI} strategy.
+ * This panel acts as a high-level orchestrator and command-and-control center. 
+ * It dynamically swaps specialized sub-panels for Handle and View metadata 
+ * based on the resource type.
  * </p>
  * <p>
- * <b>Edit/Save Nexus:</b> Includes a state-aware toggle to transition from 
- * a viewport preview to a full-file high-fidelity editor.
+ * <b>Capability-Aware UI:</b> For non-textual resources, the high-fidelity 
+ * 'Capability View' (Editor/Viewer) is automatically hidden, leaving only 
+ * the 'Model Perspective'.
  * </p>
  * 
  * @author anahata
@@ -53,11 +57,17 @@ public class Resource2Panel extends JPanel {
     /** The resource currently being managed. */
     private Resource currentResource;
 
+    // Resource Sector
     private final JLabel nameLabel;
-    private final JTextField uriField;
+    private final JTextField idField;
     private final JCheckBox providingBox;
     private final JComboBox<ContextPosition> positionCombo;
     private final JComboBox<RefreshPolicy> policyCombo;
+
+    /** Container for handle-specific metadata panel. */
+    private final JPanel handleSectorContainer;
+    /** Container for view-specific metadata panel. */
+    private final JPanel viewSectorContainer;
 
     private final JTabbedPane mainTabs;
     
@@ -76,6 +86,9 @@ public class Resource2Panel extends JPanel {
     /** Tracks the current editing state. */
     private boolean editing = false;
 
+    /** Guard flag to prevent feedback loops during UI synchronization. */
+    private boolean syncing = false;
+
     /** Reactive listener for resource state changes. */
     private EdtPropertyChangeListener resourceListener;
 
@@ -86,90 +99,84 @@ public class Resource2Panel extends JPanel {
     public Resource2Panel(AgiPanel agiPanel) {
         this.agiPanel = agiPanel;
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
-        // 1. Header: Properties and Metadata
-        JPanel headerPanel = new JPanel(new GridBagLayout());
-        headerPanel.setBorder(BorderFactory.createTitledBorder("Universal Resource Properties"));
-        
+        // 1. Triple-Sectored Header
+        JPanel sectorsPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new Insets(2, 5, 2, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.insets = new Insets(0, 0, 4, 0);
+
+        // --- Sector A: Resource ---
+        JPanel resourceSector = new JPanel(new GridBagLayout());
+        resourceSector.setBorder(BorderFactory.createTitledBorder(null, "Resource", TitledBorder.LEFT, TitledBorder.TOP, getFont().deriveFont(Font.BOLD)));
+        GridBagConstraints rgbc = new GridBagConstraints();
+        rgbc.gridx = 0; rgbc.gridy = 0; rgbc.anchor = GridBagConstraints.WEST; rgbc.insets = new Insets(2, 5, 2, 5);
 
         nameLabel = new JLabel("Resource");
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD, 14f));
-        headerPanel.add(nameLabel, gbc);
+        resourceSector.add(nameLabel, rgbc);
 
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
+        rgbc.gridx = 1; rgbc.weightx = 1.0; rgbc.fill = GridBagConstraints.HORIZONTAL;
         actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actionPanel.setOpaque(false);
-        
         editBtn = new JButton("📝 EDIT");
         editBtn.addActionListener(e -> toggleEditMode());
         actionPanel.add(editBtn);
-        
-        headerPanel.add(actionPanel, gbc);
+        resourceSector.add(actionPanel, rgbc);
 
-        gbc.gridx = 0;
-        gbc.gridy++;
-        gbc.weightx = 0;
-        headerPanel.add(new JLabel("URI:"), gbc);
-        gbc.gridx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        uriField = new JTextField();
-        uriField.setEditable(false);
-        uriField.setBorder(null);
-        uriField.setOpaque(false);
-        headerPanel.add(uriField, gbc);
+        rgbc.gridx = 0; rgbc.gridy++; rgbc.weightx = 0; rgbc.fill = GridBagConstraints.NONE;
+        resourceSector.add(new JLabel("UUID:"), rgbc);
+        rgbc.gridx = 1; rgbc.weightx = 1.0; rgbc.fill = GridBagConstraints.HORIZONTAL;
+        idField = createReadOnlyField();
+        resourceSector.add(idField, rgbc);
 
-        gbc.gridx = 0;
-        gbc.gridy++;
-        gbc.fill = GridBagConstraints.NONE;
-        providingBox = new JCheckBox("Effectively Providing Context");
-        providingBox.addActionListener(e -> {
-            if (currentResource != null) {
-                currentResource.setProviding(providingBox.isSelected());
-            }
-        });
-        headerPanel.add(providingBox, gbc);
+        rgbc.gridx = 0; rgbc.gridy++; rgbc.weightx = 0; rgbc.fill = GridBagConstraints.NONE;
+        providingBox = new JCheckBox("Providing Context");
+        providingBox.addActionListener(e -> { if (!syncing && currentResource != null) currentResource.setProviding(providingBox.isSelected()); });
+        resourceSector.add(providingBox, rgbc);
 
-        JPanel comboPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
-        comboPanel.setOpaque(false);
-        
-        comboPanel.add(new JLabel("Position:"));
+        rgbc.gridx = 1; rgbc.fill = GridBagConstraints.HORIZONTAL;
+        JPanel rComboPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        rComboPanel.setOpaque(false);
+        rComboPanel.add(new JLabel("Position:"));
         positionCombo = new JComboBox<>(ContextPosition.values());
-        positionCombo.addActionListener(e -> {
-            if (currentResource != null) {
-                currentResource.setContextPosition((ContextPosition) positionCombo.getSelectedItem());
-            }
-        });
-        comboPanel.add(positionCombo);
-        
-        comboPanel.add(new JLabel("Refresh:"));
+        positionCombo.addActionListener(e -> { if (!syncing && currentResource != null) currentResource.setContextPosition((ContextPosition) positionCombo.getSelectedItem()); });
+        rComboPanel.add(positionCombo);
+        rComboPanel.add(new JLabel("Refresh:"));
         policyCombo = new JComboBox<>(RefreshPolicy.values());
-        policyCombo.addActionListener(e -> {
-            if (currentResource != null) {
-                currentResource.setRefreshPolicy((RefreshPolicy) policyCombo.getSelectedItem());
-            }
-        });
-        comboPanel.add(policyCombo);
-        
-        gbc.gridx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        headerPanel.add(comboPanel, gbc);
+        policyCombo.addActionListener(e -> { if (!syncing && currentResource != null) currentResource.setRefreshPolicy((RefreshPolicy) policyCombo.getSelectedItem()); });
+        rComboPanel.add(policyCombo);
+        resourceSector.add(rComboPanel, rgbc);
 
-        add(headerPanel, BorderLayout.NORTH);
+        sectorsPanel.add(resourceSector, gbc);
+
+        // --- Sector B & C: Dynamic Containers ---
+        gbc.gridy++;
+        handleSectorContainer = new JPanel(new BorderLayout());
+        sectorsPanel.add(handleSectorContainer, gbc);
+        
+        gbc.gridy++;
+        viewSectorContainer = new JPanel(new BorderLayout());
+        sectorsPanel.add(viewSectorContainer, gbc);
+
+        add(sectorsPanel, BorderLayout.NORTH);
 
         // 2. Main Viewport Tabs
         mainTabs = new JTabbedPane();
         viewerContainer = new JPanel(new BorderLayout());
-        
-        mainTabs.addTab("Capability View", viewerContainer);
-        
         add(mainTabs, BorderLayout.CENTER);
+    }
+
+    private JTextField createReadOnlyField() {
+        JTextField f = new JTextField();
+        f.setEditable(false);
+        f.setBorder(null);
+        f.setOpaque(false);
+        return f;
     }
 
     /**
@@ -181,7 +188,6 @@ public class Resource2Panel extends JPanel {
         }
 
         if (editing) {
-            // PERFORM SAVE
             String newContent = activeStrategy.getEditorContent(activeViewer);
             if (newContent != null) {
                 saveContent(newContent);
@@ -189,7 +195,6 @@ public class Resource2Panel extends JPanel {
                 setEditing(false);
             }
         } else {
-            // ENTER EDIT MODE
             setEditing(true);
         }
     }
@@ -200,7 +205,7 @@ public class Resource2Panel extends JPanel {
         
         if (editing) {
             editBtn.setText("💾 SAVE");
-            editBtn.setIcon(new RestartIcon(16)); // Representing 'Persist/Commit'
+            editBtn.setIcon(new RestartIcon(16));
         } else {
             editBtn.setText("📝 EDIT");
             editBtn.setIcon(null);
@@ -212,9 +217,8 @@ public class Resource2Panel extends JPanel {
      */
     private void saveContent(String content) {
         new SwingTask<>(this, "Saving Resource", () -> {
-            // THE TECHNICAL PURE PATH: Write straight to the resource orchestrator.
-            // This bypasses the toolkit middle-man and redundant DTO assembly.
             currentResource.write(content);
+            currentResource.reloadIfNeeded();
             return null;
         }, done -> {
             setEditing(false);
@@ -227,28 +231,32 @@ public class Resource2Panel extends JPanel {
      * @param res The V2 resource instance.
      */
     public void setResource(Resource res) {
-        if (resourceListener != null) {
-            resourceListener.unbind();
-        }
+        if (resourceListener != null) resourceListener.unbind();
         
         this.currentResource = res;
         this.editing = false;
         editBtn.setText("📝 EDIT");
         editBtn.setIcon(null);
         
-        this.resourceListener = new EdtPropertyChangeListener(this, res, null, evt -> syncUiWithResource());
+        if (res != null) {
+            this.resourceListener = new EdtPropertyChangeListener(this, res, null, evt -> syncUiWithResource());
+        }
         
-        // 1. Resolve strategy and populate containers
         viewerContainer.removeAll();
         actionPanel.removeAll();
         actionPanel.add(editBtn);
+        handleSectorContainer.removeAll();
+        viewSectorContainer.removeAll();
         
         this.activeStrategy = ResourceUiRegistry.getInstance().getResourceUI();
         if (res != null && activeStrategy != null) {
+            // Swap specialized metadata panels
+            handleSectorContainer.add(activeStrategy.createHandlePanel(res, agiPanel), BorderLayout.CENTER);
+            viewSectorContainer.add(activeStrategy.createViewPanel(res, agiPanel), BorderLayout.CENTER);
+            
             this.activeViewer = activeStrategy.createContent(res, agiPanel);
             viewerContainer.add(activeViewer, BorderLayout.CENTER);
             activeStrategy.populateActions(actionPanel, res, agiPanel);
-            
             editBtn.setVisible(activeStrategy.canEdit(res) && res.isWritable());
         } else if (res != null) {
             viewerContainer.add(new JLabel("No ResourceUI strategy registered for this host environment."), BorderLayout.CENTER);
@@ -262,39 +270,58 @@ public class Resource2Panel extends JPanel {
      * Synchronizes the common metadata controls with the resource state.
      */
     private void syncUiWithResource() {
-        if (currentResource == null) {
-            return;
-        }
+        if (currentResource == null) return;
         
-        nameLabel.setText(currentResource.getName());
-        uriField.setText(currentResource.getHandle().getUri().toString());
-        providingBox.setSelected(currentResource.isProviding());
-        positionCombo.setSelectedItem(currentResource.getContextPosition());
-        policyCombo.setSelectedItem(currentResource.getRefreshPolicy());
+        this.syncing = true;
+        try {
+            nameLabel.setText(currentResource.getName());
+            idField.setText(currentResource.getId());
+            providingBox.setSelected(currentResource.isProviding());
+            positionCombo.setSelectedItem(currentResource.getContextPosition());
+            policyCombo.setSelectedItem(currentResource.getRefreshPolicy());
 
-        updateModelPerspectiveTab();
+            // Refresh sub-panels
+            if (handleSectorContainer.getComponentCount() > 0 && handleSectorContainer.getComponent(0) instanceof AbstractHandlePanel php) {
+                php.refresh();
+            }
+            if (viewSectorContainer.getComponentCount() > 0 && viewSectorContainer.getComponent(0) instanceof AbstractViewPanel avp) {
+                avp.refresh();
+            }
+
+            updateTabs();
+        } finally {
+            this.syncing = false;
+        }
         
         revalidate();
         repaint();
     }
 
     /**
-     * Generates and updates the "Model Perspective" tab, showing the definitive
-     * RAG part that will be injected into the prompt.
+     * Rebuilds the tabs based on the resource capabilities.
      */
-    private void updateModelPerspectiveTab() {
-        // Find existing tab or create new
-        int idx = -1;
-        for (int i = 0; i < mainTabs.getTabCount(); i++) {
-            if (mainTabs.getTitleAt(i).equals("Model Perspective (RAG)")) {
-                idx = i;
-                break;
-            }
+    private void updateTabs() {
+        mainTabs.removeAll();
+        
+        // Tab 1: Capability View (Only for textual resources)
+        if (currentResource.getHandle().isTextual()) {
+            mainTabs.addTab("Capability View", viewerContainer);
         }
+        
+        // Tab 2: Model Perspective (RAG)
+        mainTabs.addTab("Model Perspective (RAG)", createModelPerspectiveComponent());
+    }
 
+    /**
+     * Generates the "Model Perspective" component, showing the definitive
+     * RAG part that will be injected into the prompt.
+     * @return The RAG viewer component.
+     */
+    private JComponent createModelPerspectiveComponent() {
         RagMessage rawMsg = new RagMessage(agiPanel.getAgi());
         try {
-            // Mirror the RAG assembly logic: Header + Content
+            // AUTHORITATIVE SENSING: Ensure fresh reload before generating perspective
+            currentResource.reloadIfNeeded();
             rawMsg.addTextPart(currentResource.getHeader());
             if (currentResource.getContextPosition() == ContextPosition.SYSTEM_INSTRUCTIONS) {
                 currentResource.getSystemInstructions().forEach(rawMsg::addTextPart);
@@ -307,11 +334,6 @@ public class Resource2Panel extends JPanel {
 
         RagMessageViewer viewer = new RagMessageViewer(agiPanel, rawMsg, false, false);
         viewer.render();
-
-        if (idx == -1) {
-            mainTabs.addTab("Model Perspective (RAG)", viewer);
-        } else {
-            mainTabs.setComponentAt(idx, viewer);
-        }
+        return viewer;
     }
 }

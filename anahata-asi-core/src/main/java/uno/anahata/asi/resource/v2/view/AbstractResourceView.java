@@ -1,8 +1,9 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.resource.v2;
+package uno.anahata.asi.resource.v2.view;
 
 import lombok.Getter;
 import lombok.Setter;
+import uno.anahata.asi.resource.v2.Resource;
 
 /**
  * Base implementation for resource views providing parent resource management.

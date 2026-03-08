@@ -1,5 +1,5 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.swing.agi.resources;
+package uno.anahata.asi.swing.agi.resources.view;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -27,8 +27,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.resource.v2.Resource;
-import uno.anahata.asi.resource.v2.TextView;
-import uno.anahata.asi.resource.v2.TextViewportSettings;
+import uno.anahata.asi.resource.v2.view.TextView;
+import uno.anahata.asi.resource.v2.view.TextViewportSettings;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.icons.RestartIcon;
 import uno.anahata.asi.swing.internal.AnyChangeDocumentListener;

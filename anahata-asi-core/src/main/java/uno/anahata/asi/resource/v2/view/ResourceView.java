@@ -1,9 +1,11 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.resource.v2;
+package uno.anahata.asi.resource.v2.view;
 
+import uno.anahata.asi.resource.v2.handle.ResourceHandle;
 import java.util.Collections;
 import java.util.List;
 import uno.anahata.asi.model.core.RagMessage;
+import uno.anahata.asi.resource.v2.Resource;
 
 /**
  * The perspective through which a resource is viewed by the model.

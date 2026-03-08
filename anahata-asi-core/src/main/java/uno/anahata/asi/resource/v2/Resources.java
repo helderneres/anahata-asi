@@ -1,6 +1,9 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.resource.v2;
 
+import uno.anahata.asi.resource.v2.view.TextViewportSettings;
+import uno.anahata.asi.resource.v2.view.TextView;
+import uno.anahata.asi.resource.v2.handle.ResourceHandle;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
