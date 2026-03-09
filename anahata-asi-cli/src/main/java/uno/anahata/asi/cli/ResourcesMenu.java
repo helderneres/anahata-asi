@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.Scanner;
 import lombok.RequiredArgsConstructor;
 import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.model.resource.AbstractResource;
 
-import uno.anahata.asi.resource.ResourceManager;
+import uno.anahata.asi.resource.v2.Resource;
+import uno.anahata.asi.resource.v2.ResourceManager2;
 
 /**
  * Handles the CLI menu for viewing and managing stateful resources.
@@ -26,8 +26,8 @@ public class ResourcesMenu {
      * Runs the interactive CLI menu for resource management.
      */
     public void runMenu() {
-        ResourceManager resourceManager = agi.getResourceManager();
-        List<AbstractResource<?, ?>> resources = resourceManager.getResources().stream().toList();
+        ResourceManager2 resourceManager = agi.getResourceManager2();
+        List<Resource> resources = resourceManager.getResourcesList();
 
         while (true) {
             System.out.println("\n===== Managed Resources =====");
@@ -35,7 +35,7 @@ public class ResourcesMenu {
                 System.out.println("(No resources currently managed in context.)");
             } else {
                 for (int i = 0; i < resources.size(); i++) {
-                    AbstractResource<?, ?> r = resources.get(i);
+                    Resource r = resources.get(i);
                     String type = r.getClass().getSimpleName();
                     String name = r.getName();
                     System.out.printf("%d: [%s] %s\n", i + 1, type, name);
@@ -72,12 +72,12 @@ public class ResourcesMenu {
      * Displays the full details (header and content) of a specific resource.
      * @param resource The resource to display.
      */
-    private void displayResourceDetails(AbstractResource<?, ?> resource) {
+    private void displayResourceDetails(Resource resource) {
         System.out.println("\n===== Resource Details: " + resource.getName() + " =====");
         
         System.out.println(resource.getHeader());
         try {
-            Object content = resource.getContent();
+            Object content = resource.asText();
             if (content != null) {
                 System.out.println("\nContent:");
                 System.out.println(content.toString());
