@@ -1,7 +1,7 @@
 /*
  * Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Fora Bara!
  */
-package uno.anahata.asi.model.provider;
+package uno.anahata.asi.agi.provider;
 
 import lombok.Getter;
 

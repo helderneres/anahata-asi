@@ -16,7 +16,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.RowFilter;
 import org.jdesktop.swingx.JXTable;
-import uno.anahata.asi.model.provider.AbstractModel;
+import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.swing.internal.AnyChangeDocumentListener;
 
 /**

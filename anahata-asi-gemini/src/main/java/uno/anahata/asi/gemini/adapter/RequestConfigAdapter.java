@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.internal.TokenizerUtils;
 import uno.anahata.asi.agi.provider.RequestConfig;
 import uno.anahata.asi.agi.provider.ThinkingLevel;
-import uno.anahata.asi.model.provider.ServerTool;
+import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
 
 /**

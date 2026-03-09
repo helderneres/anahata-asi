@@ -39,17 +39,17 @@ import uno.anahata.asi.gemini.adapter.RequestConfigAdapter;
 import uno.anahata.asi.agi.message.AbstractMessage;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.agi.message.AbstractPart;
-import uno.anahata.asi.model.provider.GenerationRequest;
+import uno.anahata.asi.agi.provider.GenerationRequest;
 import uno.anahata.asi.agi.message.ModelTextPart;
 import uno.anahata.asi.agi.provider.RequestConfig;
 import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.provider.StreamObserver;
-import uno.anahata.asi.model.provider.AbstractAgiProvider;
-import uno.anahata.asi.model.provider.AbstractModel;
-import uno.anahata.asi.model.provider.ApiCallInterruptedException;
-import uno.anahata.asi.model.provider.ServerTool;
+import uno.anahata.asi.agi.provider.AbstractAgiProvider;
+import uno.anahata.asi.agi.provider.AbstractModel;
+import uno.anahata.asi.agi.provider.ApiCallInterruptedException;
+import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
-import uno.anahata.asi.model.provider.RetryableApiException;
+import uno.anahata.asi.agi.provider.RetryableApiException;
 
 /**
  * Gemini-specific implementation of the {@code AbstractModel}. It wraps the

@@ -3,7 +3,7 @@ package uno.anahata.asi.swing.provider;
 
 import java.util.List;
 import javax.swing.table.AbstractTableModel;
-import uno.anahata.asi.model.provider.AbstractModel;
+import uno.anahata.asi.agi.provider.AbstractModel;
 
 /**
  * A table model for displaying AI models and their capabilities.

@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
-import uno.anahata.asi.model.provider.AbstractAgiProvider;
-import uno.anahata.asi.model.provider.AbstractModel;
+import uno.anahata.asi.agi.provider.AbstractAgiProvider;
+import uno.anahata.asi.agi.provider.AbstractModel;
 
 /**
  * The concrete implementation of the {@code AbstractAgiProvider} for the Google

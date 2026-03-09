@@ -10,7 +10,7 @@ import uno.anahata.asi.agi.message.InputUserMessage;
 import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.message.TextPart;
 import uno.anahata.asi.agi.message.UserMessage;
-import uno.anahata.asi.model.provider.AbstractModel;
+import uno.anahata.asi.agi.provider.AbstractModel;
 
 /**
  * The reusable, provider-agnostic core of the Anahata AI Command Line Interface.

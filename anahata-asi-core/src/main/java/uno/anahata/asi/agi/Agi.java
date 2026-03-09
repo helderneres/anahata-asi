@@ -24,21 +24,21 @@ import uno.anahata.asi.agi.context.ContextManager;
 import uno.anahata.asi.agi.message.AbstractMessage;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
-import uno.anahata.asi.model.provider.GenerationRequest;
+import uno.anahata.asi.agi.provider.GenerationRequest;
 import uno.anahata.asi.agi.message.InputUserMessage;
 import uno.anahata.asi.agi.provider.RequestConfig;
 import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.provider.StreamObserver;
-import uno.anahata.asi.model.provider.AbstractAgiProvider;
-import uno.anahata.asi.model.provider.AbstractModel;
-import uno.anahata.asi.model.provider.ApiCallInterruptedException;
-import uno.anahata.asi.model.provider.ServerTool;
+import uno.anahata.asi.agi.provider.AbstractAgiProvider;
+import uno.anahata.asi.agi.provider.AbstractModel;
+import uno.anahata.asi.agi.provider.ApiCallInterruptedException;
+import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.resource.ResourceManager2;
 import uno.anahata.asi.toolkit.Resources;
 import uno.anahata.asi.agi.status.ApiErrorRecord;
 import uno.anahata.asi.agi.status.AgiStatus;
 import uno.anahata.asi.agi.status.StatusManager;
-import uno.anahata.asi.model.provider.RetryableApiException;
+import uno.anahata.asi.agi.provider.RetryableApiException;
 import uno.anahata.asi.agi.tool.ToolManager;
 
 /**

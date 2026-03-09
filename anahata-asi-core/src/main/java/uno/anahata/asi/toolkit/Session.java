@@ -13,7 +13,7 @@ import uno.anahata.asi.agi.message.AbstractMessage;
 import uno.anahata.asi.agi.message.AbstractPart;
 import uno.anahata.asi.agi.message.PruningState;
 import uno.anahata.asi.agi.message.RagMessage;
-import uno.anahata.asi.model.provider.ServerTool;
+import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
 import uno.anahata.asi.agi.tool.AiTool;

@@ -12,7 +12,7 @@ import lombok.NonNull;
 import lombok.Setter;
 import uno.anahata.asi.AsiContainer;
 import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
-import uno.anahata.asi.model.provider.AbstractAgiProvider;
+import uno.anahata.asi.agi.provider.AbstractAgiProvider;
 import uno.anahata.asi.agi.resource.view.PathHandle;
 import uno.anahata.asi.agi.resource.view.ResourceHandle;
 import uno.anahata.asi.toolkit.Resources;
