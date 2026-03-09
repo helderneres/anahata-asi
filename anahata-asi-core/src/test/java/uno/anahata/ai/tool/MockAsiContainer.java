@@ -16,8 +16,9 @@ public class MockAsiContainer extends AsiContainer {
         super(hostId);
     }
 
+    /** {@inheritDoc} */
     @Override
-    public Agi createNewAgi() {
-        return new Agi(new AgiConfig(this));
+    protected AgiConfig createNewAgiConfig() {
+        return new AgiConfig(this);
     }
 }

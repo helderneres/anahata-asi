@@ -20,6 +20,7 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.status.AgiStatus;
 import uno.anahata.asi.internal.kryo.KryoUtils;
 import uno.anahata.asi.model.core.BasicPropertyChangeSource;
@@ -114,12 +115,34 @@ public abstract class AsiContainer extends BasicPropertyChangeSource {
     }
 
     /**
-     * Registers a new agi session with this configuration and triggers the 
-     * {@link #onAgiCreated(Agi)} hook. Fires a property change event for "activeAgis".
-     * 
-     * @param agi The agi session to register.
+     * Creates a new agi session blueprint. Overridden by concrete containers.
+     * @return The new agi configuration.
      */
-    public void register(Agi agi) {
+    protected abstract AgiConfig createNewAgiConfig();
+
+    /**
+     * Authoritatively creates and registers a brand-new Agi session.
+     * <p>
+     * <b>Lifecycle Authority:</b> This method orchestrates the creation, 
+     * initial birth hook, pooling, and initial auto-save in one atomic weld.
+     * </p>
+     * @return The newly created Agi session.
+     */
+    public final Agi createNewAgi() {
+        AgiConfig config = createNewAgiConfig();
+        Agi agi = new Agi(config);
+        onAgiCreated(agi);
+        registerInternal(agi);
+        autoSaveSession(agi);
+        return agi;
+    }
+
+    /**
+     * Internal logic for session pooling and common hook invocation.
+     * 
+     * @param agi The session to register.
+     */
+    private void registerInternal(Agi agi) {
         synchronized (activeAgis) {
             for (Agi existing : activeAgis) {
                 if (existing.getConfig().getSessionId().equals(agi.getConfig().getSessionId())) {
@@ -129,16 +152,18 @@ public abstract class AsiContainer extends BasicPropertyChangeSource {
             }
             List<Agi> old = new ArrayList<>(activeAgis);
             activeAgis.add(agi);
-            onAgiCreated(agi);
-            autoSaveSession(agi); // Ensure the session is persisted in the active directory
+            
+            // Common hook for host-aware onboarding
+            onAgiRegistered(agi);
+            
             propertyChangeSupport.firePropertyChange("activeAgis", old, Collections.unmodifiableList(activeAgis));
             log.info("Registered agi session: {}", agi.getConfig().getSessionId());
         }
     }
 
     /**
-     * Unregisters a agi session from this configuration. 
-     * Fires a property change event for "activeAgis".
+     * Unregisters a agi session from this configuration and triggers 
+     * host-aware cleanup hooks.
      * 
      * @param agi The agi session to unregister.
      */
@@ -146,6 +171,7 @@ public abstract class AsiContainer extends BasicPropertyChangeSource {
         synchronized (activeAgis) {
             List<Agi> old = new ArrayList<>(activeAgis);
             if (activeAgis.remove(agi)) {
+                onAgiUnregistered(agi);
                 propertyChangeSupport.firePropertyChange("activeAgis", old, Collections.unmodifiableList(activeAgis));
                 log.info("Unregistered agi session: {}", agi.getConfig().getSessionId());
             }
@@ -164,21 +190,28 @@ public abstract class AsiContainer extends BasicPropertyChangeSource {
     }
     
     /**
-     * Overridable hook for host-specific initialization when a new agi is created.
-     * 
-     * @param agi The newly created agi session.
+     * Hook invoked ONLY during the initial birth of an Agi session.
+     * @param agi The newly created session.
      */
-    public void onAgiCreated(Agi agi) {
-        // Default implementation does nothing.
-    }
-    
+    public void onAgiCreated(Agi agi) {}
+
     /**
-     * Creates a new agi session with a default configuration.
-     * This method should be overridden by host-specific containers.
-     * 
-     * @return The newly created agi session.
+     * Hook invoked ONLY after an Agi session is reloaded/deserialized from disk.
+     * @param agi The reloaded session.
      */
-    public abstract Agi createNewAgi();
+    public void onAgiRestored(Agi agi) {}
+
+    /**
+     * Common hook invoked whenever a session (new or restored) enters the active pool.
+     * @param agi The registered session.
+     */
+    public void onAgiRegistered(Agi agi) {}
+
+    /**
+     * Hook invoked whenever a session is removed from the active pool.
+     * @param agi The unregistered session.
+     */
+    public void onAgiUnregistered(Agi agi) {}
 
     // --- SESSION PERSISTENCE ---
 
@@ -352,8 +385,9 @@ public abstract class AsiContainer extends BasicPropertyChangeSource {
             // Always generate a new session ID for imported sessions to avoid collisions
             agi.getConfig().setSessionId(UUID.randomUUID().toString());
             
-            agi.rebind(this);
-            register(agi);
+            agi.bindToContainer(this);
+            onAgiRestored(agi);
+            registerInternal(agi);
             return agi;
         } catch (Exception e) {
             log.error("Failed to import session from {}", path, e);
@@ -399,8 +433,9 @@ public abstract class AsiContainer extends BasicPropertyChangeSource {
             log.info("Loading session from {}", path);
             byte[] data = Files.readAllBytes(path);
             Agi agi = KryoUtils.deserialize(data, Agi.class);
-            agi.rebind(this);
-            register(agi);
+            agi.bindToContainer(this);
+            onAgiRestored(agi);
+            registerInternal(agi);
             return true;
         } catch (Throwable t) {
             log.error("Failed to load session from {}. Moving to unloadable directory.", path, t);

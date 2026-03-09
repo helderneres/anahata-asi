@@ -89,9 +89,11 @@ public class StandaloneMainPanel extends JPanel implements AgiController {
             log.info("No active sessions found. Creating a new empty agi.");
             createNew();
         } else {
-            // Sync existing agis - use a copy to avoid ConcurrentModificationException
+            // Restore sessions that were marked as 'Open' during previous exit
             for (Agi agi : new ArrayList<>(activeAgis)) {
-                focus(agi);
+                if (agi.isOpen()) {
+                    focus(agi);
+                }
             }
         }
     }
@@ -128,6 +130,9 @@ public class StandaloneMainPanel extends JPanel implements AgiController {
             tabbedPane.addTab(agi.getDisplayName(), panel);
             tabIndex = tabbedPane.getTabCount() - 1;
             
+            // Sync domain state
+            agi.setOpen(true);
+
             // Listen for nickname changes to update the tab title
             new EdtPropertyChangeListener(this, agi, "nickname", this::handleNicknameChange);
         }
@@ -138,7 +143,7 @@ public class StandaloneMainPanel extends JPanel implements AgiController {
     /**
      * {@inheritDoc}
      * <p>
-     * Removes the tab associated with the agi session.
+     * Removes the tab associated with the agi session and toggles the open state.
      * 
      * @param agi The agi session to close.
      */
@@ -149,6 +154,7 @@ public class StandaloneMainPanel extends JPanel implements AgiController {
         for (int i = 0; i < tabbedPane.getTabCount(); i++) {
             if (id.equals(tabbedPane.getComponentAt(i).getName())) {
                 tabbedPane.removeTabAt(i);
+                agi.setOpen(false);
                 // EdtPropertyChangeListener will be GC'd as it's not strongly held by the agi
                 break;
             }
@@ -172,13 +178,12 @@ public class StandaloneMainPanel extends JPanel implements AgiController {
     /**
      * {@inheritDoc}
      * <p>
-     * Creates a new {@link Agi} with a {@link StandaloneAgiConfig} and focuses it.
+     * Authoritatively creates a new session via the container's final orchestrator.
      */
     @Override
     public void createNew() {
-        log.info("Creating new session...");
-        // Agi constructor registers itself in AsiContainer, which triggers property change
-        Agi agi = new Agi(new StandaloneAgiConfig(asiContainer));
+        log.info("Creating new session via StandaloneAsiContainer...");
+        Agi agi = asiContainer.createNewAgi();
         focus(agi);
     }
 
@@ -213,7 +218,10 @@ public class StandaloneMainPanel extends JPanel implements AgiController {
         if (newList != null) {
             for (Agi agi : new ArrayList<>(newList)) {
                 if (oldList == null || !oldList.contains(agi)) {
-                    focus(agi);
+                    // Only focus if the session is marked as 'Open'
+                    if (agi.isOpen()) {
+                        focus(agi);
+                    }
                 }
             }
         }

@@ -59,7 +59,7 @@ import uno.anahata.asi.tool.AnahataToolkit;
 import uno.anahata.asi.nb.tools.project.alerts.JavacAlert;
 import uno.anahata.asi.nb.tools.project.alerts.ProjectAlert;
 import uno.anahata.asi.nb.tools.project.alerts.ProjectDiagnostics;
-import uno.anahata.asi.nb.tools.files.nb.FilesContextActionLogic;
+import uno.anahata.asi.nb.tools.files.nb.v2.FilesContextActionLogic2;
 import uno.anahata.asi.nb.tools.project.context.ProjectStructureContextProvider;
 
 /**
@@ -109,7 +109,7 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
         for (String path : getOpenProjects()) {
             try {
                 Project p = findOpenProject(path);
-                FilesContextActionLogic.fireRefreshRecursive(p.getProjectDirectory());
+                FilesContextActionLogic2.fireRefreshRecursive(p.getProjectDirectory());
             } catch (Exception e) {
                 log.debug("Failed to resolve project during rebind: {}", path);
             }
@@ -739,7 +739,7 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
             log.info("Project context for {} set to: {}", projectPath, enabled);
             try {
                 Project p = findOpenProject(projectPath);
-                FilesContextActionLogic.fireRefreshRecursive(p.getProjectDirectory());
+                FilesContextActionLogic2.fireRefreshRecursive(p.getProjectDirectory());
             } catch (Exception ex) {
                 log.debug("Failed to refresh project icons after toggle: {}", projectPath);
             }

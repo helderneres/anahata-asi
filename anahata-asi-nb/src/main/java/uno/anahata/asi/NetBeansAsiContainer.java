@@ -1,8 +1,13 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi;
 
+import java.beans.PropertyChangeListener;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.agi.AgiConfig;
+import uno.anahata.asi.nb.tools.files.nb.AnahataAnnotationProvider;
 import uno.anahata.asi.nb.ui.render.FullTextFileUpdateRenderer;
 import uno.anahata.asi.nb.ui.render.TextFileReplacementsRenderer;
 import uno.anahata.asi.nb.ui.resources.NbResourceUI;
@@ -40,6 +45,11 @@ public class NetBeansAsiContainer extends AsiContainer {
         ResourceUiRegistry.getInstance().setResourceUI(new NbResourceUI());
     }
 
+    /** 
+     * Map to track the resource listeners for each session to ensure cleanup on disposal.
+     */
+    private final Map<String, PropertyChangeListener> sessionListeners = new ConcurrentHashMap<>();
+
     /**
      * Default constructor for the NetBeans container.
      */
@@ -50,17 +60,63 @@ public class NetBeansAsiContainer extends AsiContainer {
     /**
      * {@inheritDoc}
      * <p>
-     * Initializes the session environment. Classpath setup is now delegated 
-     * to the autonomous {@code NbJava} toolkit.
+     * Implementation details: Creates a NetBeans-aware AGI configuration blueprint.
+     * </p>
+     */
+    @Override
+    protected AgiConfig createNewAgiConfig() {
+        return new NetBeansAgiConfig(this);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Initializes the session environment with NetBeans defaults.
      * </p>
      */
     @Override
     public void onAgiCreated(Agi agi) {
-        log.info("Initializing NetBeans environment for agi session: {}", agi.getConfig().getSessionId());
+        log.info("Initializing NetBeans defaults for new agi session: {}", agi.getShortId());
 
         // Default model configuration for NetBeans
         if (agi.getSelectedModel() == null) {
             agi.setProviderAndModel("Gemini", "models/gemini-3-flash-preview");
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Implementation details: Establishes a reactive bridge between the core 
+     * Resource Manager and the NetBeans Annotation system.
+     * </p>
+     */
+    @Override
+    public void onAgiRegistered(Agi agi) {
+        log.info("Attaching reactive annotation pulse for agi session: {}", agi.getShortId());
+        
+        // REACTIVE BRIDGE: Listen for resource changes to trigger IDE badge refreshes
+        PropertyChangeListener listener = evt -> {
+            log.info("Model-driven resource change detected in session '{}'. Firing IDE annotation refresh.", agi.getDisplayName());
+            AnahataAnnotationProvider.fireRefresh(null, null);
+        };
+        
+        agi.getResourceManager2().addPropertyChangeListener("resources", listener);
+        sessionListeners.put(agi.getConfig().getSessionId(), listener);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Implementation details: Detaches the resource listener during session disposal.
+     * </p>
+     */
+    @Override
+    public void onAgiUnregistered(Agi agi) {
+        PropertyChangeListener listener = sessionListeners.remove(agi.getConfig().getSessionId());
+        if (listener != null) {
+            log.info("Cleaning up annotation pulse for agi session: {}", agi.getShortId());
+            agi.getResourceManager2().removePropertyChangeListener("resources", listener);
         }
     }
 
@@ -80,13 +136,5 @@ public class NetBeansAsiContainer extends AsiContainer {
             }
         }
         return createNewAgi();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Agi createNewAgi() {
-        return new Agi(new NetBeansAgiConfig(this));
     }
 }

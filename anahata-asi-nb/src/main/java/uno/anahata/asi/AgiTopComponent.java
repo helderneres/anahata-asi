@@ -104,6 +104,9 @@ public final class AgiTopComponent extends TopComponent {
         
         // Listen for status changes to update the tab color
         new EdtPropertyChangeListener(this, agi.getStatusManager(), "currentStatus", evt -> updateTitles());
+
+        // Initial open state sync
+        agi.setOpen(true);
     }
 
     /**
@@ -176,6 +179,24 @@ public final class AgiTopComponent extends TopComponent {
                     }
                 }
             }.execute();
+        } else {
+            // Synchronize domain model state
+            getAgi().setOpen(true);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Authoritatively updates the agi's 'open' status when the component is closed.
+     * </p>
+     */
+    @Override
+    protected void componentClosed() {
+        Agi agi = getAgi();
+        if (agi != null) {
+            log.info("Closing TopComponent for agi session: {}. Toggling open state to false.", agi.getShortId());
+            agi.setOpen(false);
         }
     }
 

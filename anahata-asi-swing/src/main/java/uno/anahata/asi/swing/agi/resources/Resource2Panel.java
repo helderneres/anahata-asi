@@ -217,6 +217,7 @@ public class Resource2Panel extends JPanel {
      */
     private void saveContent(String content) {
         new SwingTask<>(this, "Saving Resource", () -> {
+            log.info("Saving content to {}", currentResource );
             currentResource.write(content);
             currentResource.reloadIfNeeded();
             return null;

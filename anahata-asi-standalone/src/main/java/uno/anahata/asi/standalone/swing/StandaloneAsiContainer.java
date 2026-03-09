@@ -5,6 +5,7 @@ package uno.anahata.asi.standalone.swing;
 
 import uno.anahata.asi.AsiContainer;
 import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.cli.CommandLineArgs;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.swing.agi.resources.DefaultResourceUI;
@@ -55,14 +56,9 @@ public class StandaloneAsiContainer extends AsiContainer {
         CommandLineArgs.parse(agi, cmdLineArgs);
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Creates a new agi session using the {@link StandaloneAgiConfig}.
-     * </p>
-     */
+    /** {@inheritDoc} */
     @Override
-    public Agi createNewAgi() {
-        return new Agi(new StandaloneAgiConfig(this));
+    protected AgiConfig createNewAgiConfig() {
+        return new StandaloneAgiConfig(this);
     }
 }

@@ -7,7 +7,7 @@ import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 import uno.anahata.asi.context.BasicContextProvider;
 import uno.anahata.asi.nb.tools.project.Projects;
-import uno.anahata.asi.nb.tools.files.nb.FilesContextActionLogic;
+import uno.anahata.asi.nb.tools.files.nb.v2.FilesContextActionLogic2;
 
 /**
  * Common base class for context providers that are bound to a specific NetBeans project.
@@ -83,7 +83,7 @@ public abstract class AbstractProjectContextProvider extends BasicContextProvide
             if (p != null) {
                 FileObject root = p.getProjectDirectory();
                 if (root != null) {
-                    FilesContextActionLogic.fireRefreshRecursive(root);
+                    FilesContextActionLogic2.fireRefreshRecursive(root);
                 }
             }
         }

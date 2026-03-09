@@ -114,6 +114,12 @@ public class Agi extends BasicPropertyChangeSource {
     private transient AtomicBoolean shutdown = new AtomicBoolean(false);
 
     /**
+     * Whether this session is currently 'Open' in the host UI (e.g. tab visible).
+     * This field is persisted to restore UI state across application restarts.
+     */
+    private boolean open = false;
+
+    /**
      * The last response received from the model. Used for state persistence and
      * status panel initialization on deserialization.
      */
@@ -178,8 +184,6 @@ public class Agi extends BasicPropertyChangeSource {
         
         // Final manager initialization cascade
         contextManager.init();
-        
-        config.getContainer().register(this);
     }
 
     /**
@@ -200,7 +204,7 @@ public class Agi extends BasicPropertyChangeSource {
      * 
      * @param container The AsiContainer to bind to.
      */
-    public void rebind(@NonNull AsiContainer container) {
+    public void bindToContainer(@NonNull AsiContainer container) {
         log.info("Rebinding agi session {} to container {}", config.getSessionId(), container.getHostApplicationId());
         // Re-initialize transient fields that require external context (like the container)
         this.config.rebind(container);
@@ -211,7 +215,8 @@ public class Agi extends BasicPropertyChangeSource {
         
         log.info("Triggering environmental bootstrapping for agi session {}", config.getSessionId());
         
-        // Zombie Message Recovery: If we reloaded a session with a staged message,         // kickstart the processing loop to consume it.
+        // Zombie Message Recovery: If we reloaded a session with a staged message, 
+        // kickstart the processing loop to consume it.
         if (stagedUserMessage != null) {
             log.info("Recovered staged user message during rebind. Triggering send loop.");
             executor.submit(() -> sendMessage(null));
@@ -230,6 +235,22 @@ public class Agi extends BasicPropertyChangeSource {
      */
     public void save() {
         config.getContainer().manualSaveSession(this);
+    }
+
+    /**
+     * Sets the visibility status of the agi in the host UI.
+     * @param open True if a tab/window is currently showing this session.
+     */
+    public void setOpen(boolean open) {
+        boolean old = this.open;
+        if (old != open) {
+            this.open = open;
+            propertyChangeSupport.firePropertyChange("open", old, open);
+            // Selective Persistence: only auto-save when closing to remember state
+            if (!open) {
+                autoSave();
+            }
+        }
     }
 
     /**
