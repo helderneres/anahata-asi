@@ -148,8 +148,8 @@ public class NetBeansTextResourceViewer extends AbstractTextResourceViewer {
                     JComponent ext = eui.getExtComponent();
                     if (ext != null) {
                         log.info("Adopting NetBeans ExtComponent for: {}", resource.getName());
-                        wrapper.removeAll();
-                        wrapper.add(ext, BorderLayout.CENTER);
+                        getWrapper().removeAll();
+                        getWrapper().add(ext, BorderLayout.CENTER);
                         
                         // Force initial fold rendering
                         FoldHierarchy.get(editor).render(() -> {});
@@ -160,8 +160,8 @@ public class NetBeansTextResourceViewer extends AbstractTextResourceViewer {
                         // Apply scroll behavior to the adopted frame
                         configureScrollBehavior();
                         
-                        wrapper.revalidate();
-                        wrapper.repaint();
+                        getWrapper().revalidate();
+                        getWrapper().repaint();
                     }
                 }
             });
