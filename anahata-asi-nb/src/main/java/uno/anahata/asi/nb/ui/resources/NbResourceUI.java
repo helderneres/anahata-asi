@@ -14,8 +14,13 @@ import uno.anahata.asi.nb.resources.handle.NbHandle;
 import uno.anahata.asi.nb.tools.ide.IDE;
 import uno.anahata.asi.agi.resource.handle.PathHandle;
 import uno.anahata.asi.agi.resource.Resource;
+import uno.anahata.asi.agi.resource.handle.StringHandle;
+import uno.anahata.asi.agi.resource.handle.UrlHandle;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.resources.DefaultResourceUI;
+import uno.anahata.asi.swing.agi.resources.handle.PathHandlePanel;
+import uno.anahata.asi.swing.agi.resources.handle.StringHandlePanel;
+import uno.anahata.asi.swing.agi.resources.handle.UrlHandlePanel;
 import uno.anahata.asi.swing.icons.IconUtils;
 import uno.anahata.asi.swing.icons.SearchIcon;
 
@@ -43,6 +48,22 @@ public class NbResourceUI extends DefaultResourceUI {
             return new NetBeansTextResourceViewer(agiPanel, resource);
         }
         return super.createContent(resource, agiPanel);
+    }
+    
+        /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Provides specialized metadata panels based 
+     * on the handle's connectivity type.</p>
+     */
+    @Override
+    public JPanel createHandlePanel(Resource resource, AgiPanel agiPanel) {
+        if (resource.getHandle() instanceof NbHandle nbh) {
+            NbHandlePanel nhp = new NbHandlePanel();
+            nhp.setHandle(nbh);
+            return nhp;
+        } else {
+            return super.createHandlePanel(resource, agiPanel);
+        }
     }
 
     /** 

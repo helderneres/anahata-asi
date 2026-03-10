@@ -56,15 +56,6 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
     private transient FileChangeListener weakListener;
 
     /**
-     * Constructs a new NbHandle from a path string.
-     * @param path The local filesystem path.
-     */
-    public NbHandle(String path) {
-        this.path = path;
-        this.uri = new java.io.File(path).toURI();
-    }
-
-    /**
      * Constructs a new NbHandle from a URI.
      * @param uri The resource URI (file:, jar:, etc.).
      */
@@ -102,6 +93,8 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
                 
                 if (fileObject != null) {
                     setupListener();
+                } else {
+                    log.warn("Could not locate fileObject : uri: " + uri + " path: " + path);
                 }
             } catch (Exception e) {
                 log.debug("Failed to resolve FileObject for URI: {}", uri);
@@ -280,6 +273,9 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
     @Override
     public void rebind() {
         super.rebind();
+        if (path == null && uri.getScheme().equalsIgnoreCase("file")) {
+            path = uri.getPath();
+        }
         log.debug("Rebinding NbHandle for: {}", uri);
         getFileObject();
     }

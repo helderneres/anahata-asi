@@ -51,6 +51,8 @@ public class ToolPanel extends JPanel {
     private final JLabel nameLabel;
     /** Label for the tool description. */
     private final JLabel descLabel;
+    /** Panel for permissions footer. */
+    private final JPanel footerPanel;
     
     /** Panel containing the list of parameter sections. */
     private final JPanel paramsListPanel;
@@ -113,7 +115,7 @@ public class ToolPanel extends JPanel {
         add(tabbedPane, BorderLayout.CENTER);
 
         // Footer for Permissions
-        JPanel footerPanel = new JPanel(new BorderLayout());
+        footerPanel = new JPanel(new BorderLayout());
         footerPanel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         add(footerPanel, BorderLayout.SOUTH);
     }
@@ -164,9 +166,8 @@ public class ToolPanel extends JPanel {
         nativeDeclarationRenderer.render(); // Refresh the view
 
         // 4. Update Permissions (Footer)
-        JPanel footer = (JPanel) getComponent(2);
-        footer.removeAll();
-        footer.add(createPermissionButtonGroup(tool), BorderLayout.WEST);
+        footerPanel.removeAll();
+        footerPanel.add(createPermissionButtonGroup(tool), BorderLayout.WEST);
 
         revalidate();
         repaint();

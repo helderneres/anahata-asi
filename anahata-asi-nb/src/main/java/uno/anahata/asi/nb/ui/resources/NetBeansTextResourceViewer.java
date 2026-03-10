@@ -43,7 +43,7 @@ public class NetBeansTextResourceViewer extends AbstractTextResourceViewer {
     /** The actual NetBeans editor pane. */
     private JEditorPane editor;
     /** Wrapper to hold the extComponent once it is assembled by the IDE. */
-    private final JPanel wrapper = new JPanel(new BorderLayout());
+    private JPanel wrapper = null;
     /** Flag to prevent redundant adoption attempts. */
     private boolean onboarded = false;
 
@@ -67,6 +67,17 @@ public class NetBeansTextResourceViewer extends AbstractTextResourceViewer {
         if (editor == null) {
             initEditor();
         }
+        return getWrapper();
+    }
+    
+        /**
+     * Lazy getter for the wrapper panel to avoid NPE during super-constructor initialization.
+     * @return The wrapper panel.
+     */
+    private synchronized JPanel getWrapper() {
+        if (wrapper == null) {
+            wrapper = new JPanel(new BorderLayout());
+        }
         return wrapper;
     }
 
@@ -77,7 +88,7 @@ public class NetBeansTextResourceViewer extends AbstractTextResourceViewer {
      */
     @Override
     protected JComponent createEditorComponent() {
-        return wrapper;
+        return getWrapper();
     }
 
     /** 
