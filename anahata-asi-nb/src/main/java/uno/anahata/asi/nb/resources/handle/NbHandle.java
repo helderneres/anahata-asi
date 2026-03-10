@@ -91,7 +91,7 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
      * @return The FileObject instance.
      */
     public synchronized FileObject getFileObject() {
-        log.info("getFileObject()  fileObject is null =" + (fileObject == null) + " uri=" + uri + " path=" + path);
+        
         if (fileObject == null || !fileObject.isValid()) {
             try {
                 // 1. Try sURI resolution (Handles JARs and remote protocols)
@@ -107,7 +107,7 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
                 }
 
                 if (fileObject != null) {
-                    log.warn("fileObject found, setting up listener " + fileObject);
+                    log.info("fileObject found, setting up listener " + fileObject);
                     setupListener();
                 } else {
                     log.warn("Could not locate fileObject : uri: " + uri + " path: " + path);
@@ -302,17 +302,20 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
     @Override
     public void rebind() {
         super.rebind();
+        //log.debug("Rebinding NbHandle for:" + uri + " fileObject=" + fileObject);
         // HEALING GUARD: If the deserialized URI is a zombie, force a re-parse.
         // This fixes the 'URI is not absolute' exception.
         if (uri != null && uri.getScheme() == null) {
             log.warn("Healing zombie URI on rebind: {}", uri);
             this.uri = URI.create(uri.toString());
+            log.warn("After healing zombie URI: {}", uri);
         }
         
         if (path == null && uri.getScheme().equalsIgnoreCase("file")) {
             path = uri.getPath();
         }
-        log.info("Rebinding NbHandle for:" + uri + " fileObject " + fileObject);
+        
+        
         getFileObject();
     }
 
