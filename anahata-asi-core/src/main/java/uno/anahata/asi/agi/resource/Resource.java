@@ -41,7 +41,7 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
     /**
      * The immutable unique identifier for this resource instance.
      */
-    private final String id = UUID.randomUUID().toString();
+    private final String uuid = UUID.randomUUID().toString();
 
     /**
      * The source handle providing access to raw data and metadata.
@@ -100,6 +100,16 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
         this.handle = handle;
         this.handle.setOwner(this);
     }
+
+    /**
+     * The uuid of the resource is the context provider id.
+     * @return {@link uuid}
+     */
+    @Override
+    public String getId() {
+        return uuid;
+    }
+    
 
     /**
      * Returns the full content of the resource as a String.
@@ -298,7 +308,7 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
 
         if (dirty || stale) {
             log.info("Reloading resource: {} ({}) [Dirty: {}, Stale: {}]",
-                    getName(), id, dirty, stale);
+                    getName(), uuid, dirty, stale);
 
             // ATOMIC STATE TRANSITION: Break recursive loop by clearing flag before events
             this.dirty = false;
@@ -386,9 +396,11 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
      */
     @Override
     public String getHeader() {
-        StringBuilder sb = new StringBuilder("**Resource: ");
+        StringBuilder sb = new StringBuilder("Resource: uuid=\n").append(uuid).append("\n");        
+        sb.append("Id: ");
+        sb.append("Id: ").append(uuid).append("\n");
         sb.append(getName()).append("**\n");
-        sb.append("Id: ").append(id).append("\n");
+        sb.append("Description: ").append(description).append("\n");
         sb.append("Registration Time: ").append(TimeUtils.formatSmartTimestamp(java.time.Instant.ofEpochMilli(registrationTime))).append("\n");
         sb.append("Refresh Policy: ").append(getRefreshPolicy()).append("\n");
         sb.append("Context Position: ").append(getContextPosition()).append("\n");
