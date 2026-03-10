@@ -35,7 +35,7 @@ import uno.anahata.asi.agi.resource.handle.ResourceHandle;
 @Slf4j
 @Getter
 @RequiredArgsConstructor
-public class ResourceManager2 extends BasicPropertyChangeSource implements Rebindable, ContextProvider {
+public class ResourceManager extends BasicPropertyChangeSource implements Rebindable, ContextProvider {
 
     /** The parent agi session. */
     private final Agi agi;
@@ -100,8 +100,9 @@ public class ResourceManager2 extends BasicPropertyChangeSource implements Rebin
     /**
      * Unregisters a resource and cleans up its handle.
      * @param id The resource UUID.
+     * @param the Resource unregistered or null
      */
-    public void unregister(@NonNull String id) {
+    public Resource unregister(@NonNull String id) {
         Resource res;
         synchronized (resources) {
             res = resources.remove(id);
@@ -111,6 +112,7 @@ public class ResourceManager2 extends BasicPropertyChangeSource implements Rebin
             log.info("Unregistered V2 resource: {} ({})", res.getName(), id);
             propertyChangeSupport.firePropertyChange("resources", null, getResourcesList());
         }
+        return res;
     }
 
     /**
@@ -128,9 +130,13 @@ public class ResourceManager2 extends BasicPropertyChangeSource implements Rebin
      * @return Optional containing the resource.
      */
     public Optional<Resource> findByUri(@NonNull String uri) {
+        String search = uri.replace("file:/", "file:///").replace("file:////", "file:///");
         synchronized (resources) {
             return resources.values().stream()
-                    .filter(r -> r.getHandle().getUri().toString().equals(uri))
+                     .filter(r -> {
+                        String rUri = r.getHandle().getUri().toString();
+                        return rUri.replace("file:/", "file:///").replace("file:////", "file:///").equals(search);
+                    })
                     .findFirst();
         }
     }
@@ -191,7 +197,7 @@ public class ResourceManager2 extends BasicPropertyChangeSource implements Rebin
     /** {@inheritDoc} */
     @Override
     public void rebind() {
-        log.info("Rebinding ResourceManager2 for session: {}", agi.getConfig().getSessionId());
+        log.info("Rebinding ResourceManager for session: {}", agi.getConfig().getSessionId());
         super.rebind();
     }
 

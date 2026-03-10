@@ -78,7 +78,7 @@ public class TextFileReplacements extends AbstractTextFileWrite {
     public void validate(Agi agi) throws AiToolException {
         super.validate(agi);
         
-        Optional<Resource> res = agi.getResourceManager2().findByUri(Paths.get(path).toUri().toString());
+        Optional<Resource> res = agi.getResourceManager().findByUri(Paths.get(path).toUri().toString());
         try (InputStream is = res.get().getHandle().openStream()) {
             String content = IOUtils.toString(is, res.get().getHandle().getCharset());
             performReplacements(content); // Test replacements to validate occurrences

@@ -33,7 +33,7 @@ import uno.anahata.asi.agi.provider.AbstractAgiProvider;
 import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.agi.provider.ApiCallInterruptedException;
 import uno.anahata.asi.agi.provider.ServerTool;
-import uno.anahata.asi.agi.resource.ResourceManager2;
+import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.toolkit.Resources;
 import uno.anahata.asi.agi.status.ApiErrorRecord;
 import uno.anahata.asi.agi.status.AgiStatus;
@@ -66,7 +66,7 @@ public class Agi extends BasicPropertyChangeSource {
     private final ContextManager contextManager;
     
     /** The V2 URI-centric Resource Manager. */
-    private final ResourceManager2 resourceManager2;
+    private final ResourceManager resourceManager;
     
     /** The executor service for background tasks and API calls. */
     private transient ExecutorService executor;
@@ -158,7 +158,7 @@ public class Agi extends BasicPropertyChangeSource {
         log.info("Constructing agi with config: " + config);
         this.executor = AiExecutors.newCachedThreadPoolExecutor(config.getSessionId());
         this.contextManager = new ContextManager(this);
-        this.resourceManager2 = new ResourceManager2(this);
+        this.resourceManager = new ResourceManager(this);
         this.statusManager = new StatusManager(this);
         this.toolManager = new ToolManager(this);
         this.requestConfig = new RequestConfig(this);

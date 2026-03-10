@@ -29,7 +29,7 @@ import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.agi.message.InputUserMessage;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.resource.handle.ResourceHandle;
-import uno.anahata.asi.agi.resource.ResourceManager2;
+import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.agi.status.AgiStatus;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.AgiTransferHandler;
@@ -57,7 +57,7 @@ import uno.anahata.asi.swing.audio.MicrophonePanel;
  * </p>
  * <p>
  * <b>Context Intent:</b> Files dropped or attached via the "Attach" button are 
- * automatically registered as managed resources in the {@link ResourceManager2}, 
+ * automatically registered as managed resources in the {@link ResourceManager}, 
  * while screenshots and application frames are attached directly to the message history.
  * </p>
  *
@@ -336,7 +336,7 @@ public class InputPanel extends JPanel {
      */
     public void registerPathsAsResources(List<Path> paths, String registeredBy) {
         executeTask("Register Resources", () -> {
-            ResourceManager2 manager = agi.getResourceManager2();
+            ResourceManager manager = agi.getResourceManager();
             for (Path p : paths) {
                 ResourceHandle handle = agi.getConfig().createResourceHandle(p.toUri());
                 Resource resource = new Resource(handle);

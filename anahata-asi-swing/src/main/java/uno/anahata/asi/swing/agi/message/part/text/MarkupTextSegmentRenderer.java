@@ -64,8 +64,8 @@ public class MarkupTextSegmentRenderer extends AbstractTextSegmentRenderer {
                 AutolinkExtension.create(),
                 StrikethroughExtension.create(),
                 TaskListExtension.create(),
-                EmojiExtension.create(),
-                AdmonitionExtension.create()
+                EmojiExtension.create()
+                //AdmonitionExtension.create()
         ));
         options.set(HtmlRenderer.SOFT_BREAK, "<br />");
         this.markdownParser = Parser.builder(options).build();

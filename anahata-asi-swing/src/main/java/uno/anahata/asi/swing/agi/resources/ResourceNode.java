@@ -13,9 +13,9 @@ import uno.anahata.asi.swing.agi.context.AbstractContextNode;
  * A context tree node representing a single V2 managed resource.
  */
 @Slf4j
-public class Resource2Node extends AbstractContextNode<Resource> {
+public class ResourceNode extends AbstractContextNode<Resource> {
 
-    public Resource2Node(AgiPanel agiPanel, Resource userObject) {
+    public ResourceNode(AgiPanel agiPanel, Resource userObject) {
         super(agiPanel, userObject);
     }
 

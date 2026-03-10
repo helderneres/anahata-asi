@@ -128,7 +128,8 @@ public class ToolPanel extends JPanel {
         // THE SINGULARITY PATH: Directly instantiate the concrete worker.
         CodeBlockSegmentRenderer renderer = new CodeBlockSegmentRenderer(parentPanel.getAgiPanel(), "", "json");
         renderer.setEditable(false);
-        renderer.render(); // Ensure the component is created before adding to JTabbedPane
+        // Defer rendering to avoid layout races
+        javax.swing.SwingUtilities.invokeLater(renderer::render); 
         return renderer;
     }
 

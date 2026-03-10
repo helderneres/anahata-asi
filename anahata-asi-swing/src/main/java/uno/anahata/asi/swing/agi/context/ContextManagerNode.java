@@ -3,13 +3,13 @@
  */
 package uno.anahata.asi.swing.agi.context;
 
-import uno.anahata.asi.swing.agi.resources.Resources2Node;
+import uno.anahata.asi.swing.agi.resources.ResourcesNode;
 import java.util.ArrayList;
 import java.util.List;
 import uno.anahata.asi.agi.context.ContextManager;
 import uno.anahata.asi.agi.context.ContextProvider;
 import uno.anahata.asi.agi.tool.spi.AbstractToolkit;
-import uno.anahata.asi.agi.resource.ResourceManager2;
+import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.swing.agi.AgiPanel;
 
 /**
@@ -61,8 +61,8 @@ public class ContextManagerNode extends AbstractContextNode<ContextManager> {
     /** {@inheritDoc} */
     @Override
     protected AbstractContextNode<?> createChildNode(Object obj) {
-        if (obj instanceof ResourceManager2 rm2) {
-            return new Resources2Node(agiPanel, rm2);
+        if (obj instanceof ResourceManager rm2) {
+            return new ResourcesNode(agiPanel, rm2);
         } else if (obj instanceof ContextProvider cp) {
             return new ProviderNode(agiPanel, cp);
         } else if (obj instanceof ContextManager cm) {

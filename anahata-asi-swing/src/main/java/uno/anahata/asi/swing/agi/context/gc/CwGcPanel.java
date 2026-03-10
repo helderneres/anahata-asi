@@ -97,7 +97,7 @@ public class CwGcPanel extends JPanel {
         }
         
         this.historyListener = new EdtPropertyChangeListener(this, agi.getContextManager(), "history", evt -> refresh());
-        this.resourcesListener = new EdtPropertyChangeListener(this, agi.getResourceManager2(), "resources", evt -> refresh());
+        this.resourcesListener = new EdtPropertyChangeListener(this, agi.getResourceManager(), "resources", evt -> refresh());
     }
 
     private void initComponents() {

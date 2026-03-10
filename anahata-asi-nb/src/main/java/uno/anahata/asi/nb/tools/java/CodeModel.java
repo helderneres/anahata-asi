@@ -87,7 +87,7 @@ public class CodeModel extends AnahataToolkit {
             // DIRECT REGISTRATION: Create handle with FileObject to avoid subsequent lookups
             NbHandle handle = new NbHandle(fo);
             String actor = getModelId() + " via @AiTool getTypeSources";
-            getAgi().getResourceManager2().registerHandle(handle, actor);
+            getAgi().getResourceManager().registerHandle(handle, actor);
             return "Source file '" + fo.getNameExt() + "' registered as a managed resource.";
         }
         return "Source code not available for this type (it may be a library binary without source attached).";

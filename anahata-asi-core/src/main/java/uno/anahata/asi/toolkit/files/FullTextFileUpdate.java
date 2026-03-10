@@ -51,7 +51,7 @@ public class FullTextFileUpdate extends AbstractTextFileWrite {
     public void validate(Agi agi) throws AiToolException {
         super.validate(agi);
         
-        Optional<Resource> res = agi.getResourceManager2().findByPath(getPath());
+        Optional<Resource> res = agi.getResourceManager().findByPath(getPath());
         if (res.isPresent()) {
             try {
                 Resource r = res.get();

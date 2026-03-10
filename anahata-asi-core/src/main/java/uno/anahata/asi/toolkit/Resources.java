@@ -22,7 +22,7 @@ import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.tool.AiToolParam;
 import uno.anahata.asi.agi.resource.Resource;
-import uno.anahata.asi.agi.resource.ResourceManager2;
+import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.toolkit.files.FullTextFileCreate;
 import uno.anahata.asi.toolkit.files.FullTextFileUpdate;
 import uno.anahata.asi.toolkit.files.TextFileReplacements;
@@ -83,7 +83,7 @@ public class Resources extends AnahataToolkit {
         
         List<Resource> toRegister = new ArrayList<>();
         List<String> ids = new ArrayList<>();
-        ResourceManager2 manager = getAgi().getResourceManager2();
+        ResourceManager manager = getAgi().getResourceManager();
         
         for (String uriString : uriStrings) {
             Optional<Resource> existing = manager.findByUri(uriString);
@@ -122,7 +122,7 @@ public class Resources extends AnahataToolkit {
     public void updateViewport(
             @AiToolParam("The unique resource identifier.") String resourceId, 
             @AiToolParam("The new viewport settings.") TextViewportSettings settings) throws Exception {
-        Resource res = getAgi().getResourceManager2().getResources().get(resourceId);
+        Resource res = getAgi().getResourceManager().getResources().get(resourceId);
         if (res != null && res.getView() instanceof TextView tv) {
             tv.getViewport().setSettings(settings);
             tv.markDirty(); // Explicitly trigger re-interpretation
@@ -140,7 +140,8 @@ public class Resources extends AnahataToolkit {
     @AiTool("Unloads multiple resources from the context.")
     public void unloadResources(@AiToolParam("The list of resource identifiers.") List<String> resourceIds) {
         for (String id : resourceIds) {
-            getAgi().getResourceManager2().unregister(id);
+            Resource r = getAgi().getResourceManager().unregister(id);
+            log("Unregistered " + r);
         }
     }
 
@@ -163,7 +164,7 @@ public class Resources extends AnahataToolkit {
         
         ResourceHandle handle = getAgi().getConfig().createResourceHandle(path.toUri());
         Resource resource = new Resource(handle);
-        getAgi().getResourceManager2().register(resource, getActor());
+        getAgi().getResourceManager().register(resource, getActor());
         
         log("Created text file: " + create.getPath());
         return resource.getId();
@@ -180,7 +181,7 @@ public class Resources extends AnahataToolkit {
         update.validate(getAgi());
         
         Path path = Paths.get(update.getPath());
-        Optional<Resource> res = getAgi().getResourceManager2().findByPath(path.toString());
+        Optional<Resource> res = getAgi().getResourceManager().findByPath(path.toString());
         if (res.isPresent()) {
             // SINGULAR ENTRY POINT: The Resource orchestrator now manages both 
             // connectivity (disk write) and state (dirty marking).
@@ -200,7 +201,7 @@ public class Resources extends AnahataToolkit {
         replacements.validate(getAgi());
         
         Path path = Paths.get(replacements.getPath());
-        Optional<Resource> res = getAgi().getResourceManager2().findByPath(path.toString());
+        Optional<Resource> res = getAgi().getResourceManager().findByPath(path.toString());
         
         if (res.isPresent()) {
             String content = res.get().asText();

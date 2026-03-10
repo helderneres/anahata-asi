@@ -101,7 +101,7 @@ public class NetBeansAsiContainer extends AsiContainer {
             AnahataAnnotationProvider.fireRefresh(null, null);
         };
         
-        agi.getResourceManager2().addPropertyChangeListener("resources", listener);
+        agi.getResourceManager().addPropertyChangeListener("resources", listener);
         sessionListeners.put(agi.getConfig().getSessionId(), listener);
     }
 
@@ -116,7 +116,7 @@ public class NetBeansAsiContainer extends AsiContainer {
         PropertyChangeListener listener = sessionListeners.remove(agi.getConfig().getSessionId());
         if (listener != null) {
             log.info("Cleaning up annotation pulse for agi session: {}", agi.getShortId());
-            agi.getResourceManager2().removePropertyChangeListener("resources", listener);
+            agi.getResourceManager().removePropertyChangeListener("resources", listener);
         }
     }
 

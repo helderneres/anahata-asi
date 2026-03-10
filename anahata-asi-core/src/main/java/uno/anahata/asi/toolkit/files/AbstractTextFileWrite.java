@@ -75,7 +75,7 @@ public abstract class AbstractTextFileWrite {
         }
 
         // 2. Resource Context Check - Operation MUST be performed on a managed resource
-        Optional<Resource> res = agi.getResourceManager2().findByUri(p.toUri().toString());
+        Optional<Resource> res = agi.getResourceManager().findByUri(p.toUri().toString());
         if (res.isEmpty()) {
              throw new AiToolException("Resource is not in context under uri " + p.toUri() + ". You must load the file before attempting to update it: " + path);
         }

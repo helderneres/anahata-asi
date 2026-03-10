@@ -177,7 +177,7 @@ public class Refactor extends AnahataToolkit{
      * It provides specific instructions on how to purge or recover deleted resource content.
      */
     private String enrichWithContextInfo(String path, String result, String action) {
-        Optional<Resource> res = getResourceManager2().findByPath(path);
+        Optional<Resource> res = getResourceManager().findByPath(path);
         if (res.isPresent()) {
             String uuid = res.get().getId();
             StringBuilder sb = new StringBuilder(result);

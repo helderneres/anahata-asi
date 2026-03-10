@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import uno.anahata.asi.agi.Agi;
 
 import uno.anahata.asi.agi.resource.Resource;
-import uno.anahata.asi.agi.resource.ResourceManager2;
+import uno.anahata.asi.agi.resource.ResourceManager;
 
 /**
  * Handles the CLI menu for viewing and managing stateful resources.
@@ -26,7 +26,7 @@ public class ResourcesMenu {
      * Runs the interactive CLI menu for resource management.
      */
     public void runMenu() {
-        ResourceManager2 resourceManager = agi.getResourceManager2();
+        ResourceManager resourceManager = agi.getResourceManager();
         List<Resource> resources = resourceManager.getResourcesList();
 
         while (true) {

@@ -101,7 +101,7 @@ public class ProjectContextProvider extends AbstractProjectContextProvider {
      */
     private void syncMdResource() {
         String mdPath = new File(projectPath, "anahata.md").getAbsolutePath();
-        Optional<Resource> existing = projectsToolkit.getAgi().getResourceManager2().findByPath(mdPath);
+        Optional<Resource> existing = projectsToolkit.getAgi().getResourceManager().findByPath(mdPath);
 
         if (isProviding()) {
             if (existing.isEmpty()) {
@@ -112,7 +112,7 @@ public class ProjectContextProvider extends AbstractProjectContextProvider {
                     FileObject mdFo = Projects.ensureAnahataMdExists(p);
                     Path path = new File(mdFo.getPath()).toPath();
                     
-                    List<Resource> registered = projectsToolkit.getAgi().getResourceManager2().registerPaths(
+                    List<Resource> registered = projectsToolkit.getAgi().getResourceManager().registerPaths(
                         List.of(path), 
                         "added to context by user via project instructions sync"
                     );
@@ -132,7 +132,7 @@ public class ProjectContextProvider extends AbstractProjectContextProvider {
             }
         } else {
             existing.ifPresent(resource -> {
-                projectsToolkit.getAgi().getResourceManager2().unregister(resource.getId());
+                projectsToolkit.getAgi().getResourceManager().unregister(resource.getId());
                 log.info("Unregistered anahata.md for project: {}", projectPath);
             });
         }

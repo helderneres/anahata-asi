@@ -402,7 +402,7 @@
                             -List providers
                             +addMessage(AbstractMessage)
                         }
-                        class ResourceManager2 {
+                        class ResourceManager {
                             -Map resources
                         }
                         class Resource {
@@ -423,7 +423,7 @@
                         }
                         ContextProvider <|.. BasicContextProvider
                         BasicContextProvider <|-- ContextManager
-                        BasicContextProvider <|-- ResourceManager2
+                        BasicContextProvider <|-- ResourceManager
                         BasicContextProvider <|-- Resource
                         Resource o-- ContextPosition
                         Resource o-- RefreshPolicy
@@ -437,7 +437,7 @@
                 <p>The JASI platform follows a <b>Data-First Reactive UI</b> pattern. Core components implement the <code>PropertyChangeSource</code> interface, allowing the Swing UI to remain perfectly synchronized with the domain state.</p>
                 
                 <div class="code-header">Example: PropertyChangeSource Implementation</div>
-                <pre><code class="language-java">public class ResourceManager2 extends BasicPropertyChangeSource {
+                <pre><code class="language-java">public class ResourceManager extends BasicPropertyChangeSource {
     public void register(Resource resource) {
         resources.put(resource.getId(), resource);
         // Fires event to trigger UI tree refresh
@@ -463,7 +463,7 @@
                         </div>
                         <div class="logic-card">
                             <h5>Reactive Awareness</h5>
-                            <p>The <code>ResourceManager2</code> identifies resources that are registered but disabled, injecting their metadata headers into the RAG message. This ensures the ASI remains aware of available but silent assets.</p>
+                            <p>The <code>ResourceManager</code> identifies resources that are registered but disabled, injecting their metadata headers into the RAG message. This ensures the ASI remains aware of available but silent assets.</p>
                         </div>
                     </div>
                 </div>

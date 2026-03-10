@@ -116,7 +116,8 @@ public class Radio extends AnahataToolkit {
 
         if (playing && currentStationUrl != null) {
             log.info("Attempting to resume radio stream: {}", currentStationUrl);
-            start(currentStationUrl);
+            //agi executor service not ready during rebind() Agi is probably the last object to get deserialized.
+            //start(currentStationUrl);
         }
     }
 

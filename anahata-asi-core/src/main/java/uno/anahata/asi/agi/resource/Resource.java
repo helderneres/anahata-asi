@@ -76,7 +76,7 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
 
     /**
      * The epoch timestamp in milliseconds when this resource was registered.
-     * Set authoritatively by the {@link ResourceManager2}.
+     * Set authoritatively by the {@link ResourceManager}.
      */
     private long registrationTime;
 

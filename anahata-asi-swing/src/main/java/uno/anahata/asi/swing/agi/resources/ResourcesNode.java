@@ -4,7 +4,7 @@ package uno.anahata.asi.swing.agi.resources;
 import java.util.List;
 import javax.swing.Icon;
 import uno.anahata.asi.agi.resource.Resource;
-import uno.anahata.asi.agi.resource.ResourceManager2;
+import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.context.AbstractContextNode;
 import uno.anahata.asi.swing.icons.PrismIcon;
@@ -12,11 +12,11 @@ import uno.anahata.asi.swing.icons.PrismIcon;
 /**
  * A context tree node representing the V2 Resource Manager.
  */
-public class Resources2Node extends AbstractContextNode<ResourceManager2> {
+public class ResourcesNode extends AbstractContextNode<ResourceManager> {
 
     private static final Icon ICON = new PrismIcon(16);
 
-    public Resources2Node(AgiPanel agiPanel, ResourceManager2 userObject) {
+    public ResourcesNode(AgiPanel agiPanel, ResourceManager userObject) {
         super(agiPanel, userObject);
     }
 
@@ -48,7 +48,7 @@ public class Resources2Node extends AbstractContextNode<ResourceManager2> {
     @Override
     protected AbstractContextNode<?> createChildNode(Object obj) {
         if (obj instanceof Resource res) {
-            return new Resource2Node(agiPanel, res);
+            return new ResourceNode(agiPanel, res);
         }
         return null;
     }

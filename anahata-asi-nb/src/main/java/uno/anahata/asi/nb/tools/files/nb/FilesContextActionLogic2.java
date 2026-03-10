@@ -26,7 +26,7 @@ import uno.anahata.asi.toolkit.Resources;
  * Logic handler for adding NetBeans files and folders to the V2 AI context.
  * <p>
  * This class bridges the IDE's {@link FileObject} selections with the 
- * {@link uno.anahata.asi.agi.resource.ResourceManager2}. It handles recursion 
+ * {@link uno.anahata.asi.agi.resource.ResourceManager}. It handles recursion 
  * for folders and provides a V1-compatible API for seamless migration.
  * </p>
  * 
@@ -51,7 +51,7 @@ public class FilesContextActionLogic2 {
         collectAdditions(fo, targetAgi, recursive, pathsToRegister, fosToRefresh);
         
         if (!pathsToRegister.isEmpty()) {
-            targetAgi.getResourceManager2().registerPaths(pathsToRegister, "added to context by user via context menu item");
+            targetAgi.getResourceManager().registerPaths(pathsToRegister, "added to context by user via context menu item");
             fireBatchRefreshRecursive(fosToRefresh);
             log.info("Batch added {} resources to V2 context in session '{}'", 
                     pathsToRegister.size(), targetAgi.getDisplayName());
@@ -64,7 +64,7 @@ public class FilesContextActionLogic2 {
             File file = FileUtil.toFile(fo);
             if (file != null) {
                 String path = file.getAbsolutePath();
-                if (targetAgi.getResourceManager2().findByPath(path).isEmpty()) {
+                if (targetAgi.getResourceManager().findByPath(path).isEmpty()) {
                     toRegister.add(file.toPath());
                     fosToRefresh.add(fo);
                 }
@@ -93,7 +93,7 @@ public class FilesContextActionLogic2 {
         
         if (!idsToRemove.isEmpty()) {
             for (String id : idsToRemove) {
-                targetAgi.getResourceManager2().unregister(id);
+                targetAgi.getResourceManager().unregister(id);
             }
             fireBatchRefreshRecursive(fosToRefresh);
             log.info("Batch removed {} resources from V2 context in session '{}'", 
@@ -106,7 +106,7 @@ public class FilesContextActionLogic2 {
         if (fo.isData()) {
             File file = FileUtil.toFile(fo);
             if (file != null) {
-                targetAgi.getResourceManager2().findByPath(file.getAbsolutePath()).ifPresent(res -> {
+                targetAgi.getResourceManager().findByPath(file.getAbsolutePath()).ifPresent(res -> {
                     ids.add(res.getId());
                     fos.add(fo);
                 });
@@ -126,7 +126,7 @@ public class FilesContextActionLogic2 {
     public static boolean isInContext(FileObject fo, Agi agi) {
         if (fo.isData()) {
             File file = FileUtil.toFile(fo);
-            return file != null && agi.getResourceManager2().findByPath(file.getAbsolutePath()).isPresent();
+            return file != null && agi.getResourceManager().findByPath(file.getAbsolutePath()).isPresent();
         }
         return false;
     }
@@ -164,12 +164,12 @@ public class FilesContextActionLogic2 {
         String absolutePath = file.getAbsolutePath();
 
         if (fo.isData()) {
-            return agi.getResourceManager2().findByPath(absolutePath).isPresent() ? 1 : 0;
+            return agi.getResourceManager().findByPath(absolutePath).isPresent() ? 1 : 0;
         }
 
         String folderPrefix = absolutePath.endsWith(File.separator) ? absolutePath : absolutePath + File.separator;
 
-        return (int) agi.getResourceManager2().getResourcesList().stream()
+        return (int) agi.getResourceManager().getResourcesList().stream()
                 .filter(r -> {
                     String path = r.getHandle().getUri().getPath();
                     if (path == null || !path.startsWith(folderPrefix)) return false;

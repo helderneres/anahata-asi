@@ -51,7 +51,7 @@ import uno.anahata.asi.swing.internal.SwingTask;
  * @author anahata
  */
 @Slf4j
-public class Resource2Panel extends JPanel {
+public class ResourcePanel extends JPanel {
 
     /** The parent agi panel. */
     private final AgiPanel agiPanel;
@@ -97,7 +97,7 @@ public class Resource2Panel extends JPanel {
      * Constructs a new Resource2Panel.
      * @param agiPanel The parent AgiPanel.
      */
-    public Resource2Panel(AgiPanel agiPanel) {
+    public ResourcePanel(AgiPanel agiPanel) {
         this.agiPanel = agiPanel;
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -308,7 +308,7 @@ public class Resource2Panel extends JPanel {
             
             this.activeViewer = activeStrategy.createContent(currentResource, agiPanel);
             
-            // ARCHITECTURAL FIDELITY: Hide the viewer's internal toolbar because Resource2Panel 
+            // ARCHITECTURAL FIDELITY: Hide the viewer's internal toolbar because ResourcePanel 
             // provides its own integrated control header and sectoral view panels.
             if (activeViewer instanceof AbstractTextResourceViewer atrv) {
                 atrv.setToolbarVisible(false);

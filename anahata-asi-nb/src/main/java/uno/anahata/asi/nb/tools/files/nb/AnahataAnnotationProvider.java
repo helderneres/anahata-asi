@@ -13,6 +13,7 @@ import org.netbeans.modules.masterfs.providers.InterceptionListener;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileStatusEvent;
 import org.openide.filesystems.FileSystem;
+import org.openide.filesystems.FileUtil;
 import org.openide.util.ImageUtilities;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
@@ -308,9 +309,14 @@ public class AnahataAnnotationProvider extends AnnotationProvider {
             try {
                 for (AnnotationProvider ap : Lookup.getDefault().lookupAll(AnnotationProvider.class)) {
                     if (ap instanceof AnahataAnnotationProvider aap) {
+                            
                         if (files == null || files.isEmpty()) {
                             // Broad refresh: trigger status change on all providers
-                            aap.fireFileStatusChanged(new FileStatusEvent(null, Collections.emptySet(), true, true));
+                            FileSystem defaultFs = fs;
+                            if (defaultFs == null) {
+                                defaultFs = FileUtil.getConfigRoot().getFileSystem();
+                            }
+                            aap.fireFileStatusChanged(new FileStatusEvent(defaultFs, Collections.emptySet(), true, true));
                         } else {
                             aap.fireFileStatusChanged(new FileStatusEvent(fs, files, true, true));
                         }
