@@ -45,8 +45,7 @@ public class NbResourceUI extends DefaultResourceUI {
     @Override
     public JComponent createContent(Resource resource, AgiPanel agiPanel) {
         if (resource.getHandle().isTextual()) {
-            //leave commented out until we fix the NbHandle uri stuff
-            //return new NetBeansTextResourceViewer(agiPanel, resource);
+            return new NetBeansTextResourceViewer(agiPanel, resource);
         }
         return super.createContent(resource, agiPanel);
     }

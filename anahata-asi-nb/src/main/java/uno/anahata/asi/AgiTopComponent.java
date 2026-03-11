@@ -10,6 +10,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
@@ -45,6 +46,7 @@ import uno.anahata.asi.swing.internal.SwingUtils;
 public final class AgiTopComponent extends TopComponent {
 
     /** The UI panel for the agi session. */
+    @Getter
     private transient AgiPanel agiPanel;
     
     /** The unique ID of the session managed by this component. */

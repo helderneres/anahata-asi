@@ -156,6 +156,9 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         cardPanel.add(createEditorComponent(), "editor");
         add(cardPanel, BorderLayout.CENTER);
         
+        // INITIALIZATION SIGNAL: Force the card layout to show the initial state.
+        setEditing(false);
+        
         syncWithResource();
     }
 

@@ -5,6 +5,7 @@ package uno.anahata.asi.swing.agi.resources;
 import uno.anahata.asi.swing.agi.resources.view.AbstractViewPanel;
 import uno.anahata.asi.swing.agi.resources.handle.AbstractHandlePanel;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -44,7 +45,7 @@ import uno.anahata.asi.swing.internal.SwingTask;
  * </p>
  * <p>
  * <b>Capability-Aware UI:</b> For non-textual resources, the high-fidelity 
- * 'Capability View' (Editor/Viewer) is automatically hidden, leaving only 
+ * 'Capabilities' tab is automatically hidden, leaving only 
  * the 'Model Perspective'.
  * </p>
  * 
@@ -286,10 +287,10 @@ public class ResourcePanel extends JPanel {
         }).execute();
 
         // 3. Show Placeholder
-        JLabel loadingLabel = new JLabel("Sensing Resource...", SwingConstants.CENTER);
+        JLabel loadingLabel = new JLabel("Sensing Blaugrana Resource...", SwingConstants.CENTER);
         loadingLabel.setFont(loadingLabel.getFont().deriveFont(Font.ITALIC, 16f));
         viewerContainer.add(loadingLabel, BorderLayout.CENTER);
-        mainTabs.addTab("Capability View", viewerContainer);
+        mainTabs.addTab("Capabilities", viewerContainer);
     }
 
     /**
@@ -314,7 +315,18 @@ public class ResourcePanel extends JPanel {
                 atrv.setToolbarVisible(false);
             }
             
-            viewerContainer.add(activeViewer, BorderLayout.CENTER);
+            // HEIGHT FIDELITY: Cap the Capability view to 800px to ensure the internal scroller 
+            // is triggered and navigation is possible for long resources.
+            JPanel cappedWrapper = new JPanel(new BorderLayout()) {
+                @Override
+                public Dimension getPreferredSize() {
+                    Dimension d = super.getPreferredSize();
+                    return new Dimension(d.width, Math.min(800, d.height));
+                }
+            };
+            cappedWrapper.add(activeViewer, BorderLayout.CENTER);
+            
+            viewerContainer.add(cappedWrapper, BorderLayout.CENTER);
             activeStrategy.populateActions(actionPanel, currentResource, agiPanel);
             editBtn.setVisible(activeStrategy.canEdit(currentResource) && currentResource.isWritable());
         } else {
@@ -364,9 +376,9 @@ public class ResourcePanel extends JPanel {
     private void updateTabs() {
         mainTabs.removeAll();
         
-        // Tab 1: Capability View (Only for textual resources or valid views)
+        // Tab 1: Capabilities (Only for textual resources or valid views)
         if (currentResource.getHandle().isTextual() || currentResource.getView() != null) {
-            mainTabs.addTab("Capability View", viewerContainer);
+            mainTabs.addTab("Capabilities", viewerContainer);
         }
         
         // Tab 2: Model Perspective (RAG)
