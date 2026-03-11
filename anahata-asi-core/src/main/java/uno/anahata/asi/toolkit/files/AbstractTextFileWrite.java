@@ -88,7 +88,7 @@ public abstract class AbstractTextFileWrite {
         // 4. Optimistic Locking Check
         long actualLm = res.get().getHandle().getLastModified();
         if (lastModified > 0 && lastModified != actualLm) {
-            throw new AiToolException("Optimistic locking failure for " + path + ". The file has been modified by another process since it was last loaded (disk=" + actualLm + ", expected=" + lastModified + "). Please re-read the file.");
+            throw new AiToolException("Optimistic locking failure for " + path + ". The time stamp provided doesnt match the last modified timestamp on disk:" + actualLm + ", you provided=" + lastModified + ").");
         }
     }
 }
