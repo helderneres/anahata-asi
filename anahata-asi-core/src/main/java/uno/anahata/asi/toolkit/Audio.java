@@ -4,6 +4,7 @@ package uno.anahata.asi.toolkit;
 import java.io.File;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
 import javax.sound.sampled.*;
@@ -217,7 +218,8 @@ public class Audio extends AnahataToolkit {
                 AudioSystem.write(ais, AudioFileFormat.Type.WAVE, tempFile);
             }
 
-            addAttachment(tempFile);
+            byte[] bytes = Files.readAllBytes(tempFile.toPath());
+            addAttachment(bytes, "audio/wav");
             return "Recording complete. Attached to message.";
         }
     }
