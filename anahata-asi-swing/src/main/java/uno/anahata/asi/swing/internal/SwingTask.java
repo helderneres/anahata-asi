@@ -11,6 +11,7 @@ import javax.swing.SwingWorker;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import uno.anahata.asi.swing.components.ExceptionDialog;
 
 /**
  * A robust, specialized {@link SwingWorker} implementation for executing 
@@ -122,7 +123,7 @@ public class SwingTask<T> extends SwingWorker<T, Void> {
             }
         } catch (InterruptedException | ExecutionException e) {
             if (showError) {
-                SwingUtils.showException(owner, taskName, "An error occurred during background task " + taskName, e);
+                ExceptionDialog.show(owner, taskName, "An error occurred during background task " + taskName, e);
             }
             if (onError != null) {
                 onError.accept(e);

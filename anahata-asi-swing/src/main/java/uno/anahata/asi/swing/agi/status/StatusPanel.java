@@ -45,6 +45,7 @@ import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 import uno.anahata.asi.swing.internal.SwingUtils;
 import uno.anahata.asi.swing.audio.AudioPlaybackPanel;
 import uno.anahata.asi.agi.tool.ToolManager;
+import uno.anahata.asi.swing.components.ExceptionDialog;
 
 /**
  * A panel that displays the real-time status of the agi session, including
@@ -331,7 +332,7 @@ public class StatusPanel extends JPanel {
             apiErrorsPanel.add(new JLabel(headerText));
 
             for (ApiErrorRecord error : errors) {
-                String displayString = StringUtils.abbreviateMiddle(error.getException().toString(), " ... ", 108) ;
+                String displayString = StringUtils.abbreviateMiddle(error.getStackTrace(), " ... ", 108) ;
                 String apiKeySuffix = StringUtils.right(error.getApiKey(), 4);
                 String errorText = String.format("[%s] [..%s] %s",
                                                  TIME_FORMAT.format(error.getTimestamp().toEpochMilli()),
@@ -342,7 +343,7 @@ public class StatusPanel extends JPanel {
                 errorLink.setText(errorText);
                 errorLink.setToolTipText("Click to view full stack trace");
                 errorLink.setForeground(Color.RED.darker());
-                errorLink.addActionListener(e -> SwingUtils.showException(this, "API Error", error.getException().getMessage(), error.getException()));
+                errorLink.addActionListener(e -> ExceptionDialog.show(this, "API Error", "Excpetion furing API request", error.getStackTrace()));
                 apiErrorsPanel.add(errorLink);
             }
             

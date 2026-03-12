@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Paths;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -69,8 +70,7 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
      * @param uri The resource URI (file:, jar:, etc.).
      */
     public NbHandle(URI uri) {
-        this.uri = uri;
-        this.path = uri.getScheme().equalsIgnoreCase("file") ? uri.getPath() : null;
+        setUri(uri);
     }
 
     /**
@@ -79,10 +79,26 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
      * @param fileObject The NetBeans FileObject to wrap.
      */
     public NbHandle(FileObject fileObject) {
+        this(fileObject.toURI());
         this.fileObject = fileObject;
-        this.uri = fileObject.toURI();
-        this.path = uri.getScheme().equalsIgnoreCase("file") ? uri.getPath() : null;
         setupListener();
+    }
+
+    /**
+     * Authoritatively sets and normalizes the resource URI.
+     * For local files, it forces the triple-slash (file:///) format and 
+     * extracts the physical path to maintain identity consistency within the manager.
+     * 
+     * @param uri The URI to set.
+     */
+    private void setUri(URI uri) {
+        if (uri != null && uri.getScheme() != null && uri.getScheme().equalsIgnoreCase("file")) {
+            this.uri = Paths.get(uri).toUri();
+            this.path = this.uri.getPath();
+        } else {
+            this.uri = uri;
+            this.path = null;
+        }
     }
 
     /**
@@ -91,26 +107,22 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
      * @return The FileObject instance.
      */
     public synchronized FileObject getFileObject() {
-        
+
         if (fileObject == null || !fileObject.isValid()) {
             try {
-                // 1. Try sURI resolution (Handles JARs and remote protocols)
-                log.info("Attempting convert uri to  URL for " + uri);
+                // 1. Try URI resolution (Handles JARs and remote protocols)
                 URL url = uri.toURL();
-                log.info("Attempting to locate fileobject using URLMapper.findFileObject(url) with  " + url);
                 fileObject = URLMapper.findFileObject(url);
 
                 // 2. Fallback to path resolution for local files
                 if (fileObject == null && path != null) {
-                    log.info("File Object not located using url but we have a path so attempting with FileUtil " + path);
                     fileObject = FileUtil.toFileObject(FileUtil.normalizeFile(new java.io.File(path)));
                 }
 
                 if (fileObject != null) {
-                    log.info("fileObject found, setting up listener " + fileObject);
                     setupListener();
                 } else {
-                    log.warn("Could not locate fileObject : uri: " + uri + " path: " + path);
+                    log.warn("Could not locate fileObject for identity : uri: {} path: {}", uri, path);
                 }
             } catch (Exception e) {
                 log.error("Failed to resolve FileObject for URI: " + uri, e);
@@ -302,20 +314,14 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
     @Override
     public void rebind() {
         super.rebind();
-        //log.debug("Rebinding NbHandle for:" + uri + " fileObject=" + fileObject);
         // HEALING GUARD: If the deserialized URI is a zombie, force a re-parse.
-        // This fixes the 'URI is not absolute' exception.
         if (uri != null && uri.getScheme() == null) {
             log.warn("Healing zombie URI on rebind: {}", uri);
-            this.uri = URI.create(uri.toString());
-            log.warn("After healing zombie URI: {}", uri);
+            setUri(URI.create(uri.toString()));
+        } else {
+            setUri(uri);
         }
-        
-        if (path == null && uri.getScheme().equalsIgnoreCase("file")) {
-            path = uri.getPath();
-        }
-        
-        
+
         getFileObject();
     }
 
@@ -355,9 +361,8 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
      */
     @Override
     public void fileRenamed(FileRenameEvent fe) {
-        // Path/URI have changed
-        this.uri = fe.getFile().toURI();
-        this.path = uri.getScheme().equalsIgnoreCase("file") ? uri.getPath() : null;
+        // Path/URI have changed - Re-normalize via the setter
+        setUri(fe.getFile().toURI());
 
         if (owner != null) {
             owner.markDirty();

@@ -216,4 +216,25 @@ public interface ContextProvider {
     default String getIconId() {
         return null;
     }
+
+    /**
+     * Calculates the effective token count for system instructions.
+     * 
+     * @return The effective instructions token count.
+     */
+    default int getEffectiveInstructionsTokenCount() {
+        return isEffectivelyProviding() ? getInstructionsTokenCount() : 0;
+    }
+
+    /**
+     * Calculates the effective token count for RAG content.
+     * This includes the header overhead which is always injected by the manager.
+     * 
+     * @return The effective RAG token count.
+     */
+    default int getEffectiveRagTokenCount() {
+        int headerTokens = TokenizerUtils.countTokens(getHeader());
+        return isEffectivelyProviding() ? (headerTokens + getRagTokenCount()) : headerTokens;
+    }
+
 }

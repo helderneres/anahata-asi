@@ -17,6 +17,7 @@ import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.internal.TextUtils;
 import uno.anahata.asi.internal.TimeUtils;
 import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
+import uno.anahata.asi.internal.TokenizerUtils;
 
 /**
  * The abstract base class for all messages in a conversation, providing common
@@ -266,6 +267,22 @@ public abstract class AbstractMessage extends BasicPropertyChangeSource {
         return getParts(includePruned).stream()
                 .mapToInt(AbstractPart::getTokenCount)
                 .sum();
+    }
+
+
+    /**
+     * Calculates the total "effective" tokens in this message, summing the 
+     * effective counts of its parts plus the message-level metadata header.
+     * 
+     * @return The effective token count.
+     */
+    public int getEffectiveTokenCount() {
+        int count = 0;
+        if (shouldCreateMetadata()) {
+            count += TokenizerUtils.countTokens(createMetadataHeader());
+        }
+        count += parts.stream().mapToInt(AbstractPart::getEffectiveTokenCount).sum();
+        return count;
     }
 
     /**

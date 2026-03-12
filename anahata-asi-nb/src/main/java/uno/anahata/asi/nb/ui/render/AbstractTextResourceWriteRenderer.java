@@ -11,6 +11,7 @@ import java.awt.FlowLayout;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
 import javax.swing.BorderFactory;
@@ -37,13 +38,15 @@ import org.netbeans.api.diff.DiffController;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
+import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
 import uno.anahata.asi.nb.tools.ide.Editor;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRenderer;
+import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.internal.SwingUtils;
-import uno.anahata.asi.toolkit.files.AbstractTextFileWrite;
+import uno.anahata.asi.toolkit.files.AbstractTextResourceWrite;
 import uno.anahata.asi.toolkit.files.LineComment;
 
 /**
@@ -86,11 +89,11 @@ import uno.anahata.asi.toolkit.files.LineComment;
  *   <li>{@code org.netbeans.modules.diff.builtin.visualizer.editable.DecoratedEditorPane}</li>
  * </ul>
  * 
- * @param <T> The type of the file write DTO, extending AbstractTextFileWrite.
+ * @param <T> The type of the file write DTO, extending AbstractTextResourceWrite.
  * @author anahata
  */
 @Slf4j
-public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWrite> implements ParameterRenderer<T> {
+public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextResourceWrite> implements ParameterRenderer<T> {
 
     /** The agi panel where this renderer is hosted. */
     protected AgiPanel agiPanel;
@@ -154,7 +157,7 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
     private JLayer<JComponent> jlayer;
 
     /** No-arg constructor for factory instantiation. */
-    protected AbstractTextFileWriteRenderer() {}
+    protected AbstractTextResourceWriteRenderer() {}
 
     /** {@inheritDoc} */
     @Override
@@ -193,7 +196,7 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
             update.validate(agiPanel.getAgi());
             return true;
         } catch (Exception e) {
-            log.warn("Pre-flight validation failed for {}: {}", update.getPath(), e.getMessage());
+            log.warn("Pre-flight validation failed for resource {}: {}", update.getResourceUuid(), e.getMessage());
             call.getResponse().reject("Validation Failed. No changes have been applied to the resource: " + e.getMessage());
             return false;
         }
@@ -252,6 +255,9 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
             //renderError(call.getResponse().getErrors());
             return true;
         }
+        
+        Resource resource = agiPanel.getAgi().getResourceManager().get(update.getResourceUuid());
+                
 
         ToolExecutionStatus status = call.getResponse().getStatus();
 
@@ -261,9 +267,8 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
         }
 
         try {
-            File file = new File(update.getPath());
-            FileObject fo = FileUtil.toFileObject(file);
-
+            
+            String currentOnDisk = resource.asText();
             boolean isPending = status == ToolExecutionStatus.PENDING;
 
             // --- Historical Persistence Logic ---
@@ -273,14 +278,13 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
                 baseContent = update.getOriginalContent();
             } else {
                 // First render: capture current content from disk/IDE
-                baseContent = (fo != null) ? fo.asText() : "";
+                baseContent = currentOnDisk;
                 if (isPending) {
                     // Store it in the DTO. Kryo will serialize the change in the args map.
                     update.setOriginalContent(baseContent);
                 }
             }
 
-            String currentOnDisk = (fo != null) ? fo.asText() : "";
             String proposedContent = isPending ? calculateProposedContent(currentOnDisk) : currentOnDisk;
 
             // 3. Secondary stability check: content + status
@@ -292,8 +296,8 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
                 }
             }
 
-            String name = (fo != null) ? fo.getName() : "new_file";
-            String mime = (fo != null) ? fo.getMIMEType() : "text/plain";
+            String name = resource.getName();
+            String mime = resource.getMimeType();
 
             EditorKit kit = MimeLookup.getLookup(mime).lookup(EditorKit.class);
             if (kit == null && !"text/plain".equals(mime)) {
@@ -354,7 +358,7 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
                 List<LineComment> comments = getLineComments(isPending ? currentOnDisk : baseContent);
                 
                 JCheckBox toggle = new JCheckBox("Show AI Comments", true);
-                JPanel headerPanel = createHeaderPanel(update.getPath(), comments, toggle, status);
+                JPanel headerPanel = createHeaderPanel(resource, comments, toggle, status);
 
                 // Create the UI Layer for agentic annotations
                 layerUI = new DiffAnnotationsLayerUI(comments);
@@ -434,31 +438,16 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
      * @param status The current execution status of the tool.
      * @return The populated header {@link JPanel}.
      */
-    private JPanel createHeaderPanel(String path, List<LineComment> comments, JCheckBox toggle, ToolExecutionStatus status) {
+    private JPanel createHeaderPanel(Resource resource, List<LineComment> comments, JCheckBox toggle, ToolExecutionStatus status) {
         JPanel panel = new JPanel(new BorderLayout());
         JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         
-        File f = new File(path);
-        JButton link = new JButton("<html><a href='#'>" + f.getName() + "</a></html>");
-        link.setToolTipText(path);
-        link.setBorderPainted(false);
+        
+        JLabel link = new JLabel(resource.getName());
+        link.setToolTipText(resource.getHandle().getUri().toString());
         link.setOpaque(false);
-        link.setBackground(new Color(0, 0, 0, 0));
-        link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        link.addActionListener(e -> {
-            try {
-                int jumpLine = (comments != null && !comments.isEmpty()) ? comments.get(0).getLineNumber() : 1;
-                agiPanel.getAgi().getToolkit(Editor.class).ifPresent(t -> {
-                    try {
-                        t.openFile(path, jumpLine);
-                    } catch (Exception ex) {
-                        log.error("Failed to open file", ex);
-                    }
-                });
-            } catch (Exception ex) {
-                log.error("Failed to open file via hyperlink", ex);
-            }
-        });
+        ResourceUiRegistry.getInstance().getResourceUI().populateActions(topRow, resource, agiPanel);
+        
 
         toggle.addActionListener(e -> {
             if (layerUI != null) {

@@ -5,16 +5,15 @@ import java.util.ArrayList;
 import java.util.List;
 import uno.anahata.asi.toolkit.files.LineReplacement;
 import uno.anahata.asi.toolkit.files.LineComment;
-import uno.anahata.asi.toolkit.files.TextFileLineReplacements;
-import uno.anahata.asi.toolkit.files.TextReplacement;
+import uno.anahata.asi.toolkit.files.TextResourceLineReplacements;
 
 /**
- * A rich renderer for {@link TextFileLineReplacements} tool parameters.
+ * A rich renderer for {@link TextResourceLineReplacements} tool parameters.
  * It provides a preview of line-based replacements in the NetBeans diff viewer.
  * 
  * @author anahata
  */
-public class TextFileLineReplacementsRenderer extends AbstractTextFileWriteRenderer<TextFileLineReplacements> {
+public class TextResourceLineReplacementsRenderer extends AbstractTextResourceWriteRenderer<TextResourceLineReplacements> {
 
     @Override
     protected String calculateProposedContent(String currentContent) throws Exception {
@@ -39,10 +38,10 @@ public class TextFileLineReplacementsRenderer extends AbstractTextFileWriteRende
     }
 
     @Override
-    protected TextFileLineReplacements createUpdatedDto(String newContent) {
+    protected TextResourceLineReplacements createUpdatedDto(String newContent) {
         // Fallback to a single 'custom' replacement if the user manually edits the diff
-        TextFileLineReplacements dto = new TextFileLineReplacements(
-                update.getPath(),
+        TextResourceLineReplacements dto = new TextResourceLineReplacements(
+                update.getResourceUuid(),
                 update.getLastModified(),
                 List.of(LineReplacement.builder()
                         .startLine(1)

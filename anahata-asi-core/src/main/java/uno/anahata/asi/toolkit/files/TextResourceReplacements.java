@@ -2,6 +2,7 @@
 package uno.anahata.asi.toolkit.files;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -30,8 +31,8 @@ import uno.anahata.asi.agi.tool.AiToolException;
 @AllArgsConstructor
 @Getter
 @EqualsAndHashCode(callSuper = true)
-@Schema(description = "Represents a set of text replacement operations for a specific file.")
-public class TextFileReplacements extends AbstractTextFileWrite {
+@Schema(description = "Represents a set of text replacement operations for a specific resource.")
+public class TextResourceReplacements extends AbstractTextResourceWrite {
 
     /**
      * The list of replacements to perform in this file.
@@ -40,7 +41,7 @@ public class TextFileReplacements extends AbstractTextFileWrite {
     private List<TextReplacement> replacements;
 
     @Builder
-    public TextFileReplacements(String path, long lastModified, List<TextReplacement> replacements) {
+    public TextResourceReplacements(String path, long lastModified, List<TextReplacement> replacements) {
         super(path, lastModified);
         this.replacements = replacements;
     }
@@ -75,18 +76,18 @@ public class TextFileReplacements extends AbstractTextFileWrite {
      * Validates the replacements against the current state of the resource handle.
      */
     @Override
-    public void validate(Agi agi) throws AiToolException {
+    public void validate(Agi agi) throws Exception {
         super.validate(agi);
         
-        Optional<Resource> res = agi.getResourceManager().findByUri(Paths.get(path).toUri().toString());
-        try (InputStream is = res.get().getHandle().openStream()) {
-            String content = IOUtils.toString(is, res.get().getHandle().getCharset());
-            performReplacements(content); // Test replacements to validate occurrences
-        } catch (AiToolException ae) {
-            throw ae;
-        } catch (Exception e) {
-            throw new AiToolException("Replacement validation failed: " + e.getMessage());
+        Resource res = agi.getResourceManager().get(resourceUuid);
+        
+        String current = res.asText();
+        String result = performReplacements(res.asText()); 
+        
+        if (current.equals(result)) {
+            throw new AiToolException("current and resulting (after performReplacements) are identical.");
         }
+        
     }
 
 }

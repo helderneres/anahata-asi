@@ -26,13 +26,13 @@ import uno.anahata.asi.agi.tool.AiToolException;
 @AllArgsConstructor
 @Getter
 @EqualsAndHashCode
-public abstract class AbstractTextFileWrite {
+public abstract class AbstractTextResourceWrite {
     
     /**
      * The absolute path to the file to be updated.
      */
-    @Schema(description = "The absolute path to the file.", required = true)
-    protected String path;
+    @Schema(description = "The resource uuid .", required = true)
+    protected String resourceUuid;
     
     /**
      * The original content of the file before this operation was applied.
@@ -55,8 +55,8 @@ public abstract class AbstractTextFileWrite {
      * @param path The file path.
      * @param lastModified The locking timestamp.
      */
-    public AbstractTextFileWrite(String path, long lastModified) {
-        this.path = path;
+    public AbstractTextResourceWrite(String uuid, long lastModified) {
+        this.resourceUuid = uuid;
         this.lastModified = lastModified;
     }
 
@@ -64,31 +64,26 @@ public abstract class AbstractTextFileWrite {
      * Performs pre-flight validation of the update operation against the V2 resource context.
      * 
      * @param agi The parent agi session.
-     * @throws AiToolException if validation fails.
+     * @throws Exception if validation fails.
      */
-    public void validate(Agi agi) throws AiToolException {
-        Path p = Paths.get(path);
-        
-        // 1. Basic Path Validation
-        if (!Files.exists(p)) {
-             throw new AiToolException("File not found on host filesystem: " + path);
-        }
+    public void validate(Agi agi) throws Exception {
+
 
         // 2. Resource Context Check - Operation MUST be performed on a managed resource
-        Optional<Resource> res = agi.getResourceManager().findByUri(p.toUri().toString());
-        if (res.isEmpty()) {
-             throw new AiToolException("Resource is not in context under uri " + p.toUri() + ". You must load the file before attempting to update it: " + path);
+        Resource res = agi.getResourceManager().getResources().get(resourceUuid);
+        if (res == null) {
+             throw new AiToolException("No Resource in for uuid" + resourceUuid);
         }
 
         // 3. Capability Check
-        if (!res.get().getHandle().isTextual()) {
-             throw new AiToolException("Resource is not a text resource and cannot be updated via text tools: " + path);
+        if (!res.getHandle().isTextual()) {
+             throw new AiToolException("Resource is not a text resource and cannot be updated via text tools: " + res.getName());
         }
 
         // 4. Optimistic Locking Check
-        long actualLm = res.get().getHandle().getLastModified();
+        long actualLm = res.getHandle().getLastModified();
         if (lastModified > 0 && lastModified != actualLm) {
-            throw new AiToolException("Optimistic locking failure for " + path + ". The time stamp provided doesnt match the last modified timestamp on disk:" + actualLm + ", you provided=" + lastModified + ").");
+            throw new AiToolException("Optimistic locking failure for " + res.getName() + ". The time stamp provided doesnt match the last modified timestamp on disk:" + actualLm + ", you provided=" + lastModified + ").");
         }
     }
 }

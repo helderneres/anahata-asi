@@ -129,7 +129,9 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
     @Override
     public List<String> getSystemInstructions() throws Exception {
         return Collections.singletonList(
-            "Fqn / path resulutions: use the **" + ProjectStructureContextProvider.class.getName()+ "** of each project to fetch project sources by fqn in CodeModel or to work our th path to source files With NbFiles.loadTextFile:\n" +
+            "**Fqn / path resulutions**: use the Structure context provider of each project to work out fqns of all project types and the paths of all project files. Load project types with 'CodeModel.getTypeSourcesByFqn' and any other project files with the Resources toolkit. "
+                    + "By default, there is a Structure context provider for each open project so you should be able to see /workout the fqns of all types in all open projects and if you have no reason to believe that there could be another type with the same fqn then there is no need to do CodeModel.findTypes, just go straight for the getXxxxbyFqn methods \n."
+                    + "If you see an open project but it has no Structure context provider or it is not providing, then you can also assume there isn't any other type with the same fqn in that project." +
             "\n\nCompile on Save (CoS) Management:\n" +
             "NetBeans Maven projects determine the 'Compile on Save' status using a tiered priority system. " +
             "When a user asks to change this setting, you should offer these options:\n" +

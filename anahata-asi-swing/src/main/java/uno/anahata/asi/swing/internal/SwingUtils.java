@@ -102,18 +102,6 @@ public class SwingUtils {
         return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
     }
 
-    /**
-     * Displays a modal error dialog with the given task name, description, and throwable.
-     * This method uses a custom ExceptionDialog to ensure proper formatting of stack traces.
-     *
-     * @param component the component the dialog will be relative to
-     * @param taskName The name of the task that failed.
-     * @param description A brief description of the error.
-     * @param throwable The Throwable object representing the exception.
-     */
-    public static void showException(java.awt.Component component, String taskName, String description, Throwable throwable) {
-        ExceptionDialog.show(component, taskName, description, throwable);
-    }
 
     /**
      * Recursively searches for a component of a specific type within a container.

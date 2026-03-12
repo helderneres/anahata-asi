@@ -36,14 +36,14 @@ public class ExceptionDialog extends JDialog {
      * @param owner The owner window.
      * @param taskName The name of the task that failed.
      * @param description a brief description of the error.
-     * @param throwable The exception to display.
+     * @param stackTrace The exception to display.
      */
-    public ExceptionDialog(Window owner, String taskName, String description, Throwable throwable) {
+    public ExceptionDialog(Window owner, String taskName, String description, String stackTrace) {
         super(owner, "Error: " + taskName, ModalityType.APPLICATION_MODAL);
-        initComponents(taskName, description, throwable);
+        initComponents(taskName, description, stackTrace);
     }
 
-    private void initComponents(String taskName, String description, Throwable throwable) {
+    private void initComponents(String taskName, String description, String stackTrace) {
         setLayout(new BorderLayout(10, 10));
         
         // Header Panel
@@ -67,7 +67,7 @@ public class ExceptionDialog extends JDialog {
         textArea.setTabSize(4);
         textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         
-        String stackTrace = ExceptionUtils.getStackTrace(throwable);
+        
         textArea.setText(stackTrace);
         textArea.setCaretPosition(0);
         
@@ -105,13 +105,25 @@ public class ExceptionDialog extends JDialog {
      * @param component The relative component.
      * @param taskName The task name.
      * @param description The description.
-     * @param throwable The exception.
+     * @param stackTrace The exception.
      */
-    public static void show(Component component, String taskName, String description, Throwable throwable) {
+    public static void show(Component component, String taskName, String description, String stackTrace) {
         SwingUtilities.invokeLater(() -> {
             Window owner = component != null ? SwingUtilities.getWindowAncestor(component) : null;
-            ExceptionDialog dialog = new ExceptionDialog(owner, taskName, description, throwable);
+            ExceptionDialog dialog = new ExceptionDialog(owner, taskName, description, stackTrace);
             dialog.setVisible(true);
         });
+    }
+    
+    /**
+     * Static utility method to show the exception dialog.
+     * 
+     * @param component The relative component.
+     * @param taskName The task name.
+     * @param description The description.
+     * @param t The exception.
+     */
+    public static void show(Component component, String taskName, String description, Throwable t) {
+        show(component, taskName, description, ExceptionUtils.getStackTrace(t));
     }
 }

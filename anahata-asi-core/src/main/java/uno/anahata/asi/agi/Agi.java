@@ -3,6 +3,7 @@
  */
 package uno.anahata.asi.agi;
 
+import java.beans.PropertyChangeSupport;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,6 +19,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import uno.anahata.asi.AiExecutors;
 import uno.anahata.asi.AsiContainer;
 import uno.anahata.asi.agi.context.ContextManager;
@@ -461,7 +463,7 @@ public class Agi extends BasicPropertyChangeSource {
                         .modelId(selectedModel.getModelId())
                         .timestamp(java.time.Instant.now())
                         .retryAttempt(attempt)
-                        .exception(e);
+                        .stackTrace(ExceptionUtils.getStackTrace(e));
 
                 if (e instanceof RetryableApiException rae) {
                     errorRecordBuilder.apiKey(rae.getApiKey());

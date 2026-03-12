@@ -24,9 +24,9 @@ import uno.anahata.asi.agi.tool.AiToolParam;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.toolkit.files.FullTextFileCreate;
-import uno.anahata.asi.toolkit.files.FullTextFileUpdate;
-import uno.anahata.asi.toolkit.files.TextFileReplacements;
-import uno.anahata.asi.toolkit.files.TextFileLineReplacements;
+import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
+import uno.anahata.asi.toolkit.files.TextResourceReplacements;
+import uno.anahata.asi.toolkit.files.TextResourceLineReplacements;
 import uno.anahata.asi.toolkit.files.TextReplacement;
 
 /**
@@ -80,7 +80,7 @@ public class Resources extends AnahataToolkit {
     @AiTool(value = "Loads multiple resources into the context by their URIs.", maxDepth = 12)
     public List<String> loadResources(
             @AiToolParam("The full URIs of the resources.") List<String> uriStrings,
-            @AiToolParam(value = "Initial viewport settings for text resources.", required = false) TextViewportSettings initialSettings) throws Exception {
+            @AiToolParam(value = "Initial viewport settings for text resources. If not provided, it uses the system default viewport (65K chars 1024 col width)", required = false) TextViewportSettings initialSettings) throws Exception {
         
         List<Resource> toRegister = new ArrayList<>();
         List<String> ids = new ArrayList<>();
@@ -178,16 +178,16 @@ public class Resources extends AnahataToolkit {
      * @throws Exception if the update fails.
      */
     @AiTool("Updates an existing text file using full content replacement.")
-    public void updateTextFile(@AiToolParam("The update details.") FullTextFileUpdate update) throws Exception {
+    public void updateTextResource(@AiToolParam("The update details.") FullTextResourceUpdate update) throws Exception {
         update.validate(getAgi());
         
-        Path path = Paths.get(update.getPath());
-        Optional<Resource> res = getAgi().getResourceManager().findByPath(path.toString());
-        if (res.isPresent()) {
+        
+        Resource res = getAgi().getResourceManager().getResources().get(update.getResourceUuid());
+        if (res != null) {
             // SINGULAR ENTRY POINT: The Resource orchestrator now manages both 
             // connectivity (disk write) and state (dirty marking).
-            res.get().write(update.getNewContent());
-            log("Updated text file: " + update.getPath());
+            res.write(update.getNewContent());
+            log("Updated text file: " + res.getName());
         }
     }
 
@@ -198,20 +198,18 @@ public class Resources extends AnahataToolkit {
      * @throws Exception if replacements fail.
      */
     @AiTool("Performs multiple text replacements in a file.")
-    public void replaceInTextFile(@AiToolParam("The set of replacements.") TextFileReplacements replacements) throws Exception {
+    public void replaceInTextFile(@AiToolParam("The set of replacements.") TextResourceReplacements replacements) throws Exception {
         replacements.validate(getAgi());
         
-        Path path = Paths.get(replacements.getPath());
-        Optional<Resource> res = getAgi().getResourceManager().findByPath(path.toString());
-        
-        if (res.isPresent()) {
-            String content = res.get().asText();
+        Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
+        if (res != null) {        
+            String content = res.asText();
             String updated = replacements.performReplacements(content);
             
             // SINGULAR ENTRY POINT: Management through the orchestrator API.
-            res.get().write(updated);
+            res.write(updated);
             
-            log("Performed replacements in: " + replacements.getPath());
+            log("Performed replacements in: " + res.getName());
         }
     }
 
@@ -222,19 +220,18 @@ public class Resources extends AnahataToolkit {
      * @throws Exception if replacements fail.
      */
     @AiTool("Performs multiple line-based replacements in a file.")
-    public void replaceLinesInTextFile(@AiToolParam("The set of line replacements.") TextFileLineReplacements replacements) throws Exception {
+    public void replaceLinesInTextFile(@AiToolParam("The set of line replacements.") TextResourceLineReplacements replacements) throws Exception {
         replacements.validate(getAgi());
         
-        Path path = Paths.get(replacements.getPath());
-        Optional<Resource> res = getAgi().getResourceManager().findByPath(path.toString());
+        Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
+        if (res != null) {        
         
-        if (res.isPresent()) {
-            String content = res.get().asText();
+            String content = res.asText();
             String updated = replacements.performReplacements(content);
             
-            res.get().write(updated);
+            res.write(updated);
             
-            log("Performed line replacements in: " + replacements.getPath());
+            log("Performed replacements in: " + res.getName());
         }
 
 }

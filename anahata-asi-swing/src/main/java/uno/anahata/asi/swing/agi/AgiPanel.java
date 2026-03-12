@@ -22,6 +22,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.swing.agi.chat.CandidateSelectionPanel;
+import uno.anahata.asi.swing.components.ScrollablePanel;
 
 /**
  * The main, top-level panel for the Anahata AI Swing UI.
@@ -30,7 +31,7 @@ import uno.anahata.asi.swing.agi.chat.CandidateSelectionPanel;
  * @author anahata
  */
 @Getter
-public class AgiPanel extends JPanel {
+public class AgiPanel extends ScrollablePanel {
 
     /** The agi session orchestrator. */
     private Agi agi; 
@@ -108,7 +109,7 @@ public class AgiPanel extends JPanel {
         tabbedPane.addTab("Chat", conversationPanel);
         tabbedPane.addTab("Config", createScrollPane(configPanel));
         tabbedPane.addTab("Context", contextPanel);
-        tabbedPane.addTab("CwGC", cwGcPanel);
+        tabbedPane.addTab("CwGC", createScrollPane(cwGcPanel));
         tabbedPane.addTab("Support", createScrollPane(supportPanel));
         
         // TAB SELECTION LISTENER: Just-in-time refresh for metabolism metrics
@@ -151,29 +152,4 @@ public class AgiPanel extends JPanel {
         return scroller;
     }
 
-    /**
-     * Reloads the entire UI with a new Agi instance.
-     * This is used when loading a saved session.
-     * 
-     * @param newAgi The new agi session to load.
-     */
-    public void reload(@NonNull Agi newAgi) {
-        SwingUtilities.invokeLater(() -> {
-            this.agi = newAgi;
-            this.agiConfig = (SwingAgiConfig) newAgi.getConfig();
-            
-            // Update child components
-            headerPanel.reload();
-            conversationPanel.reload();
-            // Note: RequestConfigPanel doesn't have a reload() yet, but it's initialized with agi
-            contextPanel.reload();
-            cwGcPanel.reload();
-            statusPanel.reload();
-            inputPanel.reload();
-            toolbarPanel.reload();
-            
-            revalidate();
-            repaint();
-        });
-    }
 }

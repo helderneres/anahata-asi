@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 /**
  * A record of a single API error, including context for retries.
@@ -40,13 +41,14 @@ public class ApiErrorRecord {
     long backoffAmount;
 
     /**
-     * The exception that was thrown.
+     * 
      */
-    Throwable exception;
+    String stackTrace;
 
     /**
      * The API key used when the error occurred (abbreviated).
      */
     @Setter
     String apiKey;
+    
 }

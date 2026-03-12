@@ -131,16 +131,25 @@ public class ResourceManager extends BasicPropertyChangeSource implements Rebind
      * @return Optional containing the resource.
      */
     public Optional<Resource> findByUri(@NonNull String uri) {
-        String search = uri.replace("file:/", "file:///").replace("file:////", "file:///");
+        String search = normalizeUri(uri);
         synchronized (resources) {
             return resources.values().stream()
-                     .filter(r -> {
-                        String rUri = r.getHandle().getUri().toString();
-                        return rUri.replace("file:/", "file:///").replace("file:////", "file:///").equals(search);
-                    })
-                    .findFirst();
+                     .filter(r -> normalizeUri(r.getHandle().getUri().toString()).equals(search))
+                     .findFirst();
         }
     }
+
+    /**
+     * Normalizes a file URI string to the standard triple-slash format (file:///)
+     * while preserving UNC paths (file://host).
+     */
+    private String normalizeUri(String uri) {
+        if (uri.startsWith("file://") && !uri.startsWith("file:///")) {
+            return uri; // Keep UNC paths as is
+        }
+        return uri.replaceFirst("^file:/+", "file:///");
+    }
+    
 
     /**
      * Finds a managed resource by its physical path.
@@ -149,6 +158,16 @@ public class ResourceManager extends BasicPropertyChangeSource implements Rebind
      */
     public Optional<Resource> findByPath(@NonNull String path) {
         return findByUri(Paths.get(path).toUri().toString());
+    }
+    
+    /**
+     * Finds a managed resource by its uuid
+     * 
+     * @param uuid of the resource
+     * @return the resources or null
+     */
+    public Resource get(@NonNull String uuid) {
+        return resources.get(uuid);
     }
 
     /**

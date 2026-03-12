@@ -4,17 +4,17 @@ package uno.anahata.asi.nb.ui.render;
 import java.util.ArrayList;
 import java.util.List;
 import uno.anahata.asi.toolkit.files.LineComment;
-import uno.anahata.asi.toolkit.files.TextFileReplacements;
+import uno.anahata.asi.toolkit.files.TextResourceReplacements;
 import uno.anahata.asi.toolkit.files.TextReplacement;
 
 /**
- * A rich renderer for {@link TextFileReplacements} tool parameters.
+ * A rich renderer for {@link TextResourceReplacements} tool parameters.
  * It provides a preview of surgical replacements in the NetBeans diff viewer
  * and automatically maps replacement reasons to line-level gutter comments.
  * 
  * @author anahata
  */
-public class TextFileReplacementsRenderer extends AbstractTextFileWriteRenderer<TextFileReplacements> {
+public class TextResourceReplacementsRenderer extends AbstractTextResourceWriteRenderer<TextResourceReplacements> {
 
     @Override
     protected String calculateProposedContent(String currentContent) throws Exception {
@@ -49,12 +49,12 @@ public class TextFileReplacementsRenderer extends AbstractTextFileWriteRenderer<
     }
 
     @Override
-    protected TextFileReplacements createUpdatedDto(String newContent) {
+    protected TextResourceReplacements createUpdatedDto(String newContent) {
         // When the user edits a surgical replacement in the UI, we convert it
         // to a 'custom' replacement that replaces everything with the new content.
         // This is necessary because the original surgical list no longer applies to the manual edits.
-        TextFileReplacements dto = new TextFileReplacements(
-                update.getPath(),
+        TextResourceReplacements dto = new TextResourceReplacements(
+                update.getResourceUuid(),
                 update.getLastModified(),
                 List.of(TextReplacement.builder()
                         .target(newContent) // This is a bit of a hack, but it works for UI merging

@@ -25,7 +25,7 @@ import uno.anahata.asi.agi.tool.AiToolException;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "A rich DTO for updating a text file with full new content and line-level comments.")
-public class FullTextFileUpdate extends AbstractTextFileWrite {
+public class FullTextResourceUpdate extends AbstractTextResourceWrite {
     /**
      * The full new content for the file.
      */
@@ -40,7 +40,7 @@ public class FullTextFileUpdate extends AbstractTextFileWrite {
     private List<LineComment> lineComments;
 
     @Builder
-    public FullTextFileUpdate(String path, long lastModified, String newContent, List<LineComment> lineComments) {
+    public FullTextResourceUpdate(String path, long lastModified, String newContent, List<LineComment> lineComments) {
         super(path, lastModified);
         this.newContent = newContent;
         this.lineComments = lineComments;
@@ -48,13 +48,12 @@ public class FullTextFileUpdate extends AbstractTextFileWrite {
 
     /** {@inheritDoc} */
     @Override
-    public void validate(Agi agi) throws AiToolException {
+    public void validate(Agi agi) throws Exception {
         super.validate(agi);
         
-        Optional<Resource> res = agi.getResourceManager().findByPath(getPath());
-        if (res.isPresent()) {
+        Resource r = agi.getResourceManager().get(resourceUuid);
+        if (r != null) {
             try {
-                Resource r = res.get();
                 // Ensure we are comparing against the latest physical state
                 r.reloadIfNeeded();
                 if (java.util.Objects.equals(r.asText(), newContent)) {

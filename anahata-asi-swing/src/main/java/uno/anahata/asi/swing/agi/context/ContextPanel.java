@@ -79,7 +79,7 @@ public class ContextPanel extends JPanel {
     /** Panel for displaying context provider details. */
     private final ContextProviderPanel providerPanel;
     /** Panel for displaying V2 resource details. */
-    private final ResourcePanel resource2Panel;
+    private final ResourcePanel resourcePanel;
     /** Container for dynamically created message or part panels. */
     private final JPanel messagePartDetailPanel;
     
@@ -108,14 +108,14 @@ public class ContextPanel extends JPanel {
         this.toolPanel = new ToolPanel(this);
         this.toolkitPanel = new ToolkitPanel(this);
         this.providerPanel = new ContextProviderPanel(this);
-        this.resource2Panel = new ResourcePanel(agiPanel);
+        this.resourcePanel = new ResourcePanel(agiPanel);
         this.messagePartDetailPanel = new JPanel(new BorderLayout());
         
         detailContainer.add(createScrollPane(toolPanel), "tool");
         detailContainer.add(createScrollPane(toolkitPanel), "toolkit");
         detailContainer.add(createScrollPane(providerPanel), "provider");
         // AUTHORITATIVE CONSISTENCY: Wrap the resource dashboard in a scrollpane to handle metadata overflow.
-        detailContainer.add(createScrollPane(resource2Panel), "resource2");
+        detailContainer.add(createScrollPane(resourcePanel), "resource");
         detailContainer.add(new JScrollPane(messagePartDetailPanel), "messagePart");
         detailContainer.add(new JPanel(), "empty");
         
@@ -273,8 +273,8 @@ public class ContextPanel extends JPanel {
                     updateMessagePartDetail(PartPanelFactory.createPartPanel(agiPanel, pn.getUserObject()));
                     detailLayout.show(detailContainer, "messagePart");
                 } else if (cn instanceof ResourceNode r2n) {
-                    resource2Panel.setResource(r2n.getUserObject());
-                    detailLayout.show(detailContainer, "resource2");
+                    resourcePanel.setResource(r2n.getUserObject());
+                    detailLayout.show(detailContainer, "resource");
                 } else if (cn instanceof ResourcesNode r2m) {
                     providerPanel.setContextProvider(r2m.getUserObject());
                     detailLayout.show(detailContainer, "provider");

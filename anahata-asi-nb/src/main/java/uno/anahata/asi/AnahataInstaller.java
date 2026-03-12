@@ -10,13 +10,13 @@ import org.openide.windows.WindowManager;
 import uno.anahata.asi.nb.ui.resources.NbResourceUI;
 import uno.anahata.asi.nb.util.ElementHandleModule;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
-import uno.anahata.asi.nb.ui.render.FullTextFileUpdateRenderer;
-import uno.anahata.asi.nb.ui.render.TextFileReplacementsRenderer;
+import uno.anahata.asi.nb.ui.render.FullTextResourceUpdateRenderer;
+import uno.anahata.asi.nb.ui.render.TextResourceReplacementsRenderer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.internal.SwingUtils;
-import uno.anahata.asi.toolkit.files.FullTextFileUpdate;
-import uno.anahata.asi.toolkit.files.TextFileReplacements;
+import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
+import uno.anahata.asi.toolkit.files.TextResourceReplacements;
 
 /**
  * Installer for the Anahata ASI V2 module.
@@ -58,8 +58,8 @@ public class AnahataInstaller extends ModuleInstall {
         ResourceUiRegistry.getInstance().setResourceUI(new NbResourceUI());
         
         // Register specialized parameter renderers for file operations
-        ParameterRendererFactory.register(FullTextFileUpdate.class, FullTextFileUpdateRenderer.class);        
-        ParameterRendererFactory.register(TextFileReplacements.class, TextFileReplacementsRenderer.class);
+        ParameterRendererFactory.register(FullTextResourceUpdate.class, FullTextResourceUpdateRenderer.class);        
+        ParameterRendererFactory.register(TextResourceReplacements.class, TextResourceReplacementsRenderer.class);
         
         // Register the ElementHandle module for global JSON support in the IDE
         SchemaProvider.OBJECT_MAPPER.registerModule(new ElementHandleModule());

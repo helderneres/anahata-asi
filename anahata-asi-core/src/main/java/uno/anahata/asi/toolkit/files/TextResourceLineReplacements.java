@@ -25,7 +25,7 @@ import uno.anahata.asi.agi.tool.AiToolException;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "Represents a set of line-based replacements in a text file.")
-public class TextFileLineReplacements extends AbstractTextFileWrite {
+public class TextResourceLineReplacements extends AbstractTextResourceWrite {
 
     /**
      * The list of line-based replacements.
@@ -34,7 +34,7 @@ public class TextFileLineReplacements extends AbstractTextFileWrite {
     private List<LineReplacement> replacements;
 
     @Builder
-    public TextFileLineReplacements(String path, long lastModified, List<LineReplacement> replacements) {
+    public TextResourceLineReplacements(String path, long lastModified, List<LineReplacement> replacements) {
         super(path, lastModified);
         this.replacements = replacements;
     }
@@ -89,7 +89,7 @@ public class TextFileLineReplacements extends AbstractTextFileWrite {
 
     /** {@inheritDoc} */
     @Override
-    public void validate(Agi agi) throws AiToolException {
+    public void validate(Agi agi) throws Exception {
         super.validate(agi);
         
         // Check for overlapping line ranges

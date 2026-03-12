@@ -2,15 +2,15 @@
 package uno.anahata.asi.nb.ui.render;
 
 import java.util.List;
-import uno.anahata.asi.toolkit.files.FullTextFileUpdate;
+import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.files.LineComment;
 
 /**
- * A rich renderer for {@link FullTextFileUpdate} tool parameters.
+ * A rich renderer for {@link FullTextResourceUpdate} tool parameters.
  * 
  * @author anahata
  */
-public class FullTextFileUpdateRenderer extends AbstractTextFileWriteRenderer<FullTextFileUpdate> {
+public class FullTextResourceUpdateRenderer extends AbstractTextResourceWriteRenderer<FullTextResourceUpdate> {
 
     @Override
     protected String calculateProposedContent(String currentContent) {
@@ -23,9 +23,9 @@ public class FullTextFileUpdateRenderer extends AbstractTextFileWriteRenderer<Fu
     }
 
     @Override
-    protected FullTextFileUpdate createUpdatedDto(String newContent) {
-        FullTextFileUpdate dto = new FullTextFileUpdate(
-                update.getPath(),
+    protected FullTextResourceUpdate createUpdatedDto(String newContent) {
+        FullTextResourceUpdate dto = new FullTextResourceUpdate(
+                update.getResourceUuid(),
                 update.getLastModified(),
                 newContent,
                 update.getLineComments()

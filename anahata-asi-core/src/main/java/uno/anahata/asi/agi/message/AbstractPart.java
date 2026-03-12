@@ -1,9 +1,6 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.agi.message;
 
-import uno.anahata.asi.agi.message.AbstractMessage;
-import java.time.Instant;
-import java.util.Objects;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -306,6 +303,20 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
      * Returns the identity label for the metadata header (e.g., "Part ID: 45").
      * Subclasses can override this to hide or customize the identity.
      * 
+
+    /**
+     * Returns the number of tokens this part contributes to the context window
+     * in its current state. If effectively pruned, returns only the metadata 
+     * overhead; otherwise returns the full token count plus metadata.
+     * 
+     * @return The effective token count.
+     */
+    public int getEffectiveTokenCount() {
+        int metadataCount = getMetadataTokenCount();
+        return isEffectivelyPruned() ? metadataCount : (getTokenCount() + metadataCount);
+    }
+    
+    /*
      * @return The identity label.
      */
     protected String getIdentityLabel() {

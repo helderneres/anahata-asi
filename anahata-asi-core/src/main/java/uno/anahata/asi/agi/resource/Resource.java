@@ -396,10 +396,8 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
      */
     @Override
     public String getHeader() {
-        StringBuilder sb = new StringBuilder("Resource: uuid=\n").append(uuid).append("\n");        
-        sb.append("Id: ");
-        sb.append("Id: ").append(uuid).append("\n");
-        sb.append(getName()).append("**\n");
+        StringBuilder sb = new StringBuilder("Resource: uuid=").append(uuid).append("\n");        
+        sb.append("Name: ").append(getName()).append("**\n");
         sb.append("Description: ").append(description).append("\n");
         sb.append("Registration Time: ").append(TimeUtils.formatSmartTimestamp(java.time.Instant.ofEpochMilli(registrationTime))).append("\n");
         sb.append("Refresh Policy: ").append(getRefreshPolicy()).append("\n");
