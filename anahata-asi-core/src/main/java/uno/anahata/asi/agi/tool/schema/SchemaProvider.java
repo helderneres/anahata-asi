@@ -575,7 +575,7 @@ public class SchemaProvider {
     private static ObjectNode createRecursiveReferenceNode(String refPath, JsonNode definitions) {
         String refName = refPath.substring(refPath.lastIndexOf('/') + 1);
         JsonNode definition = definitions.path(refName);
-        String fqn = definition.path("title").asText("N/A");
+        String fqn = definition.path("title").isMissingNode() ? "N/A" : definition.path("title").asText();
         String originalDescription = definition.path("description").asText("");
         String newDescription = "Recursive reference to " + fqn + (originalDescription.isEmpty() ? "" : ". " + originalDescription);
         ObjectNode recursiveNode = OBJECT_MAPPER.createObjectNode();
