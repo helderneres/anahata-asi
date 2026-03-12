@@ -26,6 +26,7 @@ import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.toolkit.files.FullTextFileCreate;
 import uno.anahata.asi.toolkit.files.FullTextFileUpdate;
 import uno.anahata.asi.toolkit.files.TextFileReplacements;
+import uno.anahata.asi.toolkit.files.TextFileLineReplacements;
 import uno.anahata.asi.toolkit.files.TextReplacement;
 
 /**
@@ -213,4 +214,29 @@ public class Resources extends AnahataToolkit {
             log("Performed replacements in: " + replacements.getPath());
         }
     }
+
+    /**
+     * Performs line-based replacements in an existing file.
+     * 
+     * @param replacements The line replacements DTO.
+     * @throws Exception if replacements fail.
+     */
+    @AiTool("Performs multiple line-based replacements in a file.")
+    public void replaceLinesInTextFile(@AiToolParam("The set of line replacements.") TextFileLineReplacements replacements) throws Exception {
+        replacements.validate(getAgi());
+        
+        Path path = Paths.get(replacements.getPath());
+        Optional<Resource> res = getAgi().getResourceManager().findByPath(path.toString());
+        
+        if (res.isPresent()) {
+            String content = res.get().asText();
+            String updated = replacements.performReplacements(content);
+            
+            res.get().write(updated);
+            
+            log("Performed line replacements in: " + replacements.getPath());
+        }
+
 }
+}
+

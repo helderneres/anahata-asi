@@ -249,7 +249,7 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
 
         // 1. Validation check
         if (!validatePreFlight()) {
-            renderError(call.getResponse().getErrors());
+            //renderError(call.getResponse().getErrors());
             return true;
         }
 
@@ -281,7 +281,7 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
             }
 
             String currentOnDisk = (fo != null) ? fo.asText() : "";
-            String proposedContent = calculateProposedContent(currentOnDisk);
+            String proposedContent = isPending ? calculateProposedContent(currentOnDisk) : currentOnDisk;
 
             // 3. Secondary stability check: content + status
             if (modDoc != null) {
@@ -351,7 +351,7 @@ public abstract class AbstractTextFileWriteRenderer<T extends AbstractTextFileWr
                 applyVisualizerSettings(visualizer);
 
                 // Create the header panel with the file hyperlink and toggle
-                List<LineComment> comments = getLineComments(currentOnDisk);
+                List<LineComment> comments = getLineComments(isPending ? currentOnDisk : baseContent);
                 
                 JCheckBox toggle = new JCheckBox("Show AI Comments", true);
                 JPanel headerPanel = createHeaderPanel(update.getPath(), comments, toggle, status);
