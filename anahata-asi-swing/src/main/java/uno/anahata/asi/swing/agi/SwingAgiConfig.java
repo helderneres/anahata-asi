@@ -96,8 +96,9 @@ public class SwingAgiConfig extends AgiConfig {
 
     public static Color getColor(AgiStatus status) {
         return switch (status) {
+            case AWAKENING_KUNDALINI -> new Color(80, 200, 120); // Emerald Green
             case API_CALL_IN_PROGRESS -> new Color(0, 123, 255); // BLUE
-            case TOOL_PROMPT -> new Color(255, 193, 7); // AMBER
+            case TOOL_PROMPT -> new Color(170, 75, 45); // GERU (Ochre)
             case CANDIDATE_CHOICE_PROMPT -> new Color(23, 162, 184); // CYAN
             case AUTO_EXECUTING_TOOLS -> new Color(128, 0, 128); // PURPLE
             case TOOL_EXECUTION_ERROR -> Color.ORANGE; // ORANGE

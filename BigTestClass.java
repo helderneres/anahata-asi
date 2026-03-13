@@ -1,3 +1,4 @@
+// [POKER TEST] - Verification of multi-offset surgical integrity.
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.test;
 
@@ -9,6 +10,10 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Optional;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 import java.util.Collections;
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -158,20 +163,21 @@ public class BigTestClass {
 
     // Line 164: Block D
     public void blockD() {
-        Map<String, Integer> map = new HashMap<>();
-        map.put("one", 1);
-        map.put("two", 2);
-        map.forEach((k, v) -> System.out.println(k + "=" + v));
+        log.info("Block D has been redefined using surgical line replacement.");
     }
 
     // Line 172: Block E
     public void blockE() {
-        Set<Integer> set = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5));
-        set.removeIf(i -> i % 2 == 0);
-        System.out.println("Odd numbers: " + set);
+        data.stream().map(String::hashCode).forEach(h -> log.finest("Hash: " + h));
+    }
+    /**
+     * Enhanced extra method testing synchronization and cumulative shifts.
+     */
+    public synchronized void extraMethodV2() {
+        log.info("Extra Method V2: Integrity check passed.");
+        operationsCounter.addAndGet(10);
     }
 
-    // Line 179: Block F
     public void blockF() {
         Path p = Paths.get("test.txt");
         System.out.println("Path: " + p.toAbsolutePath());
@@ -196,13 +202,19 @@ public class BigTestClass {
     }
 
     // Line 203: Block I
-    public void blockI() {
-        String s = Stream.of("a", "b", "c").collect(Collectors.joining(","));
-        System.out.println("Joined: " + s);
-    }
 
     // Line 209: Block J
     // blockJ was removed and replaced by this comment for testing purposes.
+    @Override
+    public String toString() {
+        return "BigTestClass{id='" + id + "', operations=" + operationsCounter.get() + "}";
+    }
+
+    /**
+     * Internal data snapshot for surgical consistency checks.
+     */
+    private static record DataSnapshot(String id, long count) {}
+
 }
 // Final end of file verification.
 

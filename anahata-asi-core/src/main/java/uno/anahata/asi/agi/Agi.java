@@ -331,6 +331,7 @@ public class Agi extends BasicPropertyChangeSource {
         }
 
         try {
+            statusManager.fireStatusChanged(AgiStatus.AWAKENING_KUNDALINI);
             processPendingTools();
             if (message != null && !message.isEmpty()) {
                 log.info("Adding user message to context  {}", message);
@@ -436,6 +437,7 @@ public class Agi extends BasicPropertyChangeSource {
                     autoSave();
                 }
 
+                statusManager.fireStatusChanged(AgiStatus.AWAKENING_KUNDALINI);
                 GenerationRequest request = prepareRequest();
                 statusManager.fireStatusChanged(AgiStatus.API_CALL_IN_PROGRESS);
                 log.info("Sending request to model '{}' (attempt {}/{}) with {} messages.",

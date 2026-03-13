@@ -18,6 +18,9 @@ public enum AgiStatus {
     /** The model has finished processing and is waiting for the user's next input. */
     IDLE("Idle, Waiting for User", "Waiting for user input.", false),
 
+    /** The assistant is assembling context and preparing the API connection. */
+    AWAKENING_KUNDALINI("Preparing API Request", "Assembling context and preparing for API connection.", true),
+
     /** A normal API call is in progress (e.g., waiting for a model response). */
     API_CALL_IN_PROGRESS("API Call in Progress...", "Waiting for a response from the model.", true),
 
