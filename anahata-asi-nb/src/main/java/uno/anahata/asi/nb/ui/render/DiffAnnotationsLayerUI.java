@@ -24,7 +24,6 @@ import javax.swing.JLayer;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JViewport;
 import javax.swing.SwingUtilities;
 import javax.swing.plaf.LayerUI;
 import javax.swing.text.Element;

@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import uno.anahata.asi.AsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.swing.icons.DeleteIcon;
+import uno.anahata.asi.swing.icons.CancelIcon;
 import uno.anahata.asi.swing.icons.LoadSessionIcon;
 
 import uno.anahata.asi.swing.icons.RestartIcon;
@@ -78,7 +79,9 @@ public abstract class AbstractAsiContainerPanel extends JPanel implements AgiCon
         toolBar.add(importButton);
 
 
-        closeButton = new JButton("Close");
+        toolBar.add(Box.createHorizontalGlue());
+
+        closeButton = new JButton("Close", new CancelIcon(16));
         closeButton.setToolTipText("Close the selected AI session window");
         closeButton.addActionListener(e -> {
             Agi agi = getSelectedAgi();
@@ -87,16 +90,7 @@ public abstract class AbstractAsiContainerPanel extends JPanel implements AgiCon
         closeButton.setEnabled(false);
         toolBar.add(closeButton);
         
-        toolBar.add(Box.createHorizontalGlue());
-
         disposeButton = new JButton("Dispose", new DeleteIcon(16));
-        disposeButton.setToolTipText("Permanently dispose of the selected session");
-        disposeButton.addActionListener(e -> {
-            Agi agi = getSelectedAgi();
-            if (agi != null) dispose(agi);
-        });
-        disposeButton.setEnabled(false);
-        toolBar.add(disposeButton);
 
         // 2. Setup Refresh Timer
         this.refreshTimer = new Timer(1000, e -> {

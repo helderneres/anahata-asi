@@ -7,16 +7,7 @@ import java.util.logging.Logger;
 import org.openide.modules.ModuleInstall;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
-import uno.anahata.asi.nb.ui.resources.NbResourceUI;
-import uno.anahata.asi.nb.util.ElementHandleModule;
-import uno.anahata.asi.agi.tool.schema.SchemaProvider;
-import uno.anahata.asi.nb.ui.render.FullTextResourceUpdateRenderer;
-import uno.anahata.asi.nb.ui.render.TextResourceReplacementsRenderer;
-import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
-import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.internal.SwingUtils;
-import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
-import uno.anahata.asi.toolkit.files.TextResourceReplacements;
 
 /**
  * Installer for the Anahata ASI V2 module.

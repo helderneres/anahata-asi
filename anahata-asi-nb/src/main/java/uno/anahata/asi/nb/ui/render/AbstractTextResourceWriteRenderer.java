@@ -5,18 +5,16 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Image;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
-import java.io.File;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -37,11 +35,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.netbeans.api.diff.DiffController;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileUtil;
+import org.openide.loaders.DataObject;
+import org.openide.util.ImageUtilities;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
-import uno.anahata.asi.nb.tools.ide.Editor;
+import uno.anahata.asi.nb.resources.handle.NbHandle;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRenderer;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
@@ -443,10 +442,25 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         
         
-        JLabel link = new JLabel(resource.getName());
-        link.setToolTipText(resource.getHandle().getUri().toString());
-        link.setOpaque(false);
-        ResourceUiRegistry.getInstance().getResourceUI().populateActions(topRow, resource, agiPanel);
+        JLabel htmlDisplayName = new JLabel(resource.getHtmlDisplayName());
+        htmlDisplayName.setToolTipText(resource.getHandle().getUri().toString());
+        htmlDisplayName.setOpaque(false);
+        
+        if (resource.getHandle() instanceof NbHandle nbh) {
+                FileObject fo = nbh.getFileObject();
+                if (fo != null) {
+                    try {
+                        DataObject dobj = DataObject.find(fo);
+                        Image img = dobj.getNodeDelegate().getIcon(java.beans.BeanInfo.ICON_COLOR_16x16);
+                        if (img != null) {
+                            htmlDisplayName.setIcon(ImageUtilities.image2Icon(img));
+                        }
+                    } catch (Exception e) {
+                        // FIXED: Elevated to warn for visibility, but kept concise.
+                        log.warn("Failed to resolve live icon for resource: {} ({})", resource, e.getMessage());
+                    }
+                }
+            }
         
 
         toggle.addActionListener(e -> {
@@ -468,7 +482,8 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         statusLabel.setFont(statusLabel.getFont().deriveFont(java.awt.Font.BOLD));
         
         topRow.add(statusLabel);
-        topRow.add(link);
+        topRow.add(htmlDisplayName);
+        ResourceUiRegistry.getInstance().getResourceUI().populateActions(topRow, resource, agiPanel);
         topRow.add(Box.createHorizontalStrut(20));
         topRow.add(toggle);
         

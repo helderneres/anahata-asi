@@ -10,13 +10,11 @@ import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
-import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
 import lombok.Getter;
 import lombok.NonNull;
@@ -25,8 +23,10 @@ import net.miginfocom.swing.MigLayout;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.status.AgiStatus;
 import uno.anahata.asi.swing.agi.SwingAgiConfig;
+import uno.anahata.asi.swing.icons.CancelIcon;
 import uno.anahata.asi.swing.icons.DeleteIcon;
 import uno.anahata.asi.swing.icons.SearchIcon;
+import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 
 /**
  * A "sticky note" style card representing an active AI session.
@@ -48,8 +48,16 @@ public class AgiCard extends JPanel {
     private final JLabel nameLabel;
     /** The text area displaying the agi's summary. */
     private final JTextArea summaryArea;
-    /** The listener for agi property changes. */
-    private final PropertyChangeListener agiListener = this::handleAgiChange;
+    private final JLabel statusLabel;
+    private final JLabel messageCountLabel;
+    private final JLabel usageLabel;
+    private final JButton closeBtn;
+    
+    /** Reactive listeners for all session aspects. */
+    private final EdtPropertyChangeListener agiListener;
+    private final EdtPropertyChangeListener statusListener;
+    private final EdtPropertyChangeListener historyListener;
+    private final EdtPropertyChangeListener resourceListener;
 
     @Getter
     private boolean selected = false;
@@ -69,25 +77,32 @@ public class AgiCard extends JPanel {
 
         // Use MigLayout for the whole card to control vertical growth
         setLayout(new MigLayout("fillx, insets 10, gap 4", "[grow]", "[]5[]5[]"));
-        setBackground(theme.getCardNormalBg());
         
         updateBorder();
 
-        // Header: Nickname and Close Button
-        JPanel header = new JPanel(new MigLayout("fillx, insets 0", "[grow][]", "[]"));
+        // Header: Nickname, Close, and Dispose Buttons
+        JPanel header = new JPanel(new MigLayout("fillx, insets 0", "[grow][][]", "[]"));
         header.setOpaque(false);
         
         nameLabel = new JLabel(agi.getDisplayName());
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD, 14f));
         header.add(nameLabel, "growx");
 
-        JButton closeBtn = new JButton(new DeleteIcon(14));
+        closeBtn = new JButton(new CancelIcon(14));
         closeBtn.setToolTipText("Close Session Tab");
         closeBtn.setBorderPainted(false);
         closeBtn.setContentAreaFilled(false);
         closeBtn.setFocusable(false);
         closeBtn.addActionListener(e -> controller.close(agi));
         header.add(closeBtn, "w 20!, h 20!");
+        
+        JButton disposeBtn = new JButton(new DeleteIcon(14));
+        disposeBtn.setToolTipText("Permanently Dispose Session");
+        disposeBtn.setBorderPainted(false);
+        disposeBtn.setContentAreaFilled(false);
+        disposeBtn.setFocusable(false);
+        disposeBtn.addActionListener(e -> controller.dispose(agi));
+        header.add(disposeBtn, "w 20!, h 20!");
 
         add(header, "growx, wrap");
 
@@ -96,7 +111,7 @@ public class AgiCard extends JPanel {
         content.setOpaque(false);
 
         AgiStatus status = agi.getStatusManager().getCurrentStatus();
-        JLabel statusLabel = new JLabel(status.getDisplayName());
+        statusLabel = new JLabel(status.getDisplayName());
         statusLabel.setForeground(SwingAgiConfig.getColor(status));
         statusLabel.setFont(statusLabel.getFont().deriveFont(Font.ITALIC, 11f));
         content.add(statusLabel, "wrap");
@@ -115,10 +130,11 @@ public class AgiCard extends JPanel {
 
         content.add(summaryArea, "growx, wrap, gapbottom 10");
 
-        content.add(new JLabel("Messages: " + agi.getContextManager().getHistory().size()), "wrap");
+        messageCountLabel = new JLabel("Messages: " + agi.getContextManager().getHistory().size());
+        content.add(messageCountLabel, "wrap");
         
         double usage = agi.getContextWindowUsage();
-        JLabel usageLabel = new JLabel("Context: " + String.format("%.1f%%", usage * 100));
+        usageLabel = new JLabel("Context: " + String.format("%.1f%%", usage * 100));
         usageLabel.setForeground(SwingAgiConfig.getColorForContextUsage(usage));
         content.add(usageLabel, "wrap");
 
@@ -153,16 +169,39 @@ public class AgiCard extends JPanel {
             
             @Override
             public void mouseEntered(MouseEvent e) {
-                if (!selected) setBackground(theme.getCardHoverBg());
+                updateBackground();
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                if (!selected) setBackground(theme.getCardNormalBg());
+                updateBackground();
             }
         });
         
-        agi.addPropertyChangeListener(agiListener);
+        // WIRE UP MULTI-SOURCE REACTIVITY
+        this.agiListener = new EdtPropertyChangeListener(this, agi, null, this::handleAgiChange);
+        this.statusListener = new EdtPropertyChangeListener(this, agi.getStatusManager(), "currentStatus", this::handleStatusChange);
+        this.historyListener = new EdtPropertyChangeListener(this, agi.getContextManager(), "history", this::handleHistoryChange);
+        this.resourceListener = new EdtPropertyChangeListener(this, agi.getResourceManager(), "resources", this::handleResourceChange);
+        
+        syncState();
+    }
+
+    private void syncState() {
+        closeBtn.setVisible(agi.isOpen());
+        updateBackground();
+        repaint();
+    }
+
+    private void updateBackground() {
+        if (selected) {
+            setBackground(theme.getCardSelectedBg());
+        } else if (getMousePosition() != null) {
+            setBackground(theme.getCardHoverBg());
+        } else {
+            // Archived (Closed) cards get a dimmed background
+            setBackground(agi.isOpen() ? theme.getCardNormalBg() : new Color(240, 240, 240));
+        }
     }
 
     @Override
@@ -174,7 +213,7 @@ public class AgiCard extends JPanel {
 
     public void setSelected(boolean selected) {
         this.selected = selected;
-        setBackground(selected ? theme.getCardSelectedBg() : theme.getCardNormalBg());
+        updateBackground();
         updateBorder();
         repaint();
     }
@@ -185,32 +224,42 @@ public class AgiCard extends JPanel {
         
         Border lineBorder = BorderFactory.createLineBorder(borderColor, thickness);
         Border shadowBorder = BorderFactory.createMatteBorder(0, 0, 3, 3, new Color(0, 0, 0, 30));
-        Border marginBorder = BorderFactory.createEmptyBorder(0, 0, 0, 0); // MigLayout handles insets
         
-        setBorder(BorderFactory.createCompoundBorder(shadowBorder, BorderFactory.createCompoundBorder(lineBorder, marginBorder)));
+        setBorder(BorderFactory.createCompoundBorder(shadowBorder, lineBorder));
     }
 
-    /**
-     * Handles property change events from the agi session.
-     * 
-     * @param evt The property change event.
-     */
     private void handleAgiChange(PropertyChangeEvent evt) {
         String prop = evt.getPropertyName();
         if ("nickname".equals(prop)) {
-            SwingUtilities.invokeLater(() -> {
-                nameLabel.setText(agi.getDisplayName());
-                revalidate();
-                repaint();
-            });
+            nameLabel.setText(agi.getDisplayName());
         } else if ("summary".equals(prop)) {
-            SwingUtilities.invokeLater(() -> {
-                String summary = (String) evt.getNewValue();
-                summaryArea.setText(summary != null ? summary : "No summary available.");
-                revalidate();
-                repaint();
-            });
+            summaryArea.setText(agi.getConversationSummary() != null ? agi.getConversationSummary() : "No summary available.");
+        } else if ("open".equals(prop)) {
+            syncState();
         }
+        revalidate();
+        repaint();
+    }
+
+    private void handleStatusChange(PropertyChangeEvent evt) {
+        AgiStatus status = (AgiStatus) evt.getNewValue();
+        statusLabel.setText(status.getDisplayName());
+        statusLabel.setForeground(SwingAgiConfig.getColor(status));
+    }
+
+    private void handleHistoryChange(PropertyChangeEvent evt) {
+        messageCountLabel.setText("Messages: " + agi.getContextManager().getHistory().size());
+        updateMetrics();
+    }
+
+    private void handleResourceChange(PropertyChangeEvent evt) {
+        updateMetrics();
+    }
+
+    private void updateMetrics() {
+        double usage = agi.getContextWindowUsage();
+        usageLabel.setText("Context: " + String.format("%.1f%%", usage * 100));
+        usageLabel.setForeground(SwingAgiConfig.getColorForContextUsage(usage));
     }
     
     /**
@@ -218,6 +267,9 @@ public class AgiCard extends JPanel {
      * is no longer needed.
      */
     public void cleanup() {
-        agi.removePropertyChangeListener(agiListener);
+        agiListener.unbind();
+        statusListener.unbind();
+        historyListener.unbind();
+        resourceListener.unbind();
     }
 }

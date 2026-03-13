@@ -9,6 +9,10 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.agi.AgiConfig;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.swing.*;
@@ -195,7 +199,46 @@ public class HeaderPanel extends JPanel {
 
     private void saveSession() {
         new SwingTask<>(this, "Save Session", () -> {
+            // 1. Perform standard auto-save
             agi.save();
+
+            // 2. Open File Chooser for manual "Save As"
+            SwingUtilities.invokeLater(() -> {
+                AgiConfig config = agi.getConfig();
+                AsiContainer container = config.getContainer();
+                Path savedDir = container.getSavedSessionsDir();
+                
+                String nickname = agi.getNickname();
+                String defaultName = (nickname != null && !nickname.isBlank()) ? nickname : config.getSessionId();
+                if (!defaultName.endsWith(".kryo")) {
+                    defaultName += ".kryo";
+                }
+
+                JFileChooser chooser = new JFileChooser(savedDir.toFile());
+                chooser.setDialogTitle("Save Session As...");
+                chooser.setSelectedFile(new File(savedDir.toFile(), defaultName));
+                chooser.setFileFilter(new FileNameExtensionFilter("Anahata Sessions (*.kryo)", "kryo"));
+
+                if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                    File targetFile = chooser.getSelectedFile();
+                    if (!targetFile.getName().endsWith(".kryo")) {
+                        targetFile = new File(targetFile.getParentFile(), targetFile.getName() + ".kryo");
+                    }
+                    
+                    final File finalFile = targetFile;
+                    new SwingTask<>(this, "Exporting Session", () -> {
+                        try {
+                            byte[] data = KryoUtils.serialize(agi);
+                            Files.write(finalFile.toPath(), data);
+                            log.info("Session exported successfully to: {}", finalFile.getAbsolutePath());
+                        } catch (Exception ex) {
+                            log.error("Failed to export session", ex);
+                            throw ex;
+                        }
+                        return null;
+                    }).execute();
+                }
+            });
             return null;
         }).execute();
     }

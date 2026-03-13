@@ -25,6 +25,7 @@ import org.netbeans.modules.java.editor.imports.JavaFixAllImports;
 import org.netbeans.modules.java.hints.spiimpl.hints.HintsInvoker;
 import org.netbeans.modules.java.hints.spiimpl.options.HintsSettings;
 import org.netbeans.spi.editor.hints.ErrorDescription;
+import org.netbeans.spi.editor.hints.Fix;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import uno.anahata.asi.agi.tool.Page;
@@ -148,6 +149,66 @@ public class Hints extends AnahataToolkit {
     }
 
     /**
+     * Applies a specific Java hint fix to a file.
+     *
+     * @param filePath The absolute path of the Java file.
+     * @param hintId The ID of the hint to fix.
+     * @return A message indicating the result of the operation.
+     * @throws Exception if the operation fails.
+     */
+    @AiTool("Applies a specific netbeans hint fix to a file.")
+    public String applyHintFix(
+            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AiToolParam("The ID of the hint to fix.") String hintId
+    ) throws Exception {
+        File file = new File(filePath);
+        if (!file.exists()) {
+            throw new IOException("File does not exist: " + filePath);
+        }
+        FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(file));
+        if (fo == null) {
+            throw new IOException("Could not get FileObject for: " + filePath);
+        }
+
+        JavaSource js = JavaSource.forFileObject(fo);
+        if (js == null) {
+            throw new IOException("Could not get JavaSource for: " + filePath);
+        }
+
+        final StringBuilder sb = new StringBuilder();
+        ModificationResult result = js.runModificationTask(copy -> {
+            copy.toPhase(JavaSource.Phase.RESOLVED);
+            try {
+                HintsSettings settings = HintsSettings.getSettingsFor(copy.getFileObject());
+                HintsInvoker invoker = new HintsInvoker(settings, new AtomicBoolean());
+                List<ErrorDescription> hints = invoker.computeHints(copy);
+
+                boolean found = false;
+                for (ErrorDescription ed : hints) {
+                    if (hintId.equals(ed.getId())) {
+                        List<Fix> fixes = ed.getFixes().getFixes();
+                        if (fixes != null && !fixes.isEmpty()) {
+                            fixes.get(0).implement();
+                            sb.append("Successfully applied fix ").append(hintId).append(" in ").append(file.getName());
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found) {
+                    sb.append("Hint not found or no fix available for: ").append(hintId);
+                }
+            } catch (Exception e) {
+                log.error("Error during applyHintFix", e);
+                sb.append("Error: ").append(e.toString());
+            }
+        });
+
+        result.commit();
+        return sb.toString();
+    }
+
+    /**
      * Gets all Java hints (warnings, suggestions) for a specific project, with pagination.
      * <p>
      * This tool performs a comprehensive static analysis of all Java files within 
@@ -163,9 +224,17 @@ public class Hints extends AnahataToolkit {
     @AiTool("Gets all Java hints (warnings, suggestions) for a specific project, with pagination.")
     public Page<HintInfo> getAllHints(
             @AiToolParam(value = "The absolute path of the project.", rendererId = "path") String projectPath,
-            @AiToolParam("The starting index for pagination.") int startIndex,
-            @AiToolParam("The maximum number of hints to return.") int pageSize
+            @AiToolParam(value = "The starting index for pagination. Defaults to 0 if not provided", required = false) Integer startIndex,
+            @AiToolParam("The maximum number of hints to return. Defaults to 108 if not provided") Integer pageSize
     ) throws Exception {
+        if (startIndex == null) {
+            log("defaulting startIndex to 0");
+            startIndex = 0;
+        }
+        if (pageSize == null) {
+            log("defaulting pageSize to 108");
+            pageSize = 108;
+        }
         Project project = Projects.findOpenProject(projectPath);
         List<HintInfo> allHints = new ArrayList<>();
         

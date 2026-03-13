@@ -176,11 +176,11 @@ public class DefaultResourceUI implements ResourceUI {
      * @return The configured JButton.
      */
     protected JButton createLinkButton(String text, String tooltip, javax.swing.Icon icon) {
-        JButton btn = new JButton("<html><a href='#'>" + text + "</a></html>", icon);
+        JButton btn = new JButton(text, icon);
         btn.setToolTipText(tooltip);
-        btn.setBorderPainted(false);
-        btn.setOpaque(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        //btn.setBorderPainted(false);
+        //btn.setOpaque(false);
+        //btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
 }

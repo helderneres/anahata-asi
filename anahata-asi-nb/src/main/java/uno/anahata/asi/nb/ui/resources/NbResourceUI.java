@@ -1,7 +1,6 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.ui.resources;
 
-import java.awt.Cursor;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -10,18 +9,15 @@ import org.openide.cookies.OpenCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
+import org.openide.util.ImageUtilities;
 import uno.anahata.asi.nb.resources.handle.NbHandle;
 import uno.anahata.asi.nb.tools.ide.IDE;
 import uno.anahata.asi.agi.resource.handle.PathHandle;
 import uno.anahata.asi.agi.resource.Resource;
-import uno.anahata.asi.agi.resource.handle.StringHandle;
-import uno.anahata.asi.agi.resource.handle.UrlHandle;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.resources.DefaultResourceUI;
-import uno.anahata.asi.swing.agi.resources.handle.PathHandlePanel;
-import uno.anahata.asi.swing.agi.resources.handle.StringHandlePanel;
-import uno.anahata.asi.swing.agi.resources.handle.UrlHandlePanel;
 import uno.anahata.asi.swing.icons.IconUtils;
+import uno.anahata.asi.swing.icons.NextIcon;
 import uno.anahata.asi.swing.icons.SearchIcon;
 
 /**
@@ -77,14 +73,14 @@ public class NbResourceUI extends DefaultResourceUI {
             // 1. Open in Editor - Standard IDE navigation
             JButton openBtn = createLinkButton("Open in Editor", 
                 "Open the file in the NetBeans code editor.", 
-                IconUtils.getIcon("java.png", 16, 16)); 
+                new NextIcon(16));
             openBtn.addActionListener(e -> open(resource, agiPanel));
             actionContainer.add(openBtn);
 
             // 2. Select in Projects - Context synchronization
             JButton selectBtn = createLinkButton("Select in Projects", 
                 "Locate and highlight the file in the IDE Projects tree.", 
-                new SearchIcon(16));
+                ImageUtilities.loadImageIcon("org/netbeans/modules/project/ui/resources/projectTab.png", true));
             selectBtn.addActionListener(e -> select(resource, agiPanel));
             actionContainer.add(selectBtn);
         } else {
