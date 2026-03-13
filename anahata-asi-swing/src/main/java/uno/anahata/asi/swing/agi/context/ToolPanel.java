@@ -29,6 +29,7 @@ import uno.anahata.asi.agi.tool.spi.AbstractToolParameter;
 import uno.anahata.asi.agi.tool.ToolPermission;
 import uno.anahata.asi.swing.agi.context.ContextPanel;
 import uno.anahata.asi.swing.agi.message.part.text.CodeBlockSegmentRenderer;
+import uno.anahata.asi.swing.components.ScrollablePanel;
 
 /**
  * A panel that displays the details and controls for a specific {@link AbstractTool}.
@@ -40,7 +41,7 @@ import uno.anahata.asi.swing.agi.message.part.text.CodeBlockSegmentRenderer;
  * @author anahata
  */
 @Slf4j
-public class ToolPanel extends JPanel {
+public class ToolPanel extends ScrollablePanel {
 
     /** The parent context panel. */
     private final ContextPanel parentPanel;

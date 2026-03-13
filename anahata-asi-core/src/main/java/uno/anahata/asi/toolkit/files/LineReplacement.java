@@ -33,7 +33,7 @@ public class LineReplacement {
     /**
      * The replacement text. Can be multiple lines. Use empty string for pure removal.
      */
-    @Schema(description = "The replacement text. Can be multiple lines. Use empty string for pure removal.", required = true)
+    @Schema(description = "The replacement text. Can be multiple lines. IMPORTANT: Do NOT include a trailing newline unless you intend to insert an extra blank line, as the tool joins lines using '\\n' automatically.", required = true)
     private String replacement;
 
     /**

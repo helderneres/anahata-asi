@@ -2,6 +2,7 @@
 package uno.anahata.asi.nb.ui.render;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import uno.anahata.asi.toolkit.files.LineComment;
 import uno.anahata.asi.toolkit.files.TextResourceReplacements;
@@ -12,52 +13,80 @@ import uno.anahata.asi.toolkit.files.TextReplacement;
  * It provides a preview of surgical replacements in the NetBeans diff viewer
  * and automatically maps replacement reasons to line-level gutter comments.
  * 
+ * <p>This renderer uses a chronological mapping strategy to ensure that comments 
+ * stay aligned with the proposed content even when multiple replacements change 
+ * the file's line count.</p>
+ * 
  * @author anahata
  */
 public class TextResourceReplacementsRenderer extends AbstractTextResourceWriteRenderer<TextResourceReplacements> {
 
+    /** {@inheritDoc} */
     @Override
     protected String calculateProposedContent(String currentContent) throws Exception {
         return update.performReplacements(currentContent);
     }
 
+    /** {@inheritDoc} */
     @Override
     protected List<LineComment> getLineComments(String currentContent) {
         List<LineComment> comments = new ArrayList<>();
-        if (update.getReplacements() == null) {
+        if (update.getReplacements() == null || update.getReplacements().isEmpty()) {
             return comments;
         }
 
+        // 1. Identify all occurrences of all targets in the original content
+        record ReplacementEvent(TextReplacement tr, int index) {}
+        List<ReplacementEvent> events = new ArrayList<>();
+        
         for (TextReplacement tr : update.getReplacements()) {
-            if (tr.getReason() == null || tr.getReason().isBlank()) {
+            String target = tr.getTarget();
+            if (target == null || target.isEmpty()) {
                 continue;
             }
-
-            // Resolve the line number where the target replacement begins
-            int index = currentContent.indexOf(tr.getTarget());
-            if (index != -1) {
-                int lineNum = 1;
-                for (int i = 0; i < index; i++) {
-                    if (currentContent.charAt(i) == '\n') {
-                        lineNum++;
-                    }
+            
+            int idx = currentContent.indexOf(target);
+            while (idx != -1) {
+                events.add(new ReplacementEvent(tr, idx));
+                idx = currentContent.indexOf(target, idx + target.length());
+                // Avoid infinite loops if replacement contains target
+                if (tr.getReplacement() != null && tr.getReplacement().contains(target)) {
+                    break;
                 }
-                comments.add(new LineComment(lineNum, tr.getReason()));
             }
         }
+
+        // 2. Sort events by character position to ensure accurate cumulative line-shifting
+        events.sort(Comparator.comparingInt(ReplacementEvent::index));
+
+        // 3. Map to proposed line numbers using cumulative shift
+        int cumulativeLineShift = 0;
+        for (ReplacementEvent event : events) {
+            TextReplacement tr = event.tr();
+            int originalLine = DiffCommentUtils.getLineAt(currentContent, event.index());
+            int proposedLine = originalLine + cumulativeLineShift;
+            
+            if (tr.getReason() != null && !tr.getReason().isBlank()) {
+                comments.add(new LineComment(proposedLine, tr.getReason()));
+            }
+            
+            // Calculate shift: lines added minus lines removed
+            int removed = DiffCommentUtils.getLineCount(tr.getTarget());
+            int added = DiffCommentUtils.getLineCount(tr.getReplacement());
+            cumulativeLineShift += (added - removed);
+        }
+        
         return comments;
     }
 
+    /** {@inheritDoc} */
     @Override
     protected TextResourceReplacements createUpdatedDto(String newContent) {
-        // When the user edits a surgical replacement in the UI, we convert it
-        // to a 'custom' replacement that replaces everything with the new content.
-        // This is necessary because the original surgical list no longer applies to the manual edits.
         TextResourceReplacements dto = new TextResourceReplacements(
                 update.getResourceUuid(),
                 update.getLastModified(),
                 List.of(TextReplacement.builder()
-                        .target(newContent) // This is a bit of a hack, but it works for UI merging
+                        .target(newContent) 
                         .replacement(newContent)
                         .reason("User manual edit")
                         .expectedCount(1)
@@ -67,8 +96,9 @@ public class TextResourceReplacementsRenderer extends AbstractTextResourceWriteR
         return dto;
     }
 
+    /** {@inheritDoc} */
     @Override
     protected int getInitialTabIndex() {
-        return 1; // Default to Textual tab for replacements
+        return 1; // Default to Textual tab for search-and-replace
     }
 }
