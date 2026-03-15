@@ -52,8 +52,8 @@ public class Session extends AnahataToolkit {
      * @param summary A concise summary of the conversation's current state or topic.
      * @return A confirmation message.
      */
-    @AiTool(value = "Updates the current agi session's summary. This shows in the ASI container's dashboard, update it with a brief summary of what you are doing or what you did if you are done." +
-            "STRICT USAGE RULE: Only call this if you are calling other real-task related tools.",
+    @AiTool(value = "Updates the current agi session's summary. This shows the ASI container's dashboard, update it with a brief summary of what you are doing or what you have just accomplished. " +
+            " Call this if you are calling other real-task tools in the same batch, otherwise -if the user has autoreply tool calls enabled-, you could cause an uncessary turn.",
             requiresApproval = false)
     public String updateSessionSummary(@AiToolParam("A concise summary of the conversation's current state.") String summary) {
         uno.anahata.asi.agi.Agi domainAgi = getAgi();
