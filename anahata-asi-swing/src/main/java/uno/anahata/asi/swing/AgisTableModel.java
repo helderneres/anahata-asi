@@ -22,38 +22,68 @@ import uno.anahata.asi.agi.status.AgiStatus;
  */
 public class AgisTableModel extends AbstractTableModel {
 
+    /** The list of active agi sessions being tracked. */
     private final List<Agi> sessions = new ArrayList<>();
+    /** The localized column names for the table. */
     private final String[] columnNames = {"Nickname", "ID", "Status", "Msgs", "Context %"};
+    /** The container configuration providing session data. */
     private final AsiContainer asiConfig;
+    /** The listener for changes in the container's session list. */
     private final PropertyChangeListener asiListener = this::handleAsiChange;
 
+    /** The column index for the session name. */
     public static final int SESSION_COL = 0;
+    /** The column index for the session ID. */
     public static final int ID_COL = 1;
+    /** The column index for the session status. */
     public static final int STATUS_COL = 2;
+    /** The column index for the message count. */
     public static final int MESSAGES_COL = 3;
+    /** The column index for context window usage. */
     public static final int CONTEXT_COL = 4;
 
+    /** 
+     * Constructs a new model and registers a listener on the provided container.
+     * 
+     * @param asiConfig The container to track.
+     */
     public AgisTableModel(@NonNull AsiContainer asiConfig) {
         this.asiConfig = asiConfig;
         refresh();
         asiConfig.addPropertyChangeListener(asiListener);
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the number of active sessions in the tracked container.</p> 
+     */
     @Override
     public int getRowCount() {
         return sessions.size();
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the number of columns defined in the columnNames array.</p> 
+     */
     @Override
     public int getColumnCount() {
         return columnNames.length;
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the localized name for the specified column.</p> 
+     */
     @Override
     public String getColumnName(int column) {
         return columnNames[column];
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the appropriate class for each column to enable specialized renderers (e.g., status colors).</p> 
+     */
     @Override
     public Class<?> getColumnClass(int columnIndex) {
         switch (columnIndex) {
@@ -68,6 +98,10 @@ public class AgisTableModel extends AbstractTableModel {
         }
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Extracts session data based on the column index (nickname, id, status, messages, usage).</p> 
+     */
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
         if (rowIndex < 0 || rowIndex >= sessions.size()) {
@@ -120,6 +154,12 @@ public class AgisTableModel extends AbstractTableModel {
         }
     }
 
+    /** 
+     * Retrieves the agi session at the specified row index.
+     * 
+     * @param row The model row index.
+     * @return The session, or null if the index is out of bounds.
+     */
     public Agi getAgiAt(int row) {
         if (row >= 0 && row < sessions.size()) {
             return sessions.get(row);
@@ -127,12 +167,20 @@ public class AgisTableModel extends AbstractTableModel {
         return null;
     }
 
+    /** 
+     * Handles property change events from the ASI container to trigger a refresh.
+     * 
+     * @param evt The property change event.
+     */
     private void handleAsiChange(PropertyChangeEvent evt) {
         if ("activeAgis".equals(evt.getPropertyName())) {
             refresh();
         }
     }
     
+    /** 
+     * Unregisters the listener from the container and cleans up the model.
+     */
     public void dispose() {
         asiConfig.removePropertyChangeListener(asiListener);
     }

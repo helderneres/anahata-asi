@@ -61,12 +61,12 @@ Comprehensive documentation is mandatory for this open-source project. Existing 
 
 - **Mandatory Visibility**: Javadoc is mandatory for **ALL** visibilities: `public`, `protected`, `package-private`, and `private`. If it can be Javadocced, it must be Javadocced.
 - **ASI-Grade Quality**: Javadocs must be meaningful, providing architectural context, thread-safety notes, and domain-level significance. Avoid "lazy" or redundant Javadoc that just repeats the method name.
-- **Override/Implementation Logic**: Every override or implementation must use the following pattern:
+- **Override/Implementation Logic**: Every override or implementation must use the following javadoc pattern:
     `/** 
          {@inheritDoc} 
          <p>Describe the specific implementation logic here, explaining why and how this member is being overridden/implemented.</p> 
       */
-     @Override'
+     @Override`
 - **Implementation Details**: For complex logic, use Javadoc to explain internal side effects and thread-safety considerations.
 
 ## 6. Lifecycle Management
