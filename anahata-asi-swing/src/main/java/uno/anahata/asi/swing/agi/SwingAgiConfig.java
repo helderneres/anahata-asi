@@ -37,9 +37,16 @@ public class SwingAgiConfig extends AgiConfig {
         ParameterRendererFactory.register(FullTextFileCreate.class, FullTextFileCreateRenderer.class);
     }
     
+    /** 
+     * The provider for NetBeans-specific editor kits, used to render code blocks 
+     * with the appropriate syntax highlighting. 
+     */
     private EditorKitProvider editorKitProvider;
     
-    /** The provider for context-related icons. */
+    /** 
+     * The provider for context-related icons, used to visually distinguish between 
+     * different types of resources and tools. 
+     */
     private IconProvider iconProvider;
     
     /**
@@ -94,6 +101,12 @@ public class SwingAgiConfig extends AgiConfig {
         propertyChangeSupport.firePropertyChange("showPruned", old, showPruned);
     }
 
+    /** 
+     * Retrieves the thematic color associated with a specific agi status.
+     * 
+     * @param status The status to look up.
+     * @return The color representing that status in the UI.
+     */
     public static Color getColor(AgiStatus status) {
         return switch (status) {
             case AWAKENING_KUNDALINI -> new Color(80, 200, 120); // Emerald Green
@@ -110,6 +123,12 @@ public class SwingAgiConfig extends AgiConfig {
         };
     }
     
+    /** 
+     * Retrieves the color associated with a specific tool execution status.
+     * 
+     * @param status The status to look up.
+     * @return The color representing that execution state.
+     */
     public static Color getColor(ToolExecutionStatus status) {
         if (status == null) return Color.GRAY;
         return switch (status) {
@@ -123,6 +142,12 @@ public class SwingAgiConfig extends AgiConfig {
         };
     }
 
+    /** 
+     * Retrieves the color associated with a specific tool permission level.
+     * 
+     * @param permission The permission level.
+     * @return The color representing that permission.
+     */
     public static Color getColor(ToolPermission permission) {
         if (permission == null) return Color.GRAY;
         return switch (permission) {
@@ -132,6 +157,13 @@ public class SwingAgiConfig extends AgiConfig {
         };
     }
 
+    /** 
+     * Calculates a color representing context window usage, shifting from green 
+     * to red as the usage approaches the threshold.
+     * 
+     * @param percentage The usage percentage (0.0 to 1.0+).
+     * @return The appropriate color for the usage bar.
+     */
     public static Color getColorForContextUsage(double percentage) {
         if (percentage > 1.0) {
             return new Color(150, 0, 0); // Dark Red
@@ -144,75 +176,128 @@ public class SwingAgiConfig extends AgiConfig {
         }
     }
 
+    /** 
+     * Returns a new theme object containing the color and font definitions for the UI.
+     * @return The UI theme.
+     */
     public UITheme getTheme() {
         return new UITheme();
     }
 
+    /** 
+     * A collection of color and font definitions that define the visual 
+     * identity of the Anahata Swing UI.
+     */
     @Getter
     public static class UITheme {
-        // General
+        /** The primary foreground color for general text. */
         private final Color fontColor = Color.BLACK;
+        /** The fixed-width font used for code blocks and monospaced text segments. */
         private final Font monoFont = new Font("SF Mono", Font.PLAIN, 14);
 
-        // Role-specific colors (for Message Headers)
+        /** Background color for the user message header. */
         private final Color userHeaderBg = new Color(212, 237, 218);
-        private final Color userContentBg = new Color(235, 250, 235); // More green, still faint
+        /** Background color for the user message content area. */
+        private final Color userContentBg = new Color(235, 250, 235);
+        /** Foreground color for the user message header text. */
         private final Color userHeaderFg = new Color(21, 87, 36);
+        /** Border color for user message panels. */
         private final Color userBorder = new Color(144, 198, 149);
 
+        /** Background color for the model message header. */
         private final Color modelHeaderBg = new Color(221, 234, 248);
-        private final Color modelContentBg = new Color(250, 252, 255); // Nearly white with minimal blue tint
+        /** Background color for the model message content area. */
+        private final Color modelContentBg = new Color(250, 252, 255);
+        /** Foreground color for the model message header text. */
         private final Color modelHeaderFg = new Color(0, 123, 255);
+        /** Border color for model message panels. */
         private final Color modelBorder = new Color(160, 195, 232);
 
+        /** Background color for tool/system message headers. */
         private final Color toolHeaderBg = new Color(223, 213, 235);
+        /** Background color for tool/system message content areas. */
         private final Color toolContentBg = new Color(250, 248, 252);
+        /** Foreground color for tool/system message header text. */
         private final Color toolHeaderFg = new Color(80, 60, 100);
+        /** Border color for tool/system message panels. */
         private final Color toolBorder = new Color(200, 180, 220);
         
+        /** Foreground color for standard tool output text. */
         private final Color toolOutputFg = Color.GREEN;
+        /** Background color for standard tool output text area. */
         private final Color toolOutputBg = Color.BLACK;
-        private final Color toolErrorFg = new Color(255, 80, 80); // Brighter Red (V1 style)
-        private final Color toolErrorBg = new Color(51, 28, 28);  // Deep Burgundy (V1 style)
+        /** Foreground color for tool error output. */
+        private final Color toolErrorFg = new Color(255, 80, 80);
+        /** Background color for tool error output area. */
+        private final Color toolErrorBg = new Color(51, 28, 28);
+        /** Foreground color for tool log messages. */
         private final Color toolLogsFg = Color.WHITE;
+        /** Background color for tool logs area. */
         private final Color toolLogsBg = Color.BLACK;
 
-        // Part-specific colors (Faint and Role-Neutral)
-        private final Color partHeaderBg = new Color(240, 240, 240, 100); // Faint gray
+        /** Background color for individual message part headers. */
+        private final Color partHeaderBg = new Color(240, 240, 240, 100);
+        /** Foreground color for message part header text. */
         private final Color partHeaderFg = new Color(100, 100, 100);
+        /** Border color for message part panels. */
         private final Color partBorder = new Color(220, 220, 220, 150);
         
-        private final Color thoughtFg = new Color(150, 150, 150); // Fainted gray for thoughts
+        /** Foreground color for model thought/reasoning text. */
+        private final Color thoughtFg = new Color(150, 150, 150);
 
+        /** Default background color for message headers if role is undefined. */
         private final Color defaultHeaderBg = Color.WHITE;
+        /** Default background color for message content areas. */
         private final Color defaultContentBg = new Color(248, 249, 250);
+        /** Default border color for message panels. */
         private final Color defaultBorder = Color.LIGHT_GRAY;
 
-        // Function Call/Response
+        /** Background color for function call visualization. */
         private final Color functionCallBg = new Color(28, 37, 51);
+        /** Foreground color for function call text. */
         private final Color functionCallFg = new Color(0, 229, 255);
+        /** Background color for function response visualization. */
         private final Color functionResponseBg = Color.BLACK;
+        /** Foreground color for function response text. */
         private final Color functionResponseFg = new Color(0, 255, 0);
+        /** Background color for function error visualization. */
         private final Color functionErrorBg = new Color(51, 28, 28);
+        /** Foreground color for function error text. */
         private final Color functionErrorFg = new Color(255, 80, 80);
         
-        // Grounding Metadata
+        /** Background color for grounding metadata headers. */
         private final Color groundingHeaderBg = new Color(240, 248, 255);
+        /** Background color for grounding metadata content. */
         private final Color groundingContentBg = new Color(250, 252, 255);
+        /** Background color for grounding source details header. */
         private final Color groundingDetailsHeaderBg = new Color(230, 240, 250);
+        /** Foreground color for grounding source details header text. */
         private final Color groundingDetailsHeaderColor = new Color(0, 50, 100);
+        /** Background color for grounding source details content. */
         private final Color groundingDetailsContentBg = Color.WHITE;
+        /** Background color for interactive grounding chips. */
         private final Color chipBackground = new Color(235, 245, 255);
+        /** Text color for interactive grounding chips. */
         private final Color chipText = new Color(0, 100, 200);
+        /** Border color for interactive grounding chips. */
         private final Color chipBorder = new Color(180, 210, 240);
 
-        // Agi Card Colors
+        /** Default background color for agi cards in the selection grid. */
         private final Color cardNormalBg = new Color(255, 253, 208);
+        /** Background color for agi cards on mouse hover. */
         private final Color cardHoverBg = new Color(255, 255, 225);
+        /** Background color for the currently selected agi card. */
         private final Color cardSelectedBg = new Color(255, 245, 180);
+        /** Border color for standard agi cards. */
         private final Color cardBorder = new Color(220, 220, 180);
+        /** Border color for the selected agi card. */
         private final Color cardSelectedBorder = new Color(180, 160, 50);
-
+        
+        /** 
+         * Gets the background color for the start of a message header based on the role.
+         * @param role The actor's role.
+         * @return The header start color.
+         */
         public Color getHeaderStartColor(Role role) {
             return switch (role) {
                 case USER -> userHeaderBg;
@@ -222,6 +307,11 @@ public class SwingAgiConfig extends AgiConfig {
             };
         }
 
+        /** 
+         * Gets the background color for the end of a message header (and content area) based on the role.
+         * @param role The actor's role.
+         * @return The header end color.
+         */
         public Color getHeaderEndColor(Role role) {
             return switch (role) {
                 case USER -> userContentBg;
@@ -231,6 +321,11 @@ public class SwingAgiConfig extends AgiConfig {
             };
         }
 
+        /** 
+         * Gets the foreground (text) color for a message header based on the role.
+         * @param role The actor's role.
+         * @return The header text color.
+         */
         public Color getHeaderForegroundColor(Role role) {
             return switch (role) {
                 case USER -> userHeaderFg;
@@ -240,6 +335,11 @@ public class SwingAgiConfig extends AgiConfig {
             };
         }
 
+        /** 
+         * Gets the border color for a message panel based on the role.
+         * @param role The actor's role.
+         * @return The border color.
+         */
         public Color getBorderColor(Role role) {
             return switch (role) {
                 case USER -> userBorder;
