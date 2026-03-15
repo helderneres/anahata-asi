@@ -86,7 +86,6 @@ public class BigTestClass {
      * 
      * @return A list of the greatest highlights in football history.
      */
-
     public List<String> getHighlights() {
         log.info("Fetching the greatest club highlights...");
         return Arrays.asList("6-1 Comeback", "Messi 91 Goals", "Treble 2009", "Treble 2015");
