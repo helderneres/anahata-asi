@@ -3,6 +3,7 @@
  */
 package uno.anahata.asi.agi.provider;
 
+import java.awt.Desktop;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -170,6 +171,8 @@ public abstract class AbstractAgiProvider {
                               + "# Lines starting with '#' or '//' are treated as comments and ignored.\n"
                               + "# Inline comments using '//' are also supported.\n";
                 Files.writeString(keysFilePath, template);
+                //we could do this.
+                //Desktop.getDesktop().open(keysFilePath);                
             } catch (IOException e) {
                 log.error("Failed to create API key template file at: {}", keysFilePath, e);
             }
