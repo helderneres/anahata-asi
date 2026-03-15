@@ -259,12 +259,13 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
         
         return switch (language.toLowerCase()) {
             case "java" -> SyntaxConstants.SYNTAX_STYLE_JAVA;
-            case "python" -> SyntaxConstants.SYNTAX_STYLE_PYTHON;
+            case "python", "py" -> SyntaxConstants.SYNTAX_STYLE_PYTHON;
             case "xml" -> SyntaxConstants.SYNTAX_STYLE_XML;
             case "html" -> SyntaxConstants.SYNTAX_STYLE_HTML;
             case "javascript", "js" -> SyntaxConstants.SYNTAX_STYLE_JAVASCRIPT;
             case "typescript", "ts" -> SyntaxConstants.SYNTAX_STYLE_TYPESCRIPT;
             case "json" -> SyntaxConstants.SYNTAX_STYLE_JSON;
+            case "jsonc" -> SyntaxConstants.SYNTAX_STYLE_JSON_WITH_COMMENTS;
             case "sql" -> SyntaxConstants.SYNTAX_STYLE_SQL;
             case "markdown", "md" -> SyntaxConstants.SYNTAX_STYLE_MARKDOWN;
             case "yaml", "yml" -> SyntaxConstants.SYNTAX_STYLE_YAML;
@@ -273,9 +274,34 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
             case "cpp", "c++" -> SyntaxConstants.SYNTAX_STYLE_CPLUSPLUS;
             case "csharp", "c#" -> SyntaxConstants.SYNTAX_STYLE_CSHARP;
             case "php" -> SyntaxConstants.SYNTAX_STYLE_PHP;
-            case "ruby" -> SyntaxConstants.SYNTAX_STYLE_RUBY;
-            case "shell", "sh", "bash" -> SyntaxConstants.SYNTAX_STYLE_UNIX_SHELL;
+            case "ruby", "rb" -> SyntaxConstants.SYNTAX_STYLE_RUBY;
+            case "rust", "rs" -> SyntaxConstants.SYNTAX_STYLE_RUST;
+            case "go", "golang" -> SyntaxConstants.SYNTAX_STYLE_GO;
+            case "kotlin", "kt" -> SyntaxConstants.SYNTAX_STYLE_KOTLIN;
+            case "scala" -> SyntaxConstants.SYNTAX_STYLE_SCALA;
+            case "groovy" -> SyntaxConstants.SYNTAX_STYLE_GROOVY;
+            case "clojure" -> SyntaxConstants.SYNTAX_STYLE_CLOJURE;
+            case "dart" -> SyntaxConstants.SYNTAX_STYLE_DART;
+            case "shell", "sh", "bash", "zsh" -> SyntaxConstants.SYNTAX_STYLE_UNIX_SHELL;
+            case "bat", "batch", "cmd" -> SyntaxConstants.SYNTAX_STYLE_WINDOWS_BATCH;
+            case "dockerfile", "docker" -> SyntaxConstants.SYNTAX_STYLE_DOCKERFILE;
             case "properties" -> SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE;
+            case "ini" -> SyntaxConstants.SYNTAX_STYLE_INI;
+            case "perl", "pl" -> SyntaxConstants.SYNTAX_STYLE_PERL;
+            case "lua" -> SyntaxConstants.SYNTAX_STYLE_LUA;
+            case "make", "makefile" -> SyntaxConstants.SYNTAX_STYLE_MAKEFILE;
+            case "latex", "tex" -> SyntaxConstants.SYNTAX_STYLE_LATEX;
+            case "csv" -> SyntaxConstants.SYNTAX_STYLE_CSV;
+            case "proto", "protobuf" -> SyntaxConstants.SYNTAX_STYLE_PROTO;
+            case "asm", "x86" -> SyntaxConstants.SYNTAX_STYLE_ASSEMBLER_X86;
+            case "asm6502" -> SyntaxConstants.SYNTAX_STYLE_ASSEMBLER_6502;
+            case "vb", "visualbasic" -> SyntaxConstants.SYNTAX_STYLE_VISUAL_BASIC;
+            case "vhdl" -> SyntaxConstants.SYNTAX_STYLE_VHDL;
+            case "delphi", "pascal" -> SyntaxConstants.SYNTAX_STYLE_DELPHI;
+            case "jsp" -> SyntaxConstants.SYNTAX_STYLE_JSP;
+            case "less" -> SyntaxConstants.SYNTAX_STYLE_LESS;
+            case "lisp" -> SyntaxConstants.SYNTAX_STYLE_LISP;
+            case "actionscript" -> SyntaxConstants.SYNTAX_STYLE_ACTIONSCRIPT;
             default -> SyntaxConstants.SYNTAX_STYLE_NONE;
         };
     }
