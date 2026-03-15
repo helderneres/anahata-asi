@@ -27,37 +27,43 @@ import uno.anahata.asi.swing.components.ScrollablePanel;
 /**
  * The main, top-level panel for the Anahata AI Swing UI.
  * This class acts as an aggregator for all other UI components (e.g., input panel, conversation view, status bar).
+ * <p>
+ * This component is designed to be thread-aware. While the UI structure is initialized on the 
+ * Event Dispatch Thread (EDT), interactions with the underlying {@link Agi} orchestrator 
+ * often trigger background tasks. Use {@link uno.anahata.asi.swing.internal.SwingUtils} 
+ * to safely transition between threads.
+ * </p>
  *
  * @author anahata
  */
 @Getter
 public class AgiPanel extends ScrollablePanel {
 
-    /** The agi session orchestrator. */
+    /** The agi session orchestrator that manages model interactions and tool execution. */
     private Agi agi; 
-    /** The agi configuration. */
+    /** The UI-specific configuration for this agi session, including themes and providers. */
     private SwingAgiConfig agiConfig; 
-    /** The tabbed pane for switching between agi, config, and context. */
+    /** The tabbed pane for switching between chat, configuration, and metabolic metrics. */
     private final JTabbedPane tabbedPane;
-    /** The panel for editing request configuration. */
+    /** The panel for editing request configuration such as temperature and thinking levels. */
     private final RequestConfigPanel configPanel;
-    /** The panel for managing the AI context (history, tools, resources). */
+    /** The panel for managing the AI context, including history pruning and resource browsing. */
     private final ContextPanel contextPanel;
-    /** The panel providing support links and community resources. */
+    /** The panel providing support links, documentation, and community resources. */
     private final SupportPanel supportPanel;
-    /** The panel for monitoring GC metrics. */
+    /** The panel for monitoring Context Window Garbage Collection (CwGC) metrics. */
     private final CwGcPanel cwGcPanel;
-    /** The panel for user input. */
+    /** The primary user input panel, supporting multimodal attachments and command completion. */
     private final InputPanel inputPanel;
-    /** The header panel. */
+    /** The header panel for session identity and model/provider selection. */
     private final HeaderPanel headerPanel;
-    /** The toolbar panel. */
+    /** The vertical toolbar panel for primary session-level action toggles. */
     private final ToolbarPanel toolbarPanel;
-    /** The status panel. */
+    /** The status panel for real-time monitoring of API calls and token usage. */
     private final StatusPanel statusPanel; 
-    /** The main conversation view. */
+    /** The main scrollable conversation view where message panels are rendered. */
     private final ConversationPanel conversationPanel; 
-    /** The panel for displaying and selecting response candidates. */
+    /** The panel for displaying and selecting between multiple response candidates. */
     private final CandidateSelectionPanel candidateSelectionPanel;
 
     /**
