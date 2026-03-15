@@ -24,7 +24,7 @@ import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.toolkit.files.FullTextFileCreate;
 import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.files.TextResourceReplacements;
-import uno.anahata.asi.toolkit.files.TextResourceLineReplacements;
+import uno.anahata.asi.toolkit.files.TextResourceLineBasedUpdates;
 
 /**
  * The definitive V2 URI-centric toolkit for managed multimodal resources.
@@ -54,7 +54,7 @@ public class Resources extends AnahataToolkit {
                 "**Resources Toolkit** (Surgical Precision Rules):\n"
                 + "1. **Context Integrity**: Only modify resources currently in context. Always use the `lastModified` timestamp from the LATEST RAG message.\n"
                 + "2. **Line Reference**: Line numbers are 1-based and must be verified against the RAG message before every call.\n"
-                + "3. **Reasoning**: Always provide a meaningful `reason` for each replacement; it will be displayed as an AI comment in the UI."
+                + "3. **Reasoning**: Always provide a meaningful `reason` for each replacement; it will be displayed as an AI comment in the UI.\n"
         );
     }
 
@@ -200,7 +200,7 @@ public class Resources extends AnahataToolkit {
      * @param replacements The replacements DTO.
      * @throws Exception if replacements fail.
      */
-    @AiTool("Performs multiple text replacements in a textresource but doesn't magically include imports.")
+    @AiTool("Performs multiple text replacements in a textresource. Discouraged for sourc code files or multiline replacements.")
     public void findAndReplaceInTextResource(@AiToolParam("The set of replacements.") TextResourceReplacements replacements) throws Exception {
         replacements.validate(getAgi());
 
@@ -222,15 +222,15 @@ public class Resources extends AnahataToolkit {
      * @param replacements The line replacements DTO.
      * @throws Exception if replacements fail.
      */
-    @AiTool("Performs multiple line-based replacements in a file. Do NOT add a `\\n` at the end of your replacement string unless you want an extra blank line. The tool joins lines automatically.")
-    public void replaceLinesInTextResource(@AiToolParam("The set of line replacements.") TextResourceLineReplacements replacements) throws Exception {
+    @AiTool("Performs multiple line-based updates in a file.")
+    public void updateLinesInTextResource(@AiToolParam("The line-based updates for the given resource.") TextResourceLineBasedUpdates replacements) throws Exception {
         replacements.validate(getAgi());
 
         Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
         if (res != null) {
 
             String content = res.asText();
-            String updated = replacements.performReplacements(content);
+            String updated = replacements.performUpdates(content);
 
             res.write(updated);
 

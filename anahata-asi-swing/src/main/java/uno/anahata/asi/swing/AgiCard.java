@@ -48,20 +48,30 @@ public class AgiCard extends JPanel {
     private final JLabel nameLabel;
     /** The text area displaying the agi's summary. */
     private final JTextArea summaryArea;
+    /** The label displaying the current status of the agi. */
     private final JLabel statusLabel;
+    /** The label displaying the total number of messages in the conversation. */
     private final JLabel messageCountLabel;
+    /** The label displaying the context window usage percentage. */
     private final JLabel usageLabel;
+    /** The button to close the session's tab/window. */
     private final JButton closeBtn;
     
     /** Reactive listeners for all session aspects. */
+    /** The listener for changes in the agi session's properties. */
     private final EdtPropertyChangeListener agiListener;
+    /** The listener for status changes in the agi session. */
     private final EdtPropertyChangeListener statusListener;
+    /** The listener for history changes in the context manager. */
     private final EdtPropertyChangeListener historyListener;
+    /** The listener for resource changes in the resource manager. */
     private final EdtPropertyChangeListener resourceListener;
 
     @Getter
+    /** Whether the card is currently selected in the container. */
     private boolean selected = false;
     
+    /** The UI theme derived from the agi's configuration. */
     private final SwingAgiConfig.UITheme theme;
 
     /**
@@ -187,12 +197,18 @@ public class AgiCard extends JPanel {
         syncState();
     }
 
+    /** 
+     * Synchronizes the UI state with the agi's 'open' status and updates the background.
+     */
     private void syncState() {
         closeBtn.setVisible(agi.isOpen());
         updateBackground();
         repaint();
     }
 
+    /** 
+     * Updates the card's background color based on selection, hover, and open state.
+     */
     private void updateBackground() {
         if (selected) {
             setBackground(theme.getCardSelectedBg());
@@ -205,12 +221,21 @@ public class AgiCard extends JPanel {
     }
 
     @Override
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns a fixed width of 250 to ensure card consistency in the grid.</p> 
+     */
     public Dimension getPreferredSize() {
         Dimension d = super.getPreferredSize();
         d.width = 250; // Maintain consistent width
         return d;
     }
 
+    /** 
+     * Sets the selection state of the card and updates its visual appearance.
+     * 
+     * @param selected true if the card is selected.
+     */
     public void setSelected(boolean selected) {
         this.selected = selected;
         updateBackground();
@@ -218,6 +243,9 @@ public class AgiCard extends JPanel {
         repaint();
     }
 
+    /** 
+     * Updates the card's border thickness and color based on the selection state.
+     */
     private void updateBorder() {
         Color borderColor = selected ? theme.getCardSelectedBorder() : theme.getCardBorder();
         int thickness = selected ? 2 : 1;
@@ -228,6 +256,11 @@ public class AgiCard extends JPanel {
         setBorder(BorderFactory.createCompoundBorder(shadowBorder, lineBorder));
     }
 
+    /** 
+     * Handles property change events from the agi session.
+     * 
+     * @param evt The property change event.
+     */
     private void handleAgiChange(PropertyChangeEvent evt) {
         String prop = evt.getPropertyName();
         if ("nickname".equals(prop)) {
@@ -241,21 +274,39 @@ public class AgiCard extends JPanel {
         repaint();
     }
 
+    /** 
+     * Handles status change events from the agi status manager.
+     * 
+     * @param evt The property change event.
+     */
     private void handleStatusChange(PropertyChangeEvent evt) {
         AgiStatus status = (AgiStatus) evt.getNewValue();
         statusLabel.setText(status.getDisplayName());
         statusLabel.setForeground(SwingAgiConfig.getColor(status));
     }
 
+    /** 
+     * Handles history change events from the context manager.
+     * 
+     * @param evt The property change event.
+     */
     private void handleHistoryChange(PropertyChangeEvent evt) {
         messageCountLabel.setText("Messages: " + agi.getContextManager().getHistory().size());
         updateMetrics();
     }
 
+    /** 
+     * Handles resource change events from the resource manager.
+     * 
+     * @param evt The property change event.
+     */
     private void handleResourceChange(PropertyChangeEvent evt) {
         updateMetrics();
     }
 
+    /** 
+     * Recalculates and updates the labels for message count and context usage.
+     */
     private void updateMetrics() {
         double usage = agi.getContextWindowUsage();
         usageLabel.setText("Context: " + String.format("%.1f%%", usage * 100));

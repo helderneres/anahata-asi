@@ -61,7 +61,8 @@ import uno.anahata.asi.toolkit.files.LineComment;
  * <p>Key Features:</p>
  * <ul>
  *   <li><b>Immediate Pre-Flight Validation</b>: Delegates to the authoritative 
- *   {@link Files#validateWrite} logic to reject hallucinated or stale proposals 
+     *   {@link AbstractTextResourceWrite#validate} logic to reject hallucinated or stale proposals 
+
  *   as soon as they are rendered.</li>
  *   <li><b>Historical Diff Persistence</b>: Automatically captures the file state before
  *   execution and persists it in the tool call DTO.</li>

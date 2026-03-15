@@ -9,6 +9,10 @@ import lombok.NoArgsConstructor;
 
 /**
  * Represents a single line-based replacement operation.
+ * <p>
+ * This DTO is optimized for agentic workflows, using semantic naming 
+ * that aligns with natural model reasoning.
+ * </p>
  * 
  * @author anahata
  */
@@ -16,8 +20,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "Represents a single line-based replacement operation.")
-public class LineReplacement {
+@Schema(description = "Represents a line-based update operation.")
+public class LineBasedUpdate {
     /**
      * The 1-based start line number.
      */
@@ -25,16 +29,17 @@ public class LineReplacement {
     private int startLine;
 
     /**
-     * The number of lines to replace/remove. Use 0 for pure insertion.
+     * The number of lines to remove from the file, starting at startLine.
+     * Use 0 for pure insertion.
      */
-    @Schema(description = "The number of lines to replace/remove. Use 0 for pure insertion.", required = true)
+    @Schema(description = "The number of lines to update: 0 for pure insertions. The number of lines to delete for pure deletions. The number of lines to replace for replacements. ", required = true)
     private int lineCount;
 
     /**
      * The replacement text. Can be multiple lines. Use empty string for pure removal.
      */
-    @Schema(description = "The replacement text. Can be multiple lines. IMPORTANT: Do NOT include a trailing newline unless you intend to insert an extra blank line, as the tool joins lines using '\\n' automatically.", required = true)
-    private String replacement;
+    @Schema(description = "The new lines for that range. Use the platforms line separator between lines or no line separator at all if you are just replacing a single line. Empty if you just want to delete lines.")
+    private String newContent;
 
     /**
      * The reason for this change.

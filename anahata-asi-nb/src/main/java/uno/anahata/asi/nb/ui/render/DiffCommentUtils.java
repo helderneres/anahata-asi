@@ -32,6 +32,7 @@ public class DiffCommentUtils {
 
     /**
      * Identifies the 1-based line number of a character index within a text.
+     * Handles LF (\n), CR (\r), and CRLF (\r\n) sequences consistently.
      * 
      * @param text The text to search.
      * @param charIndex The 0-based character index.
@@ -45,8 +46,15 @@ public class DiffCommentUtils {
         int lineNum = 1;
         int length = Math.min(charIndex, text.length());
         for (int i = 0; i < length; i++) {
-            if (text.charAt(i) == '\n') {
+            char c = text.charAt(i);
+            if (c == '\n') {
+                // LF or the end of a CRLF sequence
                 lineNum++;
+            } else if (c == '\r') {
+                // CR only: increment if NOT followed by LF
+                if (i + 1 >= text.length() || text.charAt(i + 1) != '\n') {
+                    lineNum++;
+                }
             }
         }
         return lineNum;

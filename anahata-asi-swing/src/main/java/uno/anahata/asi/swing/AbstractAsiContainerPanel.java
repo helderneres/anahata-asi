@@ -18,8 +18,7 @@ import javax.swing.Timer;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.AsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.swing.icons.DeleteIcon;
@@ -35,8 +34,8 @@ import uno.anahata.asi.swing.icons.RestartIcon;
  * 
  * @author anahata
  */
+@Slf4j
 public abstract class AbstractAsiContainerPanel extends JPanel implements AgiController {
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAsiContainerPanel.class);
 
     /** The application-wide ASI container. */
     @Getter
@@ -106,33 +105,56 @@ public abstract class AbstractAsiContainerPanel extends JPanel implements AgiCon
         // Auto-start/stop refresh based on visibility
         addHierarchyListener(e -> {
             if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) {
-                if (isShowing()) startRefresh();
-                else stopRefresh();
+                if (isShowing()) {
+                    startRefresh();
+                } else {
+                    stopRefresh();
+                }
             }
         });
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Delegates the focus request to the registered controller, if any.</p> 
+     */
     @Override
     public void focus(@NonNull Agi agi) {
         if (controller != null) controller.focus(agi);
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Delegates the close request to the registered controller, if any.</p> 
+     */
     @Override
     public void close(@NonNull Agi agi) {
         if (controller != null) controller.close(agi);
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Closes the session tab/window and then instructs the ASI container to permanently dispose of the session.</p> 
+     */
     @Override
     public void dispose(@NonNull Agi agi) {
         close(agi);
         asiContainer.dispose(agi);
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Creates a brand-new agi session via the container and requests focus for it.</p> 
+     */
     @Override
     public void createNew() {
         focus(asiContainer.createNewAgi());
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Opens a file chooser for .kryo files and imports the selected session into the container.</p> 
+     */
     @Override
     public void importSession() {
         Path savedDir = asiContainer.getSavedSessionsDir();

@@ -10,7 +10,7 @@ import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.nb.tools.files.nb.AnahataAnnotationProvider;
 import uno.anahata.asi.nb.ui.render.FullTextResourceUpdateRenderer;
 import uno.anahata.asi.nb.ui.render.TextResourceReplacementsRenderer;
-import uno.anahata.asi.nb.ui.render.TextResourceLineReplacementsRenderer;
+import uno.anahata.asi.nb.ui.render.TextResourceLineUpdatesRenderer;
 import uno.anahata.asi.nb.ui.resources.NbResourceUI;
 import uno.anahata.asi.nb.util.ElementHandleModule;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
@@ -18,7 +18,7 @@ import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
 import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.files.TextResourceReplacements;
-import uno.anahata.asi.toolkit.files.TextResourceLineReplacements;
+import uno.anahata.asi.toolkit.files.TextResourceLineBasedUpdates;
 
 /**
  * NetBeans-specific configuration for the Anahata ASI.
@@ -39,7 +39,7 @@ public class NetBeansAsiContainer extends AsiContainer {
         // 1. Register specialized parameter renderers for file operations
         ParameterRendererFactory.register(FullTextResourceUpdate.class, FullTextResourceUpdateRenderer.class);        
         ParameterRendererFactory.register(TextResourceReplacements.class, TextResourceReplacementsRenderer.class);
-        ParameterRendererFactory.register(TextResourceLineReplacements.class, TextResourceLineReplacementsRenderer.class);
+        ParameterRendererFactory.register(TextResourceLineBasedUpdates.class, TextResourceLineUpdatesRenderer.class);
         
         // 2. Register the ElementHandle module for global JSON support in the IDE
         SchemaProvider.OBJECT_MAPPER.registerModule(new ElementHandleModule());
