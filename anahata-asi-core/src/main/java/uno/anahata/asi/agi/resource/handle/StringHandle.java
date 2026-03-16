@@ -5,10 +5,12 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 
 /**
  * A memory-backed resource handle for virtual or proposed content.
@@ -46,11 +48,12 @@ public class StringHandle extends AbstractResourceHandle {
      * @param mimeType The MIME type for interpreter selection.
      * @param content The initial text content.
      */
+    @SneakyThrows
     public StringHandle(String name, String mimeType, String content) {
         this.name = name;
         this.mimeType = mimeType;
         this.content = content;
-        this.uri = URI.create("mem:///" + name);
+        this.uri = URI.create("mem:///" + URLEncoder.encode(name, "UTF-8"));
     }
 
     /** 
