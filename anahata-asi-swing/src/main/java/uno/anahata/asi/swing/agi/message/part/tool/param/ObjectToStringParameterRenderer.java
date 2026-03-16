@@ -21,7 +21,9 @@ import uno.anahata.asi.swing.agi.resources.view.AbstractTextResourceViewer;
 import uno.anahata.asi.swing.agi.resources.ResourceUI;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.icons.CopyIcon;
+import uno.anahata.asi.swing.icons.CancelIcon;
 import uno.anahata.asi.swing.internal.SwingUtils;
+import uno.anahata.asi.swing.icons.RestartIcon;
 
 /**
  * A specialized parameter renderer that converts any Java object to a string 
@@ -157,19 +159,38 @@ public class ObjectToStringParameterRenderer implements ParameterRenderer<Object
         header.add(copyBtn);
 
         if (editable) {
+            JButton cancelBtn = new JButton("Cancel", new CancelIcon(12));
+            cancelBtn.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            cancelBtn.setMargin(new java.awt.Insets(1, 5, 1, 5));
+            cancelBtn.setFocusPainted(false);
+            cancelBtn.setVisible(false);
+
             JButton editBtn = new JButton("Edit");
             editBtn.setFont(new Font("SansSerif", Font.PLAIN, 11));
             editBtn.setMargin(new java.awt.Insets(1, 5, 1, 5));
             editBtn.setFocusPainted(false);
-            editBtn.addActionListener(e -> {
+            
+            cancelBtn.addActionListener(e -> {
                 if (viewer != null) {
-                    viewer.setEditing(!viewer.isEditing());
-                    editBtn.setText(viewer.isEditing() ? "Cancel" : "Edit");
+                    viewer.setEditing(false);
+                    editBtn.setText("Edit");
+                    editBtn.setIcon(null);
+                    cancelBtn.setVisible(false);
                 }
             });
+
+            editBtn.addActionListener(e -> {
+                if (viewer != null) {
+                    viewer.toggleEditMode();
+                    boolean isEditing = viewer.isEditing();
+                    editBtn.setText(isEditing ? "Save" : "Edit");
+                    editBtn.setIcon(isEditing ? new RestartIcon(12) : null);
+                    cancelBtn.setVisible(isEditing);
+                }
+            });
+            header.add(cancelBtn);
             header.add(editBtn);
         }
-
         return header;
     }
 }

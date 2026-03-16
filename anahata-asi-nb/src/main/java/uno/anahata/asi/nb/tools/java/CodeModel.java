@@ -37,10 +37,10 @@ public class CodeModel extends AnahataToolkit {
     /** {@inheritDoc} */
     @Override
     public List<String> getSystemInstructions() throws Exception {
-        String instructions = " CodeModel Toolkit Instructions:\n"                
-                + "- **One Shot Methods (getXxxxByFqn)**: If you already know or can work out the fully qualified name (FQN) of a type or member, you can use the `ByFqn` methods to skip the discovery turn. These methods will fail if the FQN is ambiguous (e.g., exists in multiple open projects).\n"
+        String instructions = "CodeModel Toolkit Instructions:\n"                
+                + "- **One Shot Methods (`loadXxxxByFqn` or `getXxxxByFqn`)**: If you already know or can work out the fully qualified name (FQN) of a type or member, you can use the `xxxByFqn` methods to skip the discovery turn. These methods will fail if the FQN is ambiguous (e.g., exists in the classpath of multiple open projects).\n"
                 + "- **Member FQNs**: Members are identified by an FQN following the pattern `className.memberName` (e.g., `com.foo.MyClass.myMethod`).\n"
-                + "- **Disambiguation**: If a `ByFqn` method fails due to ambiguity, use `findTypes` to get the explicit `JavaType` or `JavaMember` DTO and use the standard methods instead.\n"
+                + "- **Disambiguation**: If a `xxxxByFqn` method fails due to ambiguity, use `CodeModel.findTypes` to get the explicit `JavaType` or `JavaMember` DTO and use the standard methods instead.\n"
                 + "- **Hierarchy**: Use `getSubtypes` and `getSupertypes` to explore the inheritance tree. These return a recursive `JavaHierarchyNode` structure.\n";
         return Collections.singletonList(instructions);
     }
@@ -54,7 +54,7 @@ public class CodeModel extends AnahataToolkit {
      * @param pageSize The maximum number of results to return per page.
      * @return a paginated result of JavaType objects.
      */
-    @AiTool("Finds multiple Java types matching a query within the aggregated classpath of all open projects and returns a paginated result of minimalist, machine-readable keys. Use only for **discovery** or **disambigutation** of fqns. Don't use it if you aready know the fqn of a type or you can work it out from the project's context providers. Use only if the getXxxByFqn methods return multiple types or you dont'know the fqn.")
+    @AiTool("Finds any Java types matching a query within the aggregated classpath of all open projects (exactly like NetBeans `Ctrl+O`) and returns a paginated result of minimalist, machine-readable keys. Use only for discovery or disambigutation of fqns (as when there are two types with the same fqn available on the classpath). Don't use it if you aready know the fqn of a type is or you can work it out from the project's `Structure` context provider. Use only if the `CodeModel.loadXxxByFqn` fails due to multiple types with the same fqn, you dont'know the fqn or you are in a discovery adventure.")
     public Page<JavaType> findTypes(
             @AiToolParam("The search query for the types (e.g., simple name, FQN, wildcards).") String query,
             @AiToolParam("Whether the search should be case-sensitive.") boolean caseSensitive,
@@ -77,8 +77,8 @@ public class CodeModel extends AnahataToolkit {
      * @return a confirmation message.
      * @throws Exception if the source cannot be retrieved.
      */
-    @AiTool("Gets the source file for a given JavaType. This operation automatically registers the source as a managed resource.")
-    public String getTypeSources(
+    @AiTool("Loads the source file for a given `JavaType` (as returned by `Codemodel.findTypes`) as a managed text resource.")
+    public String loadTypeSources(
             @AiToolParam("The minimalist keychain DTO from a findTypes call.") JavaType javaType) throws Exception {
         JavaTypeSource source = javaType.getSource();
         FileObject fo = source.getSourceFile();
@@ -98,10 +98,10 @@ public class CodeModel extends AnahataToolkit {
      * @return a confirmation message.
      * @throws Exception if the type is not found or ambiguous.
      */
-    @AiTool("Gets the source file for a type specified by its fully qualified name. Fails if the FQN is ambiguous.")
-    public String getTypeSourcesByFqn(
+    @AiTool("Loads the source file for of a java type as a managed resource by its fully qualified name (fqn). Fails if the FQN is ambiguous.")
+    public String loadTypeSourcesByFqn(
             @AiToolParam("The fully qualified name of the type.") String fqn) throws Exception {
-        return getTypeSources(resolveUniqueType(fqn));
+        return loadTypeSources(resolveUniqueType(fqn));
     }
     
     /**
@@ -201,7 +201,7 @@ public class CodeModel extends AnahataToolkit {
         }
 
         int start = startIndex != null ? startIndex : 0;
-        int size = pageSize != null ? pageSize : 100;
+        int size = pageSize != null ? pageSize : 108;
 
         return new Page<>(allMembers, start, size);
     }
@@ -272,7 +272,7 @@ public class CodeModel extends AnahataToolkit {
                 .collect(Collectors.toList());
 
         int start = startIndex != null ? startIndex : 0;
-        int size = pageSize != null ? pageSize : 100;
+        int size = pageSize != null ? pageSize : 108;
 
         return new Page<>(allResults, start, size);
     }

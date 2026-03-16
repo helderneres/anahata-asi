@@ -10,6 +10,7 @@ import java.awt.FlowLayout;
 import java.awt.event.MouseWheelListener;
 import java.io.IOException;
 import javax.swing.BorderFactory;
+import javax.swing.event.ChangeListener;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.icons.RestartIcon;
+import uno.anahata.asi.swing.icons.CancelIcon;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 import uno.anahata.asi.swing.internal.SwingUtils;
 
@@ -70,6 +72,8 @@ public abstract class AbstractTextResourceViewer extends JPanel {
     protected JPanel actionNexus;
     /** The button to toggle between View and Edit modes. */
     protected JButton editBtn;
+    /** The button to cancel editing without saving. */
+    protected JButton cancelBtn;
     /** Flag indicating the current UI mode (view vs edit). */
     @Getter
     protected boolean editing = false;
@@ -142,8 +146,12 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         // 1b. Action Nexus (Edit/Save)
         actionNexus = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         actionNexus.setOpaque(false);
-        
-        editBtn = new JButton("📝 EDIT");
+        cancelBtn = new JButton("Cancel", new CancelIcon(16));
+        cancelBtn.addActionListener(e -> setEditing(false));
+        cancelBtn.setVisible(false);
+        actionNexus.add(cancelBtn);
+
+        editBtn = new JButton("Edit");
         editBtn.addActionListener(e -> toggleEditMode());
         actionNexus.add(editBtn);
         
@@ -165,7 +173,7 @@ public abstract class AbstractTextResourceViewer extends JPanel {
     /**
      * Toggles between read-only viewport view and high-fidelity editor.
      */
-    private void toggleEditMode() {
+    public void toggleEditMode() {
         if (editing) {
             // PERFORM SAVE
             String newContent = getEditorContent();
@@ -191,16 +199,17 @@ public abstract class AbstractTextResourceViewer extends JPanel {
      */
     public void setEditing(boolean editing) {
         this.editing = editing;
-        
         if (editing) {
-            editBtn.setText("💾 SAVE");
+            editBtn.setText("Save");
             editBtn.setIcon(new RestartIcon(16));
+            cancelBtn.setVisible(true);
             cardLayout.show(cardPanel, "editor");
             setComponentEditable(true);
             onEditorActivated();
         } else {
-            editBtn.setText("📝 EDIT");
+            editBtn.setText("Edit");
             editBtn.setIcon(null);
+            cancelBtn.setVisible(false);
             
             if (previewAsEditor) {
                 cardLayout.show(cardPanel, "editor");
@@ -211,7 +220,6 @@ public abstract class AbstractTextResourceViewer extends JPanel {
             onPreviewActivated();
         }
     }
-
     /**
      * Controls the visibility of the entire integrated control strip.
      * @param visible true to show the toolbar.
@@ -255,6 +263,15 @@ public abstract class AbstractTextResourceViewer extends JPanel {
                 // to "breathe" to the exact size of the text area.
                 Dimension viewPref = scroll.getViewport().getView().getPreferredSize();
                 scroll.setPreferredSize(new Dimension(scroll.getPreferredSize().width, viewPref.height));
+
+                // VIEWPORT ANCHOR: Authoritatively nail the viewport to (0,0) to prevent 
+                // selection-driven "scrolling" when vertical scroll is disabled.
+                scroll.getViewport().setViewPosition(new java.awt.Point(0,0));
+                scroll.getViewport().addChangeListener(e -> {
+                    if (!verticalScrollEnabled) {
+                        scroll.getViewport().setViewPosition(new java.awt.Point(0,0));
+                    }
+                });
             }
             
             // AUTHORITATIVE DISCOVERY: Install redispatcher on the innermost component (the leaf)

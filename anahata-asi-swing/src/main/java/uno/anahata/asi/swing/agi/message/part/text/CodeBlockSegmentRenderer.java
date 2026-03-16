@@ -24,6 +24,8 @@ import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.resources.view.AbstractTextResourceViewer;
 import uno.anahata.asi.swing.agi.resources.ResourceUI;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
+import uno.anahata.asi.swing.icons.CancelIcon;
+import uno.anahata.asi.swing.icons.RestartIcon;
 import uno.anahata.asi.swing.icons.CopyIcon;
 import uno.anahata.asi.swing.internal.SwingUtils;
 
@@ -73,6 +75,8 @@ public class CodeBlockSegmentRenderer extends AbstractTextSegmentRenderer {
     
     /** The button used to toggle between edit and view modes. */
     protected JButton editButton;
+    /** The button used to cancel editing. */
+    protected JButton cancelButton;
     
     /** Callback triggered when the user clicks 'Save' after editing. */
     @Setter
@@ -139,6 +143,20 @@ public class CodeBlockSegmentRenderer extends AbstractTextSegmentRenderer {
                 addExtraHeaderButtons(leftHeaderPanel);
                 
                 if (editable) {
+                    cancelButton = new JButton("Cancel", new CancelIcon(12));
+                    cancelButton.setFont(new Font("SansSerif", Font.PLAIN, 11));
+                    cancelButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
+                    cancelButton.setFocusPainted(false);
+                    cancelButton.setVisible(false);
+                    cancelButton.addActionListener(e -> {
+                        editing = false;
+                        setComponentEditable(false);
+                        editButton.setText("Edit");
+                        editButton.setIcon(null);
+                        cancelButton.setVisible(false);
+                    });
+                    leftHeaderPanel.add(cancelButton);
+
                     editButton = new JButton("Edit");
                     editButton.setToolTipText("Toggle Edit Mode");
                     editButton.setFont(new Font("SansSerif", Font.PLAIN, 11));
@@ -302,8 +320,11 @@ public class CodeBlockSegmentRenderer extends AbstractTextSegmentRenderer {
         
         if (editButton != null) {
             editButton.setText(editing ? "Save" : "Edit");
+            editButton.setIcon(editing ? new RestartIcon(12) : null);
         }
-        
+        if (cancelButton != null) {
+            cancelButton.setVisible(editing);
+        }
         if (!editing) {
             // Signal higher-level persistence (e.g., updating message history)
             if (onSave != null) {

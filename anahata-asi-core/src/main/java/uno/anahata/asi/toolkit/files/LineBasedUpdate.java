@@ -34,14 +34,15 @@ public class LineBasedUpdate {
      */
     @Schema(description = "The number of lines from `startLine` (including the `startLine` line) in the text resource that will be deleted or replaced."
             + " For example, if you want to replace lines 108 and 109 for 4 new lines, `startLine` should be 108, `lineCount` should be 2 and `newContent` should contain the new 4 lines. "
-            + " If you want to insert 4 new lines between 108 and 109, `startLine` should be 109 (the line after the insertion point). `lineCount` should be 0 (as it is a pure insert) and `newContent` should contain the new 4 lines."
-            + " If you want to delete lines 108 and 109, `startLine` should be 108, `lineCount` should be 2 and `newContent` should be an empty string.", required = true)
+            + " If you want to insert 4 new lines between 108 and 109, `startLine` should be 109 (the line after the insertion point). `lineCount` should be 0 (as it is a pure insert) and `newContent` should contain the new 4 lines. "
+            + " If you want to delete lines 108 and 109, `startLine` should be 108, `lineCount` should be 2 and `newContent` should be an empty string. "
+            + " ", required = true)
     private int lineCount;
 
     /**
      * The replacement text. Can be multiple lines. Use empty string for pure removal.
      */
-    @Schema(description = "The new lines for that range [startLine, startLine + lineCount). Use standard line breaks between lines. Empty if you just want to delete lines.")
+    @Schema(description = "The new lines for that range [startLine, startLine + lineCount). Use standard line breaks between lines. Empty if you just want to delete lines. A trailing new line character (e.g. \\n) will cause an additional extra blank line to be inserted")
     private String newContent;
 
     /**
