@@ -42,7 +42,7 @@ public class LineBasedUpdate {
     /**
      * The replacement text. Can be multiple lines. Use empty string for pure removal.
      */
-    @Schema(description = "The new lines for that range [startLine, startLine + lineCount). Use standard line breaks between lines. Empty if you just want to delete lines. A trailing new line character (e.g. \\n) will cause an additional extra blank line to be inserted")
+    @Schema(description = "The new lines for that range [startLine, startLine + lineCount). Use standard line breaks between lines. Empty if you just want to delete lines. A trailing new-line character (i.e. ending this newContent with a \\n) will cause an additional extra blank line to be inserted")
     private String newContent;
 
     /**
