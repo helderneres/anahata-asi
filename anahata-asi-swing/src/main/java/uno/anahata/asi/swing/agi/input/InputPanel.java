@@ -303,7 +303,15 @@ public class InputPanel extends JPanel {
         updateSendButtonState();
     }
 
-    /** Reloads the panel with the new agi state. */
+    /**
+     * Resynchronizes the input panel with the current {@link Agi} session state.
+     * <p>
+     * This method is invoked to ensure the UI component is observing the correct 
+     * {@link Agi} instance. It re-initializes reactive property change listeners,
+     * clears current input buffers, and updates the send button and staged message 
+     * visibility to match the new session's state.
+     * </p>
+     */
     public void reload() {
         this.agi = agiPanel.getAgi();
         
@@ -431,6 +439,14 @@ public class InputPanel extends JPanel {
         sendMessage();
     }
 
+    /**
+     * Synchronizes the staged message panel visibility and content with the current {@link Agi} state.
+     * <p>
+     * If a message is staged (e.g., waiting for user review after a tool call), this method
+     * updates the summary label with a preview of the text and makes the panel visible.
+     * Otherwise, it hides the panel.
+     * </p>
+     */
     private void updateStagedMessageUI() {
         InputUserMessage staged = agi.getStagedUserMessage();
         if (staged != null) {
@@ -447,6 +463,14 @@ public class InputPanel extends JPanel {
         repaint();
     }
 
+    /**
+     * Updates the state and text of the send and stop buttons based on the current {@link AgiStatus}.
+     * <p>
+     * This method handles the logic for switching between the "Send" and "Run Pending & Send"
+     * states, manages the visibility of the "Stop" button during active API calls, and
+     * ensures the "Decline Pending & Send" button is correctly toggled when tools are pending.
+     * </p>
+     */
     private void updateSendButtonState() {
         AgiStatus status = agi.getStatusManager().getCurrentStatus();
         boolean isApiActive = status == AgiStatus.API_CALL_IN_PROGRESS || status == AgiStatus.WAITING_WITH_BACKOFF;
