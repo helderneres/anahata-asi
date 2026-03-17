@@ -31,9 +31,9 @@ import uno.anahata.asi.toolkit.files.TextResourceLineBasedUpdates;
 /**
  * The definitive V2 URI-centric toolkit for managed multimodal resources.
  * <p>
- * This toolkit provides a unified interface for RAG-based context augmentation 
- * and persistent, surgical mutations of text-based resources. It abstracts 
- * the complexities of different storage protocols (File, URL, String) while 
+ * This toolkit provides a unified interface for RAG-based context augmentation
+ * and persistent, surgical mutations of text-based resources. It abstracts the
+ * complexities of different storage protocols (File, URL, String) while
  * enforcing optimistic locking and context integrity.
  * </p>
  *
@@ -43,10 +43,10 @@ import uno.anahata.asi.toolkit.files.TextResourceLineBasedUpdates;
 @AiToolkit("A URI-centric toolkit for managing resources.")
 public class Resources extends AnahataToolkit {
 
-    /** 
-     * {@inheritDoc} 
+    /**
+     * {@inheritDoc}
      * <p>
-     * Injects critical surgical precision rules into the model's system prompt, 
+     * Injects critical surgical precision rules into the model's system prompt,
      * ensuring environmental awareness during file mutations.
      * </p>
      */
@@ -184,24 +184,20 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if the update fails.
      */
-    @AiTool("Updates an existing text file using full content replacement. Returns a standard unified diff of the changes applied.")
-    public String updateTextResource(@AiToolParam("The update details.") FullTextResourceUpdate update) throws Exception {
-        try {
-            update.validate(getAgi());
+    @AiTool("Updates an existing text file using full content replacement.")
+    public void updateTextResource(@AiToolParam("The update details.") FullTextResourceUpdate update) throws Exception {
 
-            Resource res = getAgi().getResourceManager().getResources().get(update.getResourceUuid());
-            if (res != null) {
-                String original = res.asText();
-                String revised = update.getNewContent();
-                
-                res.write(revised);
-                log("Updated text file: " + res.getName());
-                
-                return AnahataDiffUtils.generateUnifiedDiff(res.getName(), original, revised);
-            }
-            return "";
-        } catch (Exception e) {
-            throw wrapWithDiff(update, e);
+        update.validate(getAgi());
+
+        Resource res = getAgi().getResourceManager().getResources().get(update.getResourceUuid());
+        if (res != null) {
+            String original = res.asText();
+            update.setOriginalContent(original);
+            String revised = update.getNewContent();
+
+            res.write(revised);
+            log("Updated text file: " + res.getName());
+
         }
     }
 
@@ -220,11 +216,12 @@ public class Resources extends AnahataToolkit {
             Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
             if (res != null) {
                 String original = res.asText();
+                replacements.setOriginalContent(original);
                 String revised = replacements.performReplacements(original);
 
                 res.write(revised);
                 log("Performed replacements in: " + res.getName());
-                
+
                 return AnahataDiffUtils.generateUnifiedDiff(res.getName(), original, revised);
             }
             return "";
@@ -249,11 +246,12 @@ public class Resources extends AnahataToolkit {
             Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
             if (res != null) {
                 String original = res.asText();
+                replacements.setOriginalContent(original);
                 String revised = replacements.performUpdates(original);
 
                 res.write(revised);
                 log("Performed replacements in: " + res.getName());
-                
+
                 return AnahataDiffUtils.generateUnifiedDiff(res.getName(), original, revised);
             }
             return "";
@@ -264,7 +262,7 @@ public class Resources extends AnahataToolkit {
 
     /**
      * Helper to wrap exceptions with a unified diff of the failed intent.
-     * 
+     *
      * @param update The update operation.
      * @param e The original exception.
      * @return A new exception enriched with diff context.
