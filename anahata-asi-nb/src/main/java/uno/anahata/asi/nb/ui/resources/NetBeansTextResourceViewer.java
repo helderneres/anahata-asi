@@ -2,6 +2,8 @@
 package uno.anahata.asi.nb.ui.resources;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Insets;
 import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JPanel;
@@ -123,6 +125,10 @@ public class NetBeansTextResourceViewer extends AbstractTextResourceViewer {
             editor.setOpaque(true);
             editor.setEditable(false);
             
+            // TRIM FIX: Disable NetBeans-specific empty space behaviors for snippets
+            editor.putClientProperty("scroll-past-end", Boolean.FALSE);
+            editor.setMargin(new Insets(0, 0, 0, 0));
+            
             // 3. Document Identity Binding
             Document doc = editor.getDocument();
             doc.putProperty("mimeType", mime);
@@ -144,10 +150,9 @@ public class NetBeansTextResourceViewer extends AbstractTextResourceViewer {
             // 5. TOTAL ADOPTION: Request the official NetBeans frame
             EditorUI eui = Utilities.getEditorUI(editor);
             if (eui != null) {
-                if (eui instanceof NbEditorUI neui) {
-                    
-                }
+                // Ensure the UI doesn't reserve space for "virtual space" at the bottom
                 eui.updateTextMargin();
+                
                 JComponent extComp = eui.getExtComponent();
                 // Adopt the official IDE scroller for scroll behavior management
                 this.mainScroller = SwingUtils.findComponent(extComp, JScrollPane.class);
@@ -170,6 +175,56 @@ public class NetBeansTextResourceViewer extends AbstractTextResourceViewer {
         }
     }
 
+    /** 
+     * {@inheritDoc} 
+     */
+    @Override
+    public JScrollPane getScrollPane() {
+        return mainScroller;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension ps = super.getPreferredSize();
+        if (!verticalScrollEnabled && editor != null) {
+            try {
+                EditorUI eui = Utilities.getEditorUI(editor);
+                if (eui != null) {
+                    Document doc = editor.getDocument();
+                    int lineCount = doc.getDefaultRootElement().getElementCount();
+                    int lineHeight = eui.getLineHeight();
+                    int textHeight = lineCount * lineHeight;
+                    
+                    int h = textHeight;
+                    if (controlStrip.isVisible()) {
+                        h += controlStrip.getPreferredSize().height;
+                    }
+                    
+                    if (mainScroller != null) {
+                        // Authoritative Width Sensing: detect if horizontal scrollbar is needed
+                        Dimension viewPS = editor.getPreferredSize();
+                        int availableWidth = getWidth();
+                        if (availableWidth <= 0 && getParent() != null) {
+                            availableWidth = getParent().getWidth();
+                        }
+                        if (availableWidth > 0 && viewPS.width > availableWidth) {
+                            h += mainScroller.getHorizontalScrollBar().getPreferredSize().height;
+                        }
+                    }
+                    
+                    Insets insets = getInsets();
+                    h += insets.top + insets.bottom + 5; // Respecting the 5px safety buffer
+                    
+                    return new Dimension(ps.width, h);
+                }
+            } catch (Exception e) {
+                log.warn("Precision height calculation failed for NetBeans viewer, falling back to base.");
+            }
+        }
+        return ps;
+    }
+
     /** {@inheritDoc} */
     @Override
     protected void onEditorActivated() {
@@ -179,7 +234,9 @@ public class NetBeansTextResourceViewer extends AbstractTextResourceViewer {
     /** {@inheritDoc} */
     @Override
     protected void onPreviewActivated() {
-        if (editor != null) editor.setEditable(false);
+        if (editor != null) {
+            editor.setEditable(false);
+        }
         syncWithResource();
     }
 

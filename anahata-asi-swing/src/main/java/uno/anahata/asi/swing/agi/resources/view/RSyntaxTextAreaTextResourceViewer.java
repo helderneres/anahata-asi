@@ -39,6 +39,11 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
     private RSyntaxTextArea previewArea;
     /** The RSyntax area used for the editor card. */
     private RSyntaxTextArea editorArea;
+    
+    /** The scroll pane wrapping the preview area. */
+    private RTextScrollPane previewScrollPane;
+    /** The scroll pane wrapping the editor area. */
+    private RTextScrollPane editorScrollPane;
 
     /**
      * Constructs a new RSyntaxTextAreaTextResourceViewer.
@@ -66,7 +71,8 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
         }
         this.previewArea = createRSyntaxArea();
         previewArea.setEditable(false);
-        return new RTextScrollPane(previewArea);
+        this.previewScrollPane = new RTextScrollPane(previewArea);
+        return previewScrollPane;
     }
 
     /** 
@@ -82,7 +88,8 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
     protected JComponent createEditorComponent() {
         this.editorArea = createRSyntaxArea();
         editorArea.setEditable(true);
-        return new RTextScrollPane(editorArea);
+        this.editorScrollPane = new RTextScrollPane(editorArea);
+        return editorScrollPane;
     }
 
     /**
@@ -167,7 +174,8 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
      */
     @Override
     public String getEditorContent() {
-        return (editorArea != null) ? editorArea.getText() : null;
+        if (previewAsEditor) return (editorArea != null) ? editorArea.getText() : null;
+        return editing ? (editorArea != null ? editorArea.getText() : null) : (previewArea != null ? previewArea.getText() : null);
     }
 
     /** 
@@ -207,6 +215,15 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
     }
 
     /** 
+     * {@inheritDoc} 
+     */
+    @Override
+    public JScrollPane getScrollPane() {
+        if (previewAsEditor) return editorScrollPane;
+        return editing ? editorScrollPane : previewScrollPane;
+    }
+
+    /** 
      * {@inheritDoc}
      * <p>
      * Implementation details:
@@ -236,10 +253,13 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
      */
     private void installWheelForwarder(RSyntaxTextArea area) {
         // Safe addition: ensure we don't double-install but don't strip internal library logic
-        area.addMouseWheelListener(e -> {
-            SwingUtils.redispatchMouseWheelEvent(area, e);
-            e.consume();
-        });
+        if (area.getClientProperty("atrv.wheel.forwarder") == null) {
+            area.addMouseWheelListener(e -> {
+                SwingUtils.redispatchMouseWheelEvent(area, e);
+                e.consume();
+            });
+            area.putClientProperty("atrv.wheel.forwarder", Boolean.TRUE);
+        }
     }
 
     /**

@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Insets;
 import java.awt.event.MouseWheelListener;
 import java.io.IOException;
 import javax.swing.BorderFactory;
@@ -24,6 +25,7 @@ import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.icons.RestartIcon;
 import uno.anahata.asi.swing.icons.CancelIcon;
+import uno.anahata.asi.swing.icons.CopyIcon;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 import uno.anahata.asi.swing.internal.SwingUtils;
 
@@ -74,6 +76,9 @@ public abstract class AbstractTextResourceViewer extends JPanel {
     protected JButton editBtn;
     /** The button to cancel editing without saving. */
     protected JButton cancelBtn;
+    /** The button to copy the current content to clipboard. */
+    protected JButton copyBtn;
+
     /** Flag indicating the current UI mode (view vs edit). */
     @Getter
     protected boolean editing = false;
@@ -146,6 +151,12 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         // 1b. Action Nexus (Edit/Save)
         actionNexus = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         actionNexus.setOpaque(false);
+
+        copyBtn = new JButton(new CopyIcon(16));
+        copyBtn.setToolTipText("Copy content to clipboard");
+        copyBtn.addActionListener(e -> SwingUtils.copyToClipboard(getEditorContent()));
+        actionNexus.add(copyBtn);
+
         cancelBtn = new JButton("Cancel", new CancelIcon(16));
         cancelBtn.addActionListener(e -> setEditing(false));
         cancelBtn.setVisible(false);
@@ -252,22 +263,13 @@ public abstract class AbstractTextResourceViewer extends JPanel {
      * </p>
      */
     protected void configureScrollBehavior() {
-        JScrollPane scroll = SwingUtils.findComponent(this, JScrollPane.class);
+        JScrollPane scroll = getScrollPane();
         if (scroll != null) {
             scroll.setVerticalScrollBarPolicy(verticalScrollEnabled ? JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED : JScrollPane.VERTICAL_SCROLLBAR_NEVER);
             scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
             
             if (!verticalScrollEnabled && scroll.getViewport().getView() != null) {
-                Dimension viewPref = scroll.getViewport().getView().getPreferredSize();
-                int width = scroll.getWidth() > 0 ? scroll.getWidth() : scroll.getPreferredSize().width;
-                int hBarHeight = (viewPref.width > width && width > 0) ? 
-                                 scroll.getHorizontalScrollBar().getPreferredSize().height : 0;
-                
-                Dimension targetDim = new Dimension(scroll.getPreferredSize().width, viewPref.height + hBarHeight);
-                scroll.setPreferredSize(targetDim);
-                this.setPreferredSize(targetDim);
-                // REMOVE MINIMUM SIZE: This was causing the "2-line pinch" in NetBeans.
-
+                // IDEMPOTENT SCROLL LOCK
                 if (scroll.getViewport().getClientProperty("atrv.scroll.lock") == null) {
                     scroll.getViewport().setViewPosition(new java.awt.Point(scroll.getViewport().getViewPosition().x, 0));
                     scroll.getViewport().addChangeListener(e -> {
@@ -292,7 +294,55 @@ public abstract class AbstractTextResourceViewer extends JPanel {
                 });
                 jLeaf.putClientProperty("atrv.wheel.forwarder", Boolean.TRUE);
             }
+            
+            revalidate();
+            repaint();
         }
+    }
+
+    /**
+     * Returns the internal scroll pane used by the concrete implementation.
+     * @return The JScrollPane instance.
+     */
+    public abstract JScrollPane getScrollPane();
+
+    /** {@inheritDoc} */
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension ps = super.getPreferredSize();
+        if (!verticalScrollEnabled) {
+            JScrollPane scroll = getScrollPane();
+            if (scroll != null && scroll.getViewport().getView() != null) {
+                Component view = scroll.getViewport().getView();
+                Dimension viewPS = view.getPreferredSize();
+                
+                int h = viewPS.height;
+                
+                // Authoritative Width Sension: detect if horizontal scrollbar is needed
+                int availableWidth = getWidth();
+                if (availableWidth <= 0 && getParent() != null) {
+                    availableWidth = getParent().getWidth();
+                }
+                
+                if (availableWidth > 0 && viewPS.width > availableWidth) {
+                    h += scroll.getHorizontalScrollBar().getPreferredSize().height;
+                }
+                
+                if (controlStrip.isVisible()) {
+                    h += controlStrip.getPreferredSize().height;
+                }
+                
+                // Add insets of the viewer itself
+                Insets insets = getInsets();
+                h += insets.top + insets.bottom;
+                
+                // Add 5px safety buffer for line height rounding
+                h += 5; 
+                
+                return new Dimension(ps.width, h);
+            }
+        }
+        return ps;
     }
 
     /**
