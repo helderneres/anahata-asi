@@ -258,35 +258,39 @@ public abstract class AbstractTextResourceViewer extends JPanel {
             scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
             
             if (!verticalScrollEnabled && scroll.getViewport().getView() != null) {
-                // SIZING SINGULARITY: Force the scroll pane to report its content height as 
-                // its preferred height. This allows containing panels (like ToolCallPanel) 
-                // to "breathe" to the exact size of the text area.
                 Dimension viewPref = scroll.getViewport().getView().getPreferredSize();
-                scroll.setPreferredSize(new Dimension(scroll.getPreferredSize().width, viewPref.height));
+                int width = scroll.getWidth() > 0 ? scroll.getWidth() : scroll.getPreferredSize().width;
+                int hBarHeight = (viewPref.width > width && width > 0) ? 
+                                 scroll.getHorizontalScrollBar().getPreferredSize().height : 0;
+                
+                Dimension targetDim = new Dimension(scroll.getPreferredSize().width, viewPref.height + hBarHeight);
+                scroll.setPreferredSize(targetDim);
+                this.setPreferredSize(targetDim);
+                // REMOVE MINIMUM SIZE: This was causing the "2-line pinch" in NetBeans.
 
-                // VIEWPORT ANCHOR: Authoritatively nail the viewport to (0,0) to prevent 
-                // selection-driven "scrolling" when vertical scroll is disabled.
-                scroll.getViewport().setViewPosition(new java.awt.Point(0,0));
-                scroll.getViewport().addChangeListener(e -> {
-                    if (!verticalScrollEnabled) {
-                        scroll.getViewport().setViewPosition(new java.awt.Point(0,0));
-                    }
-                });
+                if (scroll.getViewport().getClientProperty("atrv.scroll.lock") == null) {
+                    scroll.getViewport().setViewPosition(new java.awt.Point(scroll.getViewport().getViewPosition().x, 0));
+                    scroll.getViewport().addChangeListener(e -> {
+                        if (!verticalScrollEnabled) {
+                            java.awt.Point pos = scroll.getViewport().getViewPosition();
+                            if (pos.y != 0) {
+                                scroll.getViewport().setViewPosition(new java.awt.Point(pos.x, 0));
+                            }
+                        }
+                    });
+                    scroll.getViewport().putClientProperty("atrv.scroll.lock", Boolean.TRUE);
+                }
             }
             
-            // AUTHORITATIVE DISCOVERY: Install redispatcher on the innermost component (the leaf)
-            // to ensure vertical wheel events pass through to the conversation.
             Component leaf = SwingUtils.findComponentLeaf(scroll);
-            if (leaf != null) {
-                // Purity Fix: Remove existing wheel forwarders to prevent double-dispatching during re-syncs
-                for (MouseWheelListener mwl : leaf.getMouseWheelListeners()) {
-                    leaf.removeMouseWheelListener(mwl);
-                }
-                
-                leaf.addMouseWheelListener(e -> {
-                    SwingUtils.redispatchMouseWheelEvent(leaf, e);
-                    e.consume();
+            if (leaf instanceof JComponent jLeaf && jLeaf.getClientProperty("atrv.wheel.forwarder") == null) {
+                jLeaf.addMouseWheelListener(e -> {
+                    if (!verticalScrollEnabled) {
+                        SwingUtils.redispatchMouseWheelEvent(jLeaf, e);
+                        e.consume();
+                    }
                 });
+                jLeaf.putClientProperty("atrv.wheel.forwarder", Boolean.TRUE);
             }
         }
     }

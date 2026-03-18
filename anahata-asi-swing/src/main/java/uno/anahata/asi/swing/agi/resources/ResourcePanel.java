@@ -178,12 +178,20 @@ public class ResourcePanel extends ScrollablePanel {
         viewSectorContainer = new JPanel(new BorderLayout());
         sectorsPanel.add(viewSectorContainer, gbc);
 
-        add(sectorsPanel, BorderLayout.NORTH);
+        // 2. Main Content Assembler
+        JPanel mainContent = new JPanel(new BorderLayout());
+        mainContent.setOpaque(false);
+        mainContent.add(sectorsPanel, BorderLayout.NORTH);
 
-        // 2. Main Viewport Tabs
         mainTabs = new JTabbedPane();
         viewerContainer = new JPanel(new BorderLayout());
-        add(mainTabs, BorderLayout.CENTER);
+        mainContent.add(mainTabs, BorderLayout.CENTER);
+        
+        // ARCHITECTURAL FIX: Reverting to CENTER. Now that the viewers (activeViewer) 
+        // report their height correctly in passthrough mode, the ScrollablePanel 
+        // will adjust without creating excessive whitespace or showing the 
+        // scrollpane's gray background.
+        add(mainContent, BorderLayout.CENTER);
     }
 
     private JTextField createReadOnlyField() {
@@ -312,22 +320,14 @@ public class ResourcePanel extends ScrollablePanel {
             
             // ARCHITECTURAL FIDELITY: Hide the viewer's internal toolbar because ResourcePanel 
             // provides its own integrated control header and sectoral view panels.
+            // Also, disable internal vertical scrolling to allow the ResourcePanel's 
+            // main scroller to handle the entire vertical flow.
             if (activeViewer instanceof AbstractTextResourceViewer atrv) {
                 atrv.setToolbarVisible(false);
+                atrv.setVerticalScrollEnabled(false);
             }
             
-            // HEIGHT FIDELITY: Cap the Capability view to 800px to ensure the internal scroller 
-            // is triggered and navigation is possible for long resources.
-            JPanel cappedWrapper = new JPanel(new BorderLayout()) {
-                @Override
-                public Dimension getPreferredSize() {
-                    Dimension d = super.getPreferredSize();
-                    return new Dimension(d.width, Math.min(800, d.height));
-                }
-            };
-            cappedWrapper.add(activeViewer, BorderLayout.CENTER);
-            
-            viewerContainer.add(cappedWrapper, BorderLayout.CENTER);
+            viewerContainer.add(activeViewer, BorderLayout.CENTER);
             activeStrategy.populateActions(actionPanel, currentResource, agiPanel);
             editBtn.setVisible(activeStrategy.canEdit(currentResource) && currentResource.isWritable());
         } else {
