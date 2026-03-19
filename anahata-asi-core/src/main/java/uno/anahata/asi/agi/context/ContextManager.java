@@ -206,7 +206,7 @@ public class ContextManager extends BasicPropertyChangeSource implements Rebinda
                 }
             }
         }
-        log.info("buildRagMessage took " + ts + " ms.");
+        log.info("buildRagMessage took " + (System.currentTimeMillis() - ts) + " ms.");
         return augmentedMessage;
     }
 
