@@ -242,8 +242,8 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if replacements fail.
      */
-    @AiTool("The worlds most token efficient tool. Only for text resources loaded with includeLineNumbers=true. "
-            + " Performs multiple line-based updates strictly using 1-based line numbers. Unlike git-patch tools, **it requires NO anchors or context lines and it will fail if used in that manner**. It features 'Structural Newline Absorption' to handle model intuition. Returns a standard unified diff of the changes applied.")
+    @AiTool("The worlds most token efficient tool. Performs surgical line-based updates using 1-based line numbers from the RAG message. "
+            + "CRITICAL: Do NOT include surrounding context/anchors in newContent. Use lineCount=0 for insertions.")
     public String updateLinesInTextResource(@AiToolParam("The line-number based updates for the given resource.") TextResourceLineBasedUpdates replacements) throws Exception {
         try {
             replacements.validate(getAgi());

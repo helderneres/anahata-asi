@@ -417,16 +417,16 @@ public class Java extends AnahataToolkit {
      * @throws Exception if compilation or execution fails.
      */
     @AiTool(
-            value = "Compiles and executes a Java class named 'Anahata' on the application's JVM.\n"
+            value = "Compiles and executes the 'Anahata' class on the application's JVM.\n"
             + "The class should:\n"
             + "- be public, \n"
             + "- have no package declaration, \n"
-            + "- extend uno.anahata.ai.tool.AnahataTool and \n"
+            + "- extend AgiTool (or any subtype) and \n" 
             + "- implement the call method of java.util.concurrent.Callable<Object>.\n",
             requiresApproval = true
     )
     public Object compileAndExecute(
-            @AiToolParam(value = "Source code of a public class called 'Anahata' that extends AnahataTool, implement Callable and has no package declaration.", rendererId = "java") String sourceCode,
+            @AiToolParam(value = "Source code of the 'Anahata' class.", rendererId = "java") String sourceCode,
             @AiToolParam(value = "Compiler's additional classpath entries separated with File.pathSeparator. These will be first in the final compiler's and ClassLoader's classpath", required = false) String extraClassPath,
             @AiToolParam(value = "Compiler's options.", required = false) String[] compilerOptions) throws Exception {
 

@@ -232,6 +232,30 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         }
     }
     /**
+     * Controls the visibility of the Edit button in the control strip.
+     * 
+     * @param visible true to show the edit button, false to hide it.
+     */
+    public void setEditButtonVisible(boolean visible) {
+        if (editBtn != null) {
+            editBtn.setVisible(visible);
+        }
+    }
+
+    /**
+     * Authoritatively configures the viewer for read-only mode.
+     * This hides the edit button and ensures the component is not in edit mode.
+     * 
+     * @param readOnly true to force read-only mode.
+     */
+    public void setReadOnly(boolean readOnly) {
+        setEditButtonVisible(!readOnly);
+        if (readOnly) {
+            setEditing(false);
+        }
+    }
+
+    /**
      * Controls the visibility of the entire integrated control strip.
      * @param visible true to show the toolbar.
      */

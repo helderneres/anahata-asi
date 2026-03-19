@@ -125,6 +125,7 @@ public class TextResourceLineBasedUpdates extends AbstractTextResourceWrite {
         
         int lastEndLine = -1;
         for (LineBasedUpdate lr : sorted) {
+            log.info("Validating after sorting {}", lr);
             if (lr.getStartLine() <= lastEndLine) {
                 throw new AiToolException("Overlapping line updates detected at line " + lr.getStartLine());
             }

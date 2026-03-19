@@ -25,7 +25,7 @@ public class LineBasedUpdate {
     /**
      * The 1-based start line number.
      */
-    @Schema(description = "The 1-based line number of the text resource in the RAG message where this update starts.", required = true)
+    @Schema(description = "The 1-based line number in the RAG message where the operation starts. For REPLACEMENTS and DELETIONS, this is the first line to be removed. For INSERTIONS, this is the line before which the new content will be placed.", required = true)
     private int startLine;
 
     /**
@@ -40,9 +40,11 @@ public class LineBasedUpdate {
             + " If you want to delete lines 108 and 109, `startLine` should be 108, `lineCount` should be 2 and `newContent` should be an empty string. "
             + " ", required = true)
     */
-    @Schema(description = "The exact number of lines from `startLine` to be removed or replaced. "
-        + "This is a surgical count: 0 = Pure Insertion, 1 = Replace single line, N = Replace range. "
-        + "Use the line numbers in the RAG message as your absolute source of truth.", required = true)
+    @Schema(description = "The number of lines to remove starting from startLine. "
+        + "0 = PURE INSERTION (newContent is placed before startLine); "
+        + "1 = REPLACE SINGLE LINE; "
+        + "N = REPLACE RANGE; "
+        + "If newContent is empty and lineCount > 0, it is a PURE DELETION.", required = true)
     private int lineCount;
 
     /**
