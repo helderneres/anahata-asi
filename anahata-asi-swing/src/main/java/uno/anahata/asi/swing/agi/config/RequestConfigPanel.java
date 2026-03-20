@@ -1,9 +1,10 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.agi.config;
 
-import com.jgoodies.forms.layout.FormLayout;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.List;
@@ -17,9 +18,14 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
+import javax.swing.JTabbedPane;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.border.TitledBorder;
 import lombok.extern.slf4j.Slf4j;
+import net.miginfocom.swing.MigLayout;
 import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.agi.provider.RequestConfig;
 import uno.anahata.asi.agi.provider.ThinkingLevel;
 import uno.anahata.asi.agi.provider.AbstractModel;
@@ -30,8 +36,8 @@ import uno.anahata.asi.swing.components.SliderSpinner;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 
 /**
- * A panel for editing the RequestConfig of a Agi session.
- * It uses JGoodies FormLayout for a professional, left-aligned form.
+ * A panel for editing the RequestConfig and AgiConfig of a Agi session.
+ * It provides a structured view with tabs for better organization.
  * 
  * @author anahata
  */
@@ -45,6 +51,7 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
     /** The request configuration being edited. */
     private final RequestConfig config;
 
+    //== Request Configuration Components ==//
     /** Combined component for temperature. */
     private SliderSpinner temperatureControl;
     /** Combined component for max output tokens. */
@@ -55,18 +62,42 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
     private SliderSpinner topPControl;
     /** Combined component for candidate count. */
     private SliderSpinner candidateCountControl;
+    /** Dropdown for selecting the thinking level. */
+    private JComboBox<ThinkingLevel> thinkingLevelDropdown;
+    /** Checkbox for enabling native schemas. */
+    private JCheckBox useNativeSchemasCheckbox;
+    /** Panel for response modalities checkboxes. */
+    private JPanel modalitiesPanel;
+    /** Panel for server tools checkboxes. */
+    private JPanel serverToolsPanel;
+
+    //== Agi Loop Settings Components ==//
     /** Checkbox for session-level streaming toggle. */
     private JCheckBox streamingCheckbox;
     /** Checkbox for including thoughts in the response. */
     private JCheckBox includeThoughtsCheckbox;
     /** Checkbox for expanding thoughts by default. */
     private JCheckBox expandThoughtsCheckbox;
-    /** Dropdown for selecting the thinking level. */
-    private JComboBox<ThinkingLevel> thinkingLevelDropdown;
-    /** Panel for response modalities checkboxes. */
-    private JPanel modalitiesPanel;
-    /** Panel for server tools checkboxes. */
-    private JPanel serverToolsPanel;
+    /** Spinner for maximum API retries. */
+    private JSpinner apiMaxRetriesSpinner;
+    /** Spinner for initial API delay. */
+    private JSpinner apiInitialDelaySpinner;
+    /** Spinner for maximum API delay. */
+    private JSpinner apiMaxDelaySpinner;
+
+    //== Metabolic Settings Components ==//
+    /** Spinner for token threshold. */
+    private JSpinner tokenThresholdSpinner;
+    /** Spinner for default text max depth. */
+    private JSpinner textMaxDepthSpinner;
+    /** Spinner for default tool max depth. */
+    private JSpinner toolMaxDepthSpinner;
+    /** Spinner for default blob max depth. */
+    private JSpinner blobMaxDepthSpinner;
+    /** Spinner for default thought max depth. */
+    private JSpinner thoughtMaxDepthSpinner;
+    /** Checkbox for including pruned parts in the API request. */
+    private JCheckBox includePrunedCheckbox;
 
     /**
      * Constructs a new RequestConfigPanel.
@@ -82,47 +113,26 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
         
         agi.addPropertyChangeListener(this);
         // Listen to global config changes to refresh tool checkboxes
-        new EdtPropertyChangeListener(this, agi.getConfig(), "serverToolsEnabled", evt -> loadConfig());
+        new EdtPropertyChangeListener(this, agi.getConfig(), "hostedToolsEnabled", evt -> loadConfig());
     }
 
     /**
-     * Initializes the UI components and layout using JGoodies FormLayout.
+     * Initializes the UI components and layout using a JTabbedPane.
      */
     private void initComponents() {
-        setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        setLayout(new BorderLayout());
 
-        // FormLayout: 
-        // Column 1: Label (right aligned)
-        // Column 2: Gap
-        // Column 3: Control (fill, grows)
-        FormLayout layout = new FormLayout(
-            "right:pref, 4dlu, fill:pref:grow",
-            "pref, 5dlu, pref, 5dlu, pref, 5dlu, pref, 5dlu, pref, 5dlu, pref, 5dlu, pref, 5dlu, pref, 5dlu, pref, 10dlu, pref, 10dlu, pref"
-        );
-        setLayout(layout);
+        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
 
-        int row = 1;
+        // --- 1. REQUEST TAB ---
+        JPanel requestTab = new JPanel(new MigLayout("fillx, insets 10", "[grow,fill]", "[]"));
+        requestTab.setOpaque(false);
+        
+        JPanel requestPanel = createSectionPanel("Model Parameters");
+        requestPanel.setLayout(new MigLayout("fillx, insets 10", "[right]pref[10][grow,fill]"));
 
-        // Stream Tokens (Session Level)
-        add(new JLabel("Stream Tokens:"), "1, " + row);
-        streamingCheckbox = new JCheckBox();
-        add(streamingCheckbox, "3, " + row);
-        row += 2;
-
-        // Include Thoughts
-        add(new JLabel("Include Thoughts:"), "1, " + row);
-        includeThoughtsCheckbox = new JCheckBox();
-        add(includeThoughtsCheckbox, "3, " + row);
-        row += 2;
-
-        // Expand Thoughts
-        add(new JLabel("Expand Thoughts:"), "1, " + row);
-        expandThoughtsCheckbox = new JCheckBox();
-        add(expandThoughtsCheckbox, "3, " + row);
-        row += 2;
-
-        // Thinking Level
-        add(new JLabel("Thinking Level:"), "1, " + row);
+        requestPanel.add(new JLabel("Thinking Level:"));
         thinkingLevelDropdown = new JComboBox<>(ThinkingLevel.values());
         thinkingLevelDropdown.setRenderer(new DefaultListCellRenderer() {
             @Override
@@ -134,90 +144,165 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
                 return this;
             }
         });
-        add(thinkingLevelDropdown, "3, " + row);
-        row += 2;
+        requestPanel.add(thinkingLevelDropdown, "wrap");
 
-        // Temperature
-        add(new JLabel("Temperature:"), "1, " + row);
+        requestPanel.add(new JLabel("Temperature:"));
         temperatureControl = new SliderSpinner(new SpinnerNumberModel(1.0, 0.0, 2.0, 0.1), 0, 200, 100.0);
-        add(temperatureControl, "3, " + row);
-        row += 2;
+        requestPanel.add(temperatureControl, "wrap");
 
-        // Max Output Tokens
-        add(new JLabel("Max Output Tokens:"), "1, " + row);
+        requestPanel.add(new JLabel("Max Output Tokens:"));
         maxOutputTokensControl = new SliderSpinner(new SpinnerNumberModel(2048, 1, 1000000, 1), 1, 1000000, 1.0);
-        add(maxOutputTokensControl, "3, " + row);
-        row += 2;
+        requestPanel.add(maxOutputTokensControl, "wrap");
 
-        // Top K
-        add(new JLabel("Top K:"), "1, " + row);
+        requestPanel.add(new JLabel("Top K:"));
         topKControl = new SliderSpinner(new SpinnerNumberModel(40, 1, 100, 1), 1, 100, 1.0);
-        add(topKControl, "3, " + row);
-        row += 2;
+        requestPanel.add(topKControl, "wrap");
 
-        // Top P
-        add(new JLabel("Top P:"), "1, " + row);
+        requestPanel.add(new JLabel("Top P:"));
         topPControl = new SliderSpinner(new SpinnerNumberModel(0.95, 0.0, 1.0, 0.05), 0, 100, 100.0);
-        add(topPControl, "3, " + row);
-        row += 2;
-        
-        // Candidate Count
-        add(new JLabel("Max Candidates:"), "1, " + row);
-        candidateCountControl = new SliderSpinner(new SpinnerNumberModel(1, 1, 8, 1), 1, 8, 1.0);
-        add(candidateCountControl, "3, " + row);
-        row += 2;
+        requestPanel.add(topPControl, "wrap");
 
-        // Response Modalities
-        add(new JLabel("Response Modalities:"), "1, " + row);
+        requestPanel.add(new JLabel("Max Candidates:"));
+        candidateCountControl = new SliderSpinner(new SpinnerNumberModel(1, 1, 8, 1), 1, 8, 1.0);
+        requestPanel.add(candidateCountControl, "wrap");
+
+        requestPanel.add(new JLabel("Native Schemas:"));
+        useNativeSchemasCheckbox = new JCheckBox("Use provider-native tool schemas");
+        requestPanel.add(useNativeSchemasCheckbox, "wrap");
+
+        requestPanel.add(new JLabel("Response Modalities:"), "top");
         modalitiesPanel = new JPanel();
         modalitiesPanel.setLayout(new BoxLayout(modalitiesPanel, BoxLayout.Y_AXIS));
-        add(modalitiesPanel, "3, " + row);
-        row += 2;
+        modalitiesPanel.setOpaque(false);
+        requestPanel.add(modalitiesPanel, "wrap");
 
-        // Server Tools
-        add(new JLabel("Server Tools:"), "1, " + row);
+        requestPanel.add(new JLabel("Server Tools:"), "top");
         serverToolsPanel = new JPanel();
         serverToolsPanel.setLayout(new BoxLayout(serverToolsPanel, BoxLayout.Y_AXIS));
-        add(serverToolsPanel, "3, " + row);
+        serverToolsPanel.setOpaque(false);
+        requestPanel.add(serverToolsPanel, "wrap");
 
-        // Add listeners to update config
-        temperatureControl.addChangeListener(e -> {
-            config.setTemperature(((Number) temperatureControl.getValue()).floatValue());
-        });
+        requestTab.add(requestPanel, "growx, wrap");
+        tabbedPane.addTab("Request", new JScrollPane(requestTab));
 
-        maxOutputTokensControl.addChangeListener(e -> {
-            config.setMaxOutputTokens((Integer) maxOutputTokensControl.getValue());
-        });
+        // --- 2. LOOP TAB ---
+        JPanel loopTab = new JPanel(new MigLayout("fillx, insets 10", "[grow,fill]", "[]"));
+        loopTab.setOpaque(false);
 
-        topKControl.addChangeListener(e -> {
-            config.setTopK((Integer) topKControl.getValue());
-        });
+        JPanel loopPanel = createSectionPanel("Loop Logic & Retries");
+        loopPanel.setLayout(new MigLayout("fillx, insets 10", "[right]pref[10][grow,fill]"));
 
-        topPControl.addChangeListener(e -> {
-            config.setTopP(((Number) topPControl.getValue()).floatValue());
-        });
-        
-        candidateCountControl.addChangeListener(e -> {
-            config.setCandidateCount((Integer) candidateCountControl.getValue());
-        });
-        
-        streamingCheckbox.addActionListener(e -> {
-            agi.getConfig().setStreaming(streamingCheckbox.isSelected());
-        });
+        loopPanel.add(new JLabel("Stream Tokens:"));
+        streamingCheckbox = new JCheckBox("Stream model responses in real-time");
+        loopPanel.add(streamingCheckbox, "wrap");
 
+        loopPanel.add(new JLabel("Include Thoughts:"));
+        includeThoughtsCheckbox = new JCheckBox("Request internal reasoning (COT)");
+        loopPanel.add(includeThoughtsCheckbox, "wrap");
+
+        loopPanel.add(new JLabel("Expand Thoughts:"));
+        expandThoughtsCheckbox = new JCheckBox("Expand thought blocks in Chat");
+        loopPanel.add(expandThoughtsCheckbox, "wrap");
+
+        loopPanel.add(new JLabel("API Max Retries:"));
+        apiMaxRetriesSpinner = new JSpinner(new SpinnerNumberModel(5, 0, 20, 1));
+        loopPanel.add(apiMaxRetriesSpinner, "wrap");
+
+        loopPanel.add(new JLabel("Initial Delay (ms):"));
+        apiInitialDelaySpinner = new JSpinner(new SpinnerNumberModel(2000L, 0L, 10000L, 100L));
+        loopPanel.add(apiInitialDelaySpinner, "wrap");
+
+        loopPanel.add(new JLabel("Max Delay (ms):"));
+        apiMaxDelaySpinner = new JSpinner(new SpinnerNumberModel(30000L, 1000L, 300000L, 1000L));
+        loopPanel.add(apiMaxDelaySpinner, "wrap");
+
+        loopTab.add(loopPanel, "growx, wrap");
+        tabbedPane.addTab("Loop", new JScrollPane(loopTab));
+
+        // --- 3. METABOLIC TAB ---
+        JPanel metabolicTab = new JPanel(new MigLayout("fillx, insets 10", "[grow,fill]", "[]"));
+        metabolicTab.setOpaque(false);
+
+        JPanel metabolismPanel = createSectionPanel("Context & Metabolic Depths");
+        metabolismPanel.setLayout(new MigLayout("fillx, insets 10", "[right]pref[10][grow,fill]"));
+
+        metabolismPanel.add(new JLabel("Token Threshold:"));
+        tokenThresholdSpinner = new JSpinner(new SpinnerNumberModel(250000, 1000, 2000000, 1000));
+        metabolismPanel.add(tokenThresholdSpinner, "wrap");
+
+        metabolismPanel.add(new JLabel("Text Max Depth:"));
+        textMaxDepthSpinner = new JSpinner(new SpinnerNumberModel(108, 1, 1000, 1));
+        metabolismPanel.add(textMaxDepthSpinner, "wrap");
+
+        metabolismPanel.add(new JLabel("Tool Max Depth:"));
+        toolMaxDepthSpinner = new JSpinner(new SpinnerNumberModel(12, 1, 1000, 1));
+        metabolismPanel.add(toolMaxDepthSpinner, "wrap");
+
+        metabolismPanel.add(new JLabel("Blob Max Depth:"));
+        blobMaxDepthSpinner = new JSpinner(new SpinnerNumberModel(4, 1, 1000, 1));
+        metabolismPanel.add(blobMaxDepthSpinner, "wrap");
+
+        metabolismPanel.add(new JLabel("Thought Max Depth:"));
+        thoughtMaxDepthSpinner = new JSpinner(new SpinnerNumberModel(12, 1, 1000, 1));
+        metabolismPanel.add(thoughtMaxDepthSpinner, "wrap");
+
+        metabolismPanel.add(new JLabel("Debug Options:"));
+        includePrunedCheckbox = new JCheckBox("Include pruned parts in API request");
+        metabolismPanel.add(includePrunedCheckbox, "wrap");
+
+        metabolicTab.add(metabolismPanel, "growx, wrap");
+        tabbedPane.addTab("Metabolic", new JScrollPane(metabolicTab));
+
+        add(tabbedPane, BorderLayout.CENTER);
+
+        setupListeners();
+    }
+
+    private JPanel createSectionPanel(String title) {
+        JPanel panel = new JPanel();
+        panel.setOpaque(false);
+        TitledBorder border = BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(200, 200, 200)),
+                title,
+                TitledBorder.LEFT,
+                TitledBorder.TOP,
+                getFont().deriveFont(Font.BOLD, 12f),
+                new Color(100, 100, 100)
+        );
+        panel.setBorder(border);
+        return panel;
+    }
+
+    private void setupListeners() {
+        // Request Config Listeners
+        temperatureControl.addChangeListener(e -> config.setTemperature(((Number) temperatureControl.getValue()).floatValue()));
+        maxOutputTokensControl.addChangeListener(e -> config.setMaxOutputTokens((Integer) maxOutputTokensControl.getValue()));
+        topKControl.addChangeListener(e -> config.setTopK((Integer) topKControl.getValue()));
+        topPControl.addChangeListener(e -> config.setTopP(((Number) topPControl.getValue()).floatValue()));
+        candidateCountControl.addChangeListener(e -> config.setCandidateCount((Integer) candidateCountControl.getValue()));
+        useNativeSchemasCheckbox.addActionListener(e -> config.setUseNativeSchemas(useNativeSchemasCheckbox.isSelected()));
+        thinkingLevelDropdown.addActionListener(e -> config.setThinkingLevel((ThinkingLevel) thinkingLevelDropdown.getSelectedItem()));
+
+        // Agi Config Listeners (Agi Loop)
+        streamingCheckbox.addActionListener(e -> agi.getConfig().setStreaming(streamingCheckbox.isSelected()));
         includeThoughtsCheckbox.addActionListener(e -> {
             boolean selected = includeThoughtsCheckbox.isSelected();
             agi.getConfig().setIncludeThoughts(selected);
             expandThoughtsCheckbox.setEnabled(selected);
         });
+        expandThoughtsCheckbox.addActionListener(e -> agi.getConfig().setExpandThoughts(expandThoughtsCheckbox.isSelected()));
+        
+        apiMaxRetriesSpinner.addChangeListener(e -> agi.getConfig().setApiMaxRetries((Integer) apiMaxRetriesSpinner.getValue()));
+        apiInitialDelaySpinner.addChangeListener(e -> agi.getConfig().setApiInitialDelayMillis(((Number) apiInitialDelaySpinner.getValue()).longValue()));
+        apiMaxDelaySpinner.addChangeListener(e -> agi.getConfig().setApiMaxDelayMillis(((Number) apiMaxDelaySpinner.getValue()).longValue()));
 
-        expandThoughtsCheckbox.addActionListener(e -> {
-            agi.getConfig().setExpandThoughts(expandThoughtsCheckbox.isSelected());
-        });
-
-        thinkingLevelDropdown.addActionListener(e -> {
-            config.setThinkingLevel((ThinkingLevel) thinkingLevelDropdown.getSelectedItem());
-        });
+        // Metabolic Listeners
+        tokenThresholdSpinner.addChangeListener(e -> agi.getConfig().setTokenThreshold((Integer) tokenThresholdSpinner.getValue()));
+        textMaxDepthSpinner.addChangeListener(e -> agi.getConfig().setDefaultTextPartMaxDepth((Integer) textMaxDepthSpinner.getValue()));
+        toolMaxDepthSpinner.addChangeListener(e -> agi.getConfig().setDefaultToolMaxDepth((Integer) toolMaxDepthSpinner.getValue()));
+        blobMaxDepthSpinner.addChangeListener(e -> agi.getConfig().setDefaultBlobPartMaxDepth((Integer) blobMaxDepthSpinner.getValue()));
+        thoughtMaxDepthSpinner.addChangeListener(e -> agi.getConfig().setDefaultThoughtPartMaxDepth((Integer) thoughtMaxDepthSpinner.getValue()));
+        includePrunedCheckbox.addActionListener(e -> config.setIncludePruned(includePrunedCheckbox.isSelected()));
     }
 
     /**
@@ -227,14 +312,22 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
      */
     private void loadConfig() {
         AbstractModel model = agi.getSelectedModel();
+        AgiConfig agiConfig = agi.getConfig();
         
-        streamingCheckbox.setSelected(agi.getConfig().isStreaming());
-        includeThoughtsCheckbox.setSelected(agi.getConfig().isIncludeThoughts());
-        expandThoughtsCheckbox.setSelected(agi.getConfig().isExpandThoughts());
-        expandThoughtsCheckbox.setEnabled(agi.getConfig().isIncludeThoughts());
+        // Loop Settings
+        streamingCheckbox.setSelected(agiConfig.isStreaming());
+        includeThoughtsCheckbox.setSelected(agiConfig.isIncludeThoughts());
+        expandThoughtsCheckbox.setSelected(agiConfig.isExpandThoughts());
+        expandThoughtsCheckbox.setEnabled(agiConfig.isIncludeThoughts());
         
-        thinkingLevelDropdown.setSelectedItem(config.getThinkingLevel());
+        apiMaxRetriesSpinner.setValue(agiConfig.getApiMaxRetries());
+        apiInitialDelaySpinner.setValue(agiConfig.getApiInitialDelayMillis());
+        apiMaxDelaySpinner.setValue(agiConfig.getApiMaxDelayMillis());
 
+        // Request Settings
+        thinkingLevelDropdown.setSelectedItem(config.getThinkingLevel());
+        useNativeSchemasCheckbox.setSelected(config.isUseNativeSchemas());
+        
         float temp = config.getTemperature() != null ? config.getTemperature() : (model != null && model.getDefaultTemperature() != null ? model.getDefaultTemperature() : 1.0f);
         temperatureControl.setValue((double) temp);
         
@@ -251,6 +344,14 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
         topPControl.setValue((double) topP);
         
         candidateCountControl.setValue(config.getCandidateCount() != null ? config.getCandidateCount() : 1);
+
+        // Metabolic Settings
+        tokenThresholdSpinner.setValue(agiConfig.getTokenThreshold());
+        textMaxDepthSpinner.setValue(agiConfig.getDefaultTextPartMaxDepth());
+        toolMaxDepthSpinner.setValue(agiConfig.getDefaultToolMaxDepth());
+        blobMaxDepthSpinner.setValue(agiConfig.getDefaultBlobPartMaxDepth());
+        thoughtMaxDepthSpinner.setValue(agiConfig.getDefaultThoughtPartMaxDepth());
+        includePrunedCheckbox.setSelected(config.isIncludePruned());
 
         if (model != null) {
             updateModalities(model);
@@ -269,6 +370,7 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
             JCheckBox cb = new JCheckBox(modality);
             cb.setAlignmentX(Component.LEFT_ALIGNMENT);
             cb.setSelected(config.getResponseModalities().contains(modality));
+            cb.setOpaque(false);
             cb.addActionListener(e -> {
                 if (cb.isSelected()) {
                     config.getResponseModalities().add(modality);
@@ -299,6 +401,7 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
             cb.setAlignmentX(Component.LEFT_ALIGNMENT);
             cb.setToolTipText(tool.getDescription());
             cb.setSelected(enabledIds.contains(tool.getId()));
+            cb.setOpaque(false);
             cb.addActionListener(e -> {
                 if (cb.isSelected()) {
                     config.getEnabledServerTools().add(tool);
