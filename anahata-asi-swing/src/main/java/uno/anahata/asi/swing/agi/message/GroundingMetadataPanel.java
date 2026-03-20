@@ -1,5 +1,5 @@
 /*
- * Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Fora Bara!
+ * Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça!
  */
 package uno.anahata.asi.swing.agi.message;
 
@@ -49,11 +49,21 @@ import uno.anahata.asi.swing.components.WrapLayout;
 @Slf4j
 @Getter
 public class GroundingMetadataPanel extends JPanel {
+    /** The vertical gap between components in the content panel. */
     private static final int V_GAP = 10;
+    /** The parent agi panel. */
     private final AgiPanel agiPanel;
+    /** The active UI theme. */
     private final UITheme theme;
+    /** The grounding metadata to render. */
     private final GroundingMetadata metadata;
 
+    /**
+     * Constructs a new GroundingMetadataPanel.
+     * 
+     * @param agiPanel The parent agi panel.
+     * @param metadata The grounding metadata to render.
+     */
     public GroundingMetadataPanel(AgiPanel agiPanel, GroundingMetadata metadata) {
         this.agiPanel = agiPanel;
         this.metadata = metadata;
@@ -97,6 +107,10 @@ public class GroundingMetadataPanel extends JPanel {
         add(contentPanel, BorderLayout.CENTER);
     }
     
+    /**
+     * Renders the header for the grounding metadata panel.
+     * @return The header panel.
+     */
     private JPanel renderHeader() {
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(theme.getGroundingHeaderBg());
@@ -125,6 +139,11 @@ public class GroundingMetadataPanel extends JPanel {
         return headerPanel;
     }
 
+    /**
+     * Creates a detail section panel with a title and a content area.
+     * @param title The title for the section.
+     * @return The detail section panel.
+     */
     private JPanel createDetailSection(String title) {
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -155,6 +174,11 @@ public class GroundingMetadataPanel extends JPanel {
         return mainPanel;
     }
 
+    /**
+     * Renders the supporting text segments.
+     * @param texts The list of supporting texts.
+     * @return The supporting texts panel.
+     */
     private JPanel renderSupportingTexts(List<String> texts) {
         JPanel mainPanel = createDetailSection("Supporting Text");
         JPanel contentPanel = (JPanel) mainPanel.getComponent(1);
@@ -168,6 +192,11 @@ public class GroundingMetadataPanel extends JPanel {
         return mainPanel;
     }
 
+    /**
+     * Renders the web sources as clickable links.
+     * @param sources The list of grounding sources.
+     * @return The sources panel.
+     */
     private JPanel renderSources(List<GroundingSource> sources) {
         JPanel mainPanel = createDetailSection("Sources");
         JPanel contentPanel = (JPanel) mainPanel.getComponent(1);
@@ -185,6 +214,11 @@ public class GroundingMetadataPanel extends JPanel {
         return mainPanel;
     }
 
+    /**
+     * Renders search suggestions as a collection of chips.
+     * @param queries The list of search queries.
+     * @return The search suggestions panel.
+     */
     private JPanel renderSearchSuggestions(List<String> queries) {
         JPanel mainPanel = createDetailSection("Search Suggestions");
         JPanel contentPanel = (JPanel) mainPanel.getComponent(1);
@@ -202,6 +236,12 @@ public class GroundingMetadataPanel extends JPanel {
         return mainPanel;
     }
 
+    /**
+     * Creates a JLabel that responds to mouse clicks by opening a URI in the browser.
+     * @param text The HTML text for the label.
+     * @param uri The URI to open.
+     * @return The clickable label.
+     */
     private JLabel createClickableLabel(String text, String uri) {
         JLabel label = new JLabel(text);
         label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));

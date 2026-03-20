@@ -17,8 +17,11 @@ import uno.anahata.asi.swing.agi.AgiPanel;
  */
 public class RagMessageViewer extends JScrollPane {
 
+    /** The parent agi panel. */
     private final AgiPanel agiPanel;
+    /** The message to view. */
     private final AbstractMessage message;
+    /** The panel displaying the message. */
     private final AbstractMessagePanel<AbstractMessage> messagePanel;
 
     /**

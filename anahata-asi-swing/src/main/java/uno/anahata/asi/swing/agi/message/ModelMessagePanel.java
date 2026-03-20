@@ -32,6 +32,7 @@ import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
  */
 public class ModelMessagePanel extends AbstractMessagePanel<AbstractModelMessage> {
 
+    /** The panel displaying grounding metadata, if available. */
     private GroundingMetadataPanel groundingPanel;
     
     /** Container for the finish reason and JSON link. */
@@ -106,11 +107,19 @@ public class ModelMessagePanel extends AbstractMessagePanel<AbstractModelMessage
         finishLabel.setVisible(shouldBeVisible);
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Includes billed token count and depth in the header suffix.</p>
+     */
     @Override
     protected String getHeaderSuffix() {
         return String.format(" <font color='#888888' size='3'><i>(Billed Tokens: %d, Depth: %d)</i></font>", message.getBilledTokenCount(), message.getDepth());
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Renders the {@link GroundingMetadataPanel} if metadata is available.</p>
+     */
     @Override
     protected void renderFooter() {
         // Grounding metadata is usually available at the end or as a separate update.
@@ -133,21 +142,37 @@ public class ModelMessagePanel extends AbstractMessagePanel<AbstractModelMessage
         }
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the model header background color.</p>
+     */
     @Override
     protected Color getHeaderStartColor() {
         return agiConfig.getTheme().getModelHeaderBg();
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the model content background color.</p>
+     */
     @Override
     protected Color getHeaderEndColor() {
         return agiConfig.getTheme().getModelContentBg();
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the model header foreground color.</p>
+     */
     @Override
     protected Color getHeaderForegroundColor() {
         return agiConfig.getTheme().getModelHeaderFg();
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the model message border.</p>
+     */
     @Override
     protected Border getMessageBorder() {
         return BorderFactory.createLineBorder(agiConfig.getTheme().getModelBorder(), 2, true);

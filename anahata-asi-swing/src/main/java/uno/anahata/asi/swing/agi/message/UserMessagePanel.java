@@ -28,21 +28,37 @@ public class UserMessagePanel extends AbstractMessagePanel<UserMessage> {
         super(agiPanel, message);
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the user header background color.</p>
+     */
     @Override
     protected Color getHeaderStartColor() {
         return agiConfig.getTheme().getUserHeaderBg();
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the user content background color.</p>
+     */
     @Override
     protected Color getHeaderEndColor() {
         return agiConfig.getTheme().getUserContentBg();
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the user header foreground color.</p>
+     */
     @Override
     protected Color getHeaderForegroundColor() {
         return agiConfig.getTheme().getUserHeaderFg();
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the user message border.</p>
+     */
     @Override
     protected Border getMessageBorder() {
         return BorderFactory.createLineBorder(agiConfig.getTheme().getUserBorder(), 2, true);

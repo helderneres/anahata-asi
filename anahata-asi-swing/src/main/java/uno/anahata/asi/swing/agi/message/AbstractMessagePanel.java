@@ -355,6 +355,9 @@ public abstract class AbstractMessagePanel<T extends AbstractMessage> extends JX
         }
     }
 
+    /**
+     * Internal method to trigger the footer rendering.
+     */
     private void renderFooterInternal() {
         renderFooter();
     }
