@@ -20,7 +20,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "Represents a token-efficient line-based update operation that can insert, delete or replace a single line or a range of lines without surrounding anchors/context.")
+@Schema(description = "Represents a token-efficient line-based update operation that can insert, delete or replace a single line or a range of lines without surrounding anchors/context.\n"
+        + " For adding javadoc, headers, or new code, ALWAYS prefer PURE INSERTION (`lineCount=0`). This places `newContent` BEFORE the `startLine`, pushing the original line down without any risk of deleting it. Only use `lineCount > 0` when you intend to remove or overwrite existing code.")
 public class LineBasedUpdate {
     /**
      * The 1-based start line number.
@@ -32,25 +33,16 @@ public class LineBasedUpdate {
      * The number of lines from `startLine` (including the `startLine` line) in the text resource that will be deleted or replaced."
      * Use 0 for pure insertion.
      */
-    
-/*
-    @Schema(description = "The number of lines from `startLine` (including the `startLine` line) in the text resource that will be deleted or replaced."
-            + " For example, if you want to replace lines 108 and 109 for 4 new lines, `startLine` should be 108, `lineCount` should be 2 and `newContent` should contain the new 4 lines. "
-            + " If you want to insert 4 new lines between 108 and 109, `startLine` should be 109 (the line after the insertion point). `lineCount` should be 0 (as it is a pure insert) and `newContent` should contain the new 4 lines. "
-            + " If you want to delete lines 108 and 109, `startLine` should be 108, `lineCount` should be 2 and `newContent` should be an empty string. "
-            + " ", required = true)
-    */
     @Schema(description = "The number of lines to remove starting from startLine. "
-        + "0 = PURE INSERTION (newContent is placed before startLine); "
-        + "1 = REPLACE SINGLE LINE; "
-        + "N = REPLACE RANGE; "
+        + "0 = PURE INSERTION (newContent is placed BEFORE startLine); "
+        + "1 = REPLACE SINGLE LINE (the line at startLine is replaced); "
+        + "N = REPLACE RANGE (N lines starting from startLine are replaced); "
         + "If newContent is empty and lineCount > 0, it is a PURE DELETION.", required = true)
     private int lineCount;
 
     /**
      * The replacement text. Can be multiple lines. Use empty string for pure removal.
      */
-    //@Schema(description = "The new lines for that range [startLine, startLine + lineCount). Use standard line breaks between lines. Empty if you just want to delete lines. A trailing new-line character (i.e. ending this newContent with a \\n) will cause an additional extra blank line to be inserted")
     @Schema(description = "The new lines for the range. Do NOT include surrounding context/anchors from the source file as it would cause the tool to fail; "
         + "only include the content that should exist between [startLine] and [startLine + lineCount]. "
         + "Structural Newline Absorption is active: a single trailing \\n will NOT create a blank line.")

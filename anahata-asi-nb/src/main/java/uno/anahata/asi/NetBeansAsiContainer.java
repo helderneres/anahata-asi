@@ -11,6 +11,8 @@ import uno.anahata.asi.nb.tools.files.nb.AnahataAnnotationProvider;
 import uno.anahata.asi.nb.ui.render.FullTextResourceUpdateRenderer;
 import uno.anahata.asi.nb.ui.render.TextResourceReplacementsRenderer;
 import uno.anahata.asi.nb.ui.render.TextResourceLineUpdatesRenderer;
+import uno.anahata.asi.nb.ui.render.TextResourceLineEditsRenderer;
+import uno.anahata.asi.toolkit.files.lines.TextResourceLineEdits;
 import uno.anahata.asi.nb.ui.resources.NbResourceUI;
 import uno.anahata.asi.nb.util.ElementHandleModule;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
@@ -40,6 +42,7 @@ public class NetBeansAsiContainer extends AsiContainer {
         ParameterRendererFactory.register(FullTextResourceUpdate.class, FullTextResourceUpdateRenderer.class);        
         ParameterRendererFactory.register(TextResourceReplacements.class, TextResourceReplacementsRenderer.class);
         ParameterRendererFactory.register(TextResourceLineBasedUpdates.class, TextResourceLineUpdatesRenderer.class);
+        ParameterRendererFactory.register(TextResourceLineEdits.class, TextResourceLineEditsRenderer.class);
         
         // 2. Register the ElementHandle module for global JSON support in the IDE
         SchemaProvider.OBJECT_MAPPER.registerModule(new ElementHandleModule());
@@ -97,21 +100,22 @@ public class NetBeansAsiContainer extends AsiContainer {
     @Override
     public void onAgiRegistered(Agi agi) {
         log.info("Attaching reactive annotation pulse for agi session: {}", agi.getShortId());
-        
-        // REACTIVE BRIDGE: Listen for resource changes to trigger IDE badge refreshes
+
+        // REACTIVE BRIDGE: Listen for resource changes and nickname updates to trigger IDE refreshes
         PropertyChangeListener listener = evt -> {
-            log.info("Model-driven resource change detected in session '{}'. Firing IDE annotation refresh.", agi.getDisplayName());
+            log.info("Reactive pulse trigger ('{}') in session '{}'. Firing IDE annotation refresh.", evt.getPropertyName(), agi.getDisplayName());
             AnahataAnnotationProvider.fireRefresh(null, null);
         };
-        
+
         agi.getResourceManager().addPropertyChangeListener("resources", listener);
+        agi.addPropertyChangeListener("nickname", listener);
         sessionListeners.put(agi.getConfig().getSessionId(), listener);
     }
 
     /**
      * {@inheritDoc}
      * <p>
-     * Implementation details: Detaches the resource listener during session disposal.
+     * Implementation details: Detaches all reactive pulse listeners during session disposal.
      * </p>
      */
     @Override
@@ -120,6 +124,7 @@ public class NetBeansAsiContainer extends AsiContainer {
         if (listener != null) {
             log.info("Cleaning up annotation pulse for agi session: {}", agi.getShortId());
             agi.getResourceManager().removePropertyChangeListener("resources", listener);
+            agi.removePropertyChangeListener("nickname", listener);
         }
     }
 

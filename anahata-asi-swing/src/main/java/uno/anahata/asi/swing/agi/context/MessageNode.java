@@ -24,25 +24,49 @@ public class MessageNode extends AbstractContextNode<AbstractMessage> {
         super(agiPanel, userObject);
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Returns a composite string containing the role 
+     * (USER, MODEL) and the sequential identifier from the timeline.
+     * </p>
+     */
     @Override
     public String getName() {
         return userObject.getRole() + " #" + userObject.getSequentialId();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Provides a human-readable summary of the message's 
+     * origin and timestamp for the tree sidebar.
+     * </p>
+     */
     @Override
     public String getDescription() {
         return "Message from " + userObject.getRole() + " at " + userObject.getTimestamp();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Retrieves the list of {@link AbstractPart}s contained 
+     * in the message, including effectively pruned parts for visualization.
+     * </p>
+     */
     @Override
     protected List<?> fetchChildObjects() {
         return userObject.getParts(true);
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Maps message parts to their navigable {@link PartNode} 
+     * representation.
+     * </p>
+     */
     @Override
     protected AbstractContextNode<?> createChildNode(Object obj) {
         if (obj instanceof AbstractPart part) {
@@ -52,12 +76,24 @@ public class MessageNode extends AbstractContextNode<AbstractMessage> {
     }
 
     /** {@inheritDoc} */
-    @Override
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Message-level tokens are calculated as the sum of 
+     * tokens from all contained parts.
+     * </p>
+     */
     protected void calculateLocalTokens() {
         // Message tokens are aggregated from PartNodes
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Updates the status label based on whether the 
+     * message has been effectively pruned from the context window.
+     * </p>
+     */
     @Override
     protected void updateStatus() {
         this.status = userObject.isEffectivelyPruned() ? "Pruned" : "Active";

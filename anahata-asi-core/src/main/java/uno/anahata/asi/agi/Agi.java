@@ -7,6 +7,7 @@ import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -41,16 +42,19 @@ import uno.anahata.asi.agi.provider.RetryableApiException;
 import uno.anahata.asi.agi.tool.ToolManager;
 
 /**
- * The central, provider-agnostic artificial super intelligence (ASI) orchestrator.
+ * The central, provider-agnostic artificial super intelligence (ASI)
+ * orchestrator.
  * <p>
- * This class serves as the 'Anahata' (heart) of a conversation session, managing 
- * the high-level lifecycle of an agentic turn. It orchestrates the flow between 
- * user input, tool execution, context assembly via {@link ContextManager}, and 
- * multimodal generation via registered {@link AbstractAgiProvider}s.
+ * This class serves as the 'Anahata' (heart) of a conversation session,
+ * managing the high-level lifecycle of an agentic turn. It orchestrates the
+ * flow between user input, tool execution, context assembly via
+ * {@link ContextManager}, and multimodal generation via registered
+ * {@link AbstractAgiProvider}s.
  * </p>
  * <p>
- * <b>Thread Safety:</b> This class is designed to be thread-safe, utilizing 
- * reentrant locks for state transitions and atomic booleans for lifecycle flags.
+ * <b>Thread Safety:</b> This class is designed to be thread-safe, utilizing
+ * reentrant locks for state transitions and atomic booleans for lifecycle
+ * flags.
  * </p>
  *
  * @author anahata
@@ -59,28 +63,45 @@ import uno.anahata.asi.agi.tool.ToolManager;
 @Getter
 public class Agi extends BasicPropertyChangeSource {
 
-    /** The configuration for this agi session. */
+    /**
+     * The configuration for this agi session.
+     */
     private final AgiConfig config;
-    
-    /** The user-defined nickname for this agi session. */
+
+    /**
+     * The user-defined nickname for this agi session.
+     */
     private String nickname;
-    
-    /** The manager for all AI tools available in this session. */
+
+    /**
+     * The manager for all AI tools available in this session.
+     */
     private final ToolManager toolManager;
-    
-    /** The manager for the conversation history and context assembly. */
+
+    /**
+     * The manager for the conversation history and context assembly.
+     */
     private final ContextManager contextManager;
-    
-    /** The V2 URI-centric Resource Manager. */
+
+    /**
+     * The V2 URI-centric Resource Manager.
+     */
     private final ResourceManager resourceManager;
-    
-    /** The executor service for background tasks and API calls. */
+
+    /**
+     * The executor service for background tasks and API calls.
+     */
     private transient ExecutorService executor;
-    
-    /** The manager for the agi's operational status and error reporting. */
+
+    /**
+     * The manager for the agi's operational status and error reporting.
+     */
     private final StatusManager statusManager;
-    
-    /** The list of registered AI providers. Uses CopyOnWriteArrayList for thread-safe iteration during rebinds or saves. */
+
+    /**
+     * The list of registered AI providers. Uses CopyOnWriteArrayList for
+     * thread-safe iteration during rebinds or saves.
+     */
     private final List<AbstractAgiProvider> providers = new CopyOnWriteArrayList<>();
 
     /**
@@ -104,9 +125,10 @@ public class Agi extends BasicPropertyChangeSource {
     private transient volatile Thread currentExecutionThread;
 
     /**
-     * A message that has been submitted via {@link #sendMessage(InputUserMessage)}
-     * while the agi was busy. It will be picked up and processed as soon as
-     * the current conversation turn is complete.
+     * A message that has been submitted via
+     * {@link #sendMessage(InputUserMessage)} while the agi was busy. It will be
+     * picked up and processed as soon as the current conversation turn is
+     * complete.
      */
     private InputUserMessage stagedUserMessage;
 
@@ -116,8 +138,9 @@ public class Agi extends BasicPropertyChangeSource {
     private transient AtomicBoolean shutdown = new AtomicBoolean(false);
 
     /**
-     * Whether this session is currently 'Open' in the host UI (e.g. tab visible).
-     * This field is persisted to restore UI state across application restarts.
+     * Whether this session is currently 'Open' in the host UI (e.g. tab
+     * visible). This field is persisted to restore UI state across application
+     * restarts.
      */
     private boolean open = false;
 
@@ -128,14 +151,15 @@ public class Agi extends BasicPropertyChangeSource {
     private Response<? extends AbstractModelMessage> lastResponse;
 
     /**
-     * The list of candidate messages currently being generated or waiting for selection.
-     * These are NOT yet part of the context history.
+     * The list of candidate messages currently being generated or waiting for
+     * selection. These are NOT yet part of the context history.
      */
     private final List<AbstractModelMessage> activeCandidates = new ArrayList<>();
 
     /**
-     * The model message that initiated the tool calls currently awaiting user approval.
-     * This is only non-null when the status is {@link AgiStatus#TOOL_PROMPT}.
+     * The model message that initiated the tool calls currently awaiting user
+     * approval. This is only non-null when the status is
+     * {@link AgiStatus#TOOL_PROMPT}.
      */
     private AbstractModelMessage toolPromptMessage;
 
@@ -152,7 +176,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Constructs a new Agi session with the provided configuration.
-     * 
+     *
      * @param config The agi configuration.
      */
     @SneakyThrows
@@ -160,7 +184,7 @@ public class Agi extends BasicPropertyChangeSource {
         this.config = config;
         // Crucially, set the back-reference *before* initializing managers
         this.config.setAgi(this);
-        
+
         log.info("Constructing agi with config: " + config);
         this.executor = AiExecutors.newCachedThreadPoolExecutor(config.getSessionId());
         this.contextManager = new ContextManager(this);
@@ -182,16 +206,16 @@ public class Agi extends BasicPropertyChangeSource {
                 log.error("Failed to instantiate provider class: {}", providerClass.getName(), e);
             }
         }
-        
+
         // Final manager initialization cascade
         contextManager.init();
     }
 
-    /** 
-     * {@inheritDoc} 
+    /**
+     * {@inheritDoc}
      * <p>
-     * Re-initializes the transient lifecycle flags and ensures the session is 
-     * ready for active generation after deserialization. 
+     * Re-initializes the transient lifecycle flags and ensures the session is
+     * ready for active generation after deserialization.
      * </p>
      */
     @Override
@@ -202,10 +226,10 @@ public class Agi extends BasicPropertyChangeSource {
     }
 
     /**
-     * Re-binds this agi session to an AsiContainer after deserialization.
-     * This method re-initializes transient fields and propagates the container
+     * Re-binds this agi session to an AsiContainer after deserialization. This
+     * method re-initializes transient fields and propagates the container
      * reference to the AgiConfig.
-     * 
+     *
      * @param container The AsiContainer to bind to.
      */
     public void bindToContainer(@NonNull AsiContainer container) {
@@ -216,9 +240,9 @@ public class Agi extends BasicPropertyChangeSource {
         this.runningLock = new ReentrantLock();
         this.running = false;
         this.currentExecutionThread = null;
-        
+
         log.info("Triggering environmental bootstrapping for agi session {}", config.getSessionId());
-        
+
         // Zombie Message Recovery: If we reloaded a session with a staged message, 
         // kickstart the processing loop to consume it.
         if (stagedUserMessage != null) {
@@ -228,7 +252,8 @@ public class Agi extends BasicPropertyChangeSource {
     }
 
     /**
-     * Performs an automatic backup of the session to the active sessions directory.
+     * Performs an automatic backup of the session to the active sessions
+     * directory.
      */
     public void autoSave() {
         config.getContainer().autoSaveSession(this);
@@ -243,6 +268,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Sets the visibility status of the agi in the host UI.
+     *
      * @param open True if a tab/window is currently showing this session.
      */
     public void setOpen(boolean open) {
@@ -259,20 +285,20 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Sets the selected model and fires a property change event.
-     * 
+     *
      * @param selectedModel The new model to select.
      */
     public void setSelectedModel(AbstractModel selectedModel) {
         AbstractModel oldModel = this.selectedModel;
         this.selectedModel = selectedModel;
-        
+
         if (selectedModel != null) {
             // 1. Sync existing selected server tools with the new model's capabilities
             List<ServerTool> available = selectedModel.getAvailableServerTools();
-            requestConfig.getEnabledServerTools().removeIf(st -> 
-                available.stream().noneMatch(a -> a.getId().equals(st.getId()))
+            requestConfig.getEnabledServerTools().removeIf(st
+                    -> available.stream().noneMatch(a -> a.getId().equals(st.getId()))
             );
-            
+
             // 2. Add the new model's default server tools
             for (ServerTool def : selectedModel.getDefaultServerTools()) {
                 if (requestConfig.getEnabledServerTools().stream().noneMatch(st -> st.getId().equals(def.getId()))) {
@@ -280,14 +306,14 @@ public class Agi extends BasicPropertyChangeSource {
                 }
             }
         }
-        
+
         propertyChangeSupport.firePropertyChange("selectedModel", oldModel, selectedModel);
         autoSave();
     }
 
     /**
      * Sets the running state and fires a property change event.
-     * 
+     *
      * @param running The new running state.
      */
     private void setRunning(boolean running) {
@@ -298,7 +324,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Sets the staged user message and fires a property change event.
-     * 
+     *
      * @param stagedUserMessage The new staged message.
      */
     public void setStagedUserMessage(InputUserMessage stagedUserMessage) {
@@ -319,7 +345,8 @@ public class Agi extends BasicPropertyChangeSource {
      * staged message when its current turn is complete.</li>
      * </ul>
      *
-     * @param message The user's message. Can be null or empty to trigger a context resend.
+     * @param message The user's message. Can be null or empty to trigger a
+     * context resend.
      */
     public void sendMessage(InputUserMessage message) {
         runningLock.lock();
@@ -333,7 +360,7 @@ public class Agi extends BasicPropertyChangeSource {
                 }
                 return;
             }
-            
+
             setRunning(true);
         } finally {
             runningLock.unlock();
@@ -388,7 +415,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Prepares the request by building the history from the context manager.
-     * 
+     *
      * @return A GenerationRequest containing the config and history.
      * @throws IllegalStateException if no model is selected.
      */
@@ -421,8 +448,9 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Performs a single generation turn, including retries.
-     * 
-     * @return true if the conversation turn is complete, false if it should continue (e.g. tool auto-run).
+     *
+     * @return true if the conversation turn is complete, false if it should
+     * continue (e.g. tool auto-run).
      */
     private boolean performSingleTurn() {
         int maxRetries = config.getApiMaxRetries();
@@ -458,7 +486,7 @@ public class Agi extends BasicPropertyChangeSource {
                 } else {
                     candidates = performSyncTurn(request);
                 }
-                
+
                 return handleTurnResult(candidates);
 
             } catch (Exception e) {
@@ -506,7 +534,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Performs a synchronous generation turn.
-     * 
+     *
      * @param request The generation request.
      * @return The list of candidate messages.
      */
@@ -519,7 +547,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Performs an asynchronous streaming generation turn.
-     * 
+     *
      * @param request The generation request.
      * @return The list of candidate messages.
      */
@@ -528,7 +556,7 @@ public class Agi extends BasicPropertyChangeSource {
         selectedModel.generateContentStream(request, new StreamObserver<>() {
             @Override
             public void onStart(List<? extends AbstractModelMessage> candidates) {
-                result.addAll((List)candidates);
+                result.addAll((List) candidates);
                 handleCandidatesStart(candidates);
             }
 
@@ -548,7 +576,9 @@ public class Agi extends BasicPropertyChangeSource {
                 log.error("Error in streaming response", t);
                 result.forEach(c -> c.setStreaming(false));
                 // Rethrow to be caught by the retry loop in performSingleTurn
-                if (t instanceof RuntimeException re) throw re;
+                if (t instanceof RuntimeException re) {
+                    throw re;
+                }
                 throw new RuntimeException(t);
             }
         });
@@ -557,7 +587,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Handles the initial set of candidates received from a stream.
-     * 
+     *
      * @param candidates The list of candidate messages.
      */
     private void handleCandidatesStart(List<? extends AbstractModelMessage> candidates) {
@@ -567,7 +597,7 @@ public class Agi extends BasicPropertyChangeSource {
             // streams, providing a more natural experience.
             AbstractModelMessage candidate = candidates.get(0);
             contextManager.addMessage(candidate);
-            
+
             // We keep activeCandidates empty so the selection panel stays hidden.
             setActiveCandidates(Collections.emptyList());
         } else {
@@ -579,9 +609,10 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Handles the final result of a generation turn (sync or stream).
-     * 
+     *
      * @param candidates The list of candidate messages.
-     * @return true if the conversation turn is complete, false if it should continue.
+     * @return true if the conversation turn is complete, false if it should
+     * continue.
      */
     private boolean handleTurnResult(List<? extends AbstractModelMessage> candidates) {
         statusManager.clearApiErrors();
@@ -604,12 +635,13 @@ public class Agi extends BasicPropertyChangeSource {
      * continues the conversation if necessary.
      *
      * @param message The model message to add.
-     * @return true if the conversation turn is complete, false if it should continue.
+     * @return true if the conversation turn is complete, false if it should
+     * continue.
      */
     public boolean chooseCandidate(@NonNull AbstractModelMessage message) {
         // Clear active candidates and add the chosen one to the history.
         setActiveCandidates(Collections.emptyList());
-        
+
         if (!contextManager.getHistory().contains(message)) {
             contextManager.addMessage(message);
         }
@@ -620,7 +652,7 @@ public class Agi extends BasicPropertyChangeSource {
             log.info("Auto-executing {} tool calls.", message.getToolCalls().size());
             statusManager.fireStatusChanged(AgiStatus.AUTO_EXECUTING_TOOLS);
             message.executeAllPending();
-            
+
             if (config.isAutoReplyTools()) {
                 log.info("Auto-replying after tool execution.");
                 return false; // Continue loop
@@ -640,7 +672,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Sets the active candidates and fires a property change event.
-     * 
+     *
      * @param candidates The new list of active candidates.
      */
     private void setActiveCandidates(List<AbstractModelMessage> candidates) {
@@ -651,31 +683,32 @@ public class Agi extends BasicPropertyChangeSource {
     }
 
     /**
-     * Sets the tool prompt message and fires a property change event.
-     * If set to null while in TOOL_PROMPT status, it reverts the status to IDLE.
-     * 
+     * Sets the tool prompt message and fires a property change event. If set to
+     * null while in TOOL_PROMPT status, it reverts the status to IDLE.
+     *
      * @param toolPromptMessage The new tool prompt message.
      */
     private void setToolPromptMessage(AbstractModelMessage toolPromptMessage) {
         AbstractModelMessage oldMessage = this.toolPromptMessage;
         this.toolPromptMessage = toolPromptMessage;
-        
+
         if (toolPromptMessage == null && statusManager.getCurrentStatus() == AgiStatus.TOOL_PROMPT) {
             statusManager.fireStatusChanged(AgiStatus.IDLE);
         }
-        
+
         propertyChangeSupport.firePropertyChange("toolPromptMessage", oldMessage, toolPromptMessage);
     }
 
     /**
-     * Clears the current tool prompt and reverts the status to IDLE if necessary.
+     * Clears the current tool prompt and reverts the status to IDLE if
+     * necessary.
      */
     public void clearToolPrompt() {
         setToolPromptMessage(null);
     }
 
     /**
-     * Checks if the current tool prompt is complete (no pending tools) and 
+     * Checks if the current tool prompt is complete (no pending tools) and
      * clears it if so.
      */
     public void checkToolPromptCompletion() {
@@ -685,8 +718,8 @@ public class Agi extends BasicPropertyChangeSource {
     }
 
     /**
-     * Processes all tool responses associated with the current tool prompt message.
-     * This method is called when the user clicks 'Run'.
+     * Processes all tool responses associated with the current tool prompt
+     * message. This method is called when the user clicks 'Run'.
      */
     public void processPendingTools() {
         if (statusManager.getCurrentStatus() == AgiStatus.AWAKENING_KUNDALINI && toolPromptMessage != null) {
@@ -696,7 +729,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Gets an unmodifiable view of the active candidates.
-     * 
+     *
      * @return The list of active candidates.
      */
     public List<AbstractModelMessage> getActiveCandidates() {
@@ -719,7 +752,7 @@ public class Agi extends BasicPropertyChangeSource {
         /*
         String newSessionId = UUID.randomUUID().toString();
         config.setSessionId(newSessionId);
-        */
+         */
         //this.nickname = null;
         //log.info("Agi session cleared. New session ID: {}", newSessionId);
     }
@@ -769,7 +802,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Gets the current context window usage as a percentage (0.0 to 1.0).
-     * 
+     *
      * @return The context window usage percentage.
      */
     public double getContextWindowUsage() {
@@ -783,7 +816,7 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Gets a human-readable display name for the session.
-     * 
+     *
      * @return The session display name (nickname or short ID).
      */
     public String getDisplayName() {
@@ -792,33 +825,37 @@ public class Agi extends BasicPropertyChangeSource {
 
     /**
      * Sets the nickname for the session and fires a property change event.
-     * 
+     *
      * @param nickname The new nickname.
      */
     public void setNickname(String nickname) {
-        String old = this.nickname;
-        log.info("Setting nickname for session {}: {} -> {}", config.getSessionId(), old, nickname);
-        this.nickname = nickname;
-        propertyChangeSupport.firePropertyChange("nickname", old, nickname);
-        autoSave();
+        if (!Objects.equals(this.nickname, nickname)) {
+            String old = this.nickname;
+            log.info("Setting nickname for session {}: {} -> {}", config.getSessionId(), old, nickname);
+            this.nickname = nickname;
+            propertyChangeSupport.firePropertyChange("nickname", old, nickname);
+            autoSave();
+        }
+
     }
 
     /**
      * Sets the summary for the session and fires a property change event.
-     * 
+     *
      * @param summary The new summary.
      */
     public void setSummary(String summary) {
-        String old = this.conversationSummary;
-        log.info("Setting summary for session {}: {} -> {}", config.getSessionId(), old, summary);
-        this.conversationSummary = summary;
-        propertyChangeSupport.firePropertyChange("summary", old, summary);
-        autoSave();
+        if (!Objects.equals(this.conversationSummary, summary)) {
+            String old = this.conversationSummary;
+            log.info("Setting summary for session {}: {} -> {}", config.getSessionId(), old, summary);
+            this.conversationSummary = summary;
+            propertyChangeSupport.firePropertyChange("summary", old, summary);
+        }
     }
 
     /**
      * Gets a short version of the session ID.
-     * 
+     *
      * @return The short session ID.
      */
     public String getShortId() {
@@ -827,7 +864,8 @@ public class Agi extends BasicPropertyChangeSource {
     }
 
     /**
-     * Shuts down the agi session, releasing resources and unregistering from global config.
+     * Shuts down the agi session, releasing resources and unregistering from
+     * global config.
      */
     public void shutdown() {
         shutdown.set(true);
@@ -837,27 +875,27 @@ public class Agi extends BasicPropertyChangeSource {
             executor.shutdown();
         }
     }
-    
+
     /**
      * Sets the active provider and model for the session.
-     * 
+     *
      * @param providerId The ID of the provider.
      * @param modelId The ID of the model.
      */
     public void setProviderAndModel(String providerId, String modelId) {
         getProviders().stream()
-            .filter(p -> p.getProviderId().equals(providerId))
-            .findFirst()
-            .flatMap(provider -> provider.findModel(modelId))
-            .ifPresentOrElse(
-                this::setSelectedModel,
-                () -> log.error("Model not for: " + providerId + " " + modelId)
-            );
+                .filter(p -> p.getProviderId().equals(providerId))
+                .findFirst()
+                .flatMap(provider -> provider.findModel(modelId))
+                .ifPresentOrElse(
+                        this::setSelectedModel,
+                        () -> log.error("Model not for: " + providerId + " " + modelId)
+                );
     }
 
     /**
      * Convenience method to retrieve a toolkit instance from the tool manager.
-     * 
+     *
      * @param <T> The type of the toolkit.
      * @param toolkitClass The class of the toolkit to find.
      * @return An Optional containing the toolkit instance.

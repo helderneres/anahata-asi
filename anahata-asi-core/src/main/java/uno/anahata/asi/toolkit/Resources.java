@@ -27,6 +27,7 @@ import uno.anahata.asi.toolkit.files.FullTextFileCreate;
 import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.files.TextResourceReplacements;
 import uno.anahata.asi.toolkit.files.TextResourceLineBasedUpdates;
+import uno.anahata.asi.toolkit.files.lines.TextResourceLineEdits;
 
 /**
  * The definitive V2 URI-centric toolkit for managed multimodal resources.
@@ -55,9 +56,10 @@ public class Resources extends AnahataToolkit {
         return Collections.singletonList(
                 "**Resources Toolkit** (Surgical Precision Rules):\n"
                 + "1. **Context Integrity**: Only modify resources currently in context. Always use the `lastModified` timestamp from the LATEST RAG message.\n"
-                + "2. **Line Reference**: Line numbers are 1-based and must be verified against the RAG message before every call.\n"
-                + "3. **Reasoning**: Always provide a meaningful `reason` for each replacement; it will be displayed as an AI comment in the UI.\n"
-                + "4. **Updating text resources**: All update text resource methods flush the new content to disk inmediatly if EXECUTED and no changes are written to disk otherwise. Remember the Rag Message gets generated after all tool execution and it will reflect the changes of any successfully executed updates for LIVE resources.\n"
+                + "2. **Line Reference**: Line numbers are 1-based and must be verified against the RAG message before every call. When sending multiple updates in a single call, all line numbers must refer to the original state in the RAG message (the tool handles index shifting internally). For adding javadoc, headers, or new code, ALWAYS prefer PURE INSERTION (`lineCount=0`). This places `newContent` BEFORE the `startLine`, pushing the original line down without any risk of deleting it. Only use `lineCount > 0` when you intend to remove or overwrite existing code.\n"
+                + "3. **Insertion Safety**: For adding javadoc, headers, or new code with the `Resources.updateLinesInTextResource` tool ALWAYS prefer PURE INSERTION (`lineCount=0`). This places `newContent` BEFORE the `startLine`, pushing the original line down without any risk of deleting it. Only use `lineCount > 0` when you intend to remove or overwrite existing code.\n"
+                + "4. **Reasoning**: Always provide a meaningful `reason` for each replacement; it will be displayed as an AI comment in the UI.\n"
+                + "5. **Updating text resources**: All update text resource methods flush the new content to disk inmediatly if EXECUTED and no changes are written to disk otherwise. Remember the Rag Message gets generated after all tool execution and it will reflect the changes of any successfully executed updates for LIVE resources.\n"
         );
     }
 
@@ -146,9 +148,18 @@ public class Resources extends AnahataToolkit {
      */
     @AiTool("Unloads multiple resources from the context (from the RAG Message).")
     public void unloadResources(@AiToolParam("The list of resource identifiers.") List<String> resourceIds) {
-        for (String id : resourceIds) {
-            Resource r = getAgi().getResourceManager().unregister(id);
-            log("Unregistered " + r);
+        List<Resource> unregistered = getAgi().getResourceManager().unregisterAll(resourceIds);
+        for (Resource r : unregistered) {
+            log("Unregistered resource: " + r.getName());
+        }
+
+        if (unregistered.size() < resourceIds.size()) {
+            List<String> unregisteredIds = unregistered.stream().map(Resource::getId).toList();
+            for (String id : resourceIds) {
+                if (!unregisteredIds.contains(id)) {
+                    error("Failed to unregister resource: UUID '" + id + "' not found in registry.");
+                }
+            }
         }
     }
 
@@ -238,21 +249,28 @@ public class Resources extends AnahataToolkit {
     /**
      * Performs line-based replacements in an existing file.
      *
-     * @param replacements The line replacements DTO.
+     * @param updates The line replacements DTO.
      * @return A standard unified diff of the changes applied.
      * @throws Exception if replacements fail.
      */
-    @AiTool("The worlds most token efficient tool. Performs surgical line-based updates using 1-based line numbers from the RAG message. "
-            + "CRITICAL: Do NOT include surrounding context/anchors in newContent. Use lineCount=0 for insertions.")
-    public String updateLinesInTextResource(@AiToolParam("The line-number based updates for the given resource.") TextResourceLineBasedUpdates replacements) throws Exception {
+    //Temporarily disabled
+    /*
+    @AiTool(" Performs surgical line-based updates using 1-based line numbers on text resources in the RAG message. "
+            + "This tool uses optimistic locking rather than 'git-style' surrounding anchors.\n"
+            + " When sending multiple updates in a single call, all line numbers must refer to the original state in the RAG message (the tool handles index shifting internally). \n"
+            + " For PURE INSERTION (`lineCount=0`). This places `newContent` BEFORE the `startLine`, pushing the original line down without any risk of deleting it. Only use `lineCount > 0` when you intend to remove or overwrite existing code.\n"
+            + "CRITICAL: Do NOT include surrounding context/anchors in `newContent`. Use lineCount=0 for insertions.")
+    */
+    public String updateLinesInTextResource(
+            @AiToolParam("Contains the resource details, list modified timstamp and the line-number based updates for the given resource. ") TextResourceLineBasedUpdates updates) throws Exception {
         try {
-            replacements.validate(getAgi());
+            updates.validate(getAgi());
 
-            Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
+            Resource res = getAgi().getResourceManager().getResources().get(updates.getResourceUuid());
             if (res != null) {
                 String original = res.asText();
-                replacements.setOriginalContent(original);
-                String revised = replacements.performUpdates(original);
+                updates.setOriginalContent(original);
+                String revised = updates.performUpdates(original);
 
                 res.write(revised);
                 log("Performed replacements in: " + res.getName());
@@ -261,7 +279,44 @@ public class Resources extends AnahataToolkit {
             }
             return "";
         } catch (Exception e) {
-            throw wrapWithDiff(replacements, e);
+            throw wrapWithDiff(updates, e);
+        }
+    }
+
+    /**
+     * Performs a set of semantic line edits (insertions, replacements, deletions) 
+     * in an existing file.
+     * <p>
+     * This is the next-generation surgical editor that targets absolute 
+     * coordinates from the RAG message without requiring mental arithmetic.
+     * </p>
+     * 
+     * @param edits The semantic line edits DTO.
+     * @return A standard unified diff of the changes applied.
+     * @throws Exception if application fails.
+     */
+    @AiTool("An ultra precise surgical text resource editor for text resources with 'includeLineNumbers' enabled. "
+            + "Targets absolute 1-based line numbers from the RAG message using semantic intent (Insert, Replace, Delete). "
+            + "Always verify line numbers against the latest RAG message.")
+    public String applyLineEdits(
+            @AiToolParam("A set of semantic line edits targeting absolute coordinates of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
+        try {
+            edits.validate(getAgi());
+
+            Resource res = getAgi().getResourceManager().getResources().get(edits.getResourceUuid());
+            if (res != null) {
+                String original = res.asText();
+                edits.setOriginalContent(original);
+                String revised = edits.calculateResultingContent(original);
+
+                res.write(revised);
+                log("Applied semantic line edits to: " + res.getName());
+
+                return AnahataDiffUtils.generateUnifiedDiff(res.getName(), original, revised);
+            }
+            return "";
+        } catch (Exception e) {
+            throw wrapWithDiff(edits, e);
         }
     }
 

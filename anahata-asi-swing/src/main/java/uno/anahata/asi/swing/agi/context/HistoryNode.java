@@ -26,31 +26,61 @@ public class HistoryNode extends AbstractContextNode<ContextManager> {
         super(agiPanel, userObject);
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Returns the localized "History" label for 
+     * the conversation branch.
+     * </p>
+     */
     @Override
     public String getName() {
         return "History";
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Returns the standard {@link PulseIcon} to 
+     * visualize the live conversation feed.
+     * </p>
+     */
     @Override
     public Icon getIcon() {
         return ICON;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Explains the contents of the history branch, 
+     * spanning messages from all actors and tool interactions.
+     * </p>
+     */
     @Override
     public String getDescription() {
         return "The persistent conversation history, including user messages, model responses, and tool calls.";
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Retrieves the full list of {@link AbstractMessage}s 
+     * from the context manager's memory.
+     * </p>
+     */
     @Override
     protected List<?> fetchChildObjects() {
         return userObject.getHistory();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Transforms each {@link AbstractMessage} in the 
+     * timeline into a navigable {@link MessageNode}.
+     * </p>
+     */
     @Override
     protected AbstractContextNode<?> createChildNode(Object obj) {
         if (obj instanceof AbstractMessage msg) {
@@ -59,13 +89,25 @@ public class HistoryNode extends AbstractContextNode<ContextManager> {
         return null;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Token counts for history are entirely aggregated 
+     * from the constituent message nodes.
+     * </p>
+     */
     @Override
     protected void calculateLocalTokens() {
         // History tokens are aggregated from MessageNodes
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Updates the status with a count of the current 
+     * message stack depth.
+     * </p>
+     */
     @Override
     protected void updateStatus() {
         List<AbstractMessage> history = userObject.getHistory();

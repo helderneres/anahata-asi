@@ -25,14 +25,15 @@ import uno.anahata.asi.agi.tool.AiToolException;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@Schema(description = "Represents a set of line-based updates in a text file.")
+@Schema(description = "Represents a set of line-based updates in a text resource."
+        + " Line numbers are 1-based and must be verified against the RAG message for every individual update. When sending multiple updates, all line numbers must refer to the original state in the RAG message (the tool handles index shifting internally).")
 @Slf4j
 public class TextResourceLineBasedUpdates extends AbstractTextResourceWrite {
 
     /**
      * The list of line-based updates.
      */
-    @Schema(description = "The list of line-based updates.", required = true)
+    @Schema(description = "The list of line-based updates. All line numbers must refer to the original state in the RAG message (the tool handles index shifting internally). For adding javadoc, headers, or new code, ALWAYS prefer PURE INSERTION (`lineCount=0`). This places `newContent` BEFORE the `startLine`, pushing the original line down without any risk of deleting it. Only use `lineCount > 0` when you intend to remove or overwrite existing code", required = true)
     private List<LineBasedUpdate> updates;
 
     @Builder

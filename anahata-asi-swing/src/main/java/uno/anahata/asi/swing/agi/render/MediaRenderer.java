@@ -30,10 +30,14 @@ import uno.anahata.asi.swing.internal.SwingUtils;
 import uno.anahata.asi.swing.audio.AudioPlaybackPanel;
 
 /**
- * A utility class for rendering media content (images, audio) in a consistent way
- * across different UI components.
+ * Multimodal rendering engine for non-textual message parts.
+ * <p>
+ * This utility provides high-fidelity visualizers for image and audio data. 
+ * It manages thumbnail generation, asynchronous audio playback integration, 
+ * and non-modal popup dialogs for full-size image inspection.
+ * </p>
  * 
- * @author anahata-ai
+ * @author anahata
  */
 @Slf4j
 public class MediaRenderer {

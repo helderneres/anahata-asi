@@ -29,19 +29,38 @@ public class ContextManagerNode extends AbstractContextNode<ContextManager> {
         super(agiPanel, userObject);
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Returns the static identifier "Context Manager", 
+     * marking this node as the root of the AGI's environmental awareness.
+     * </p>
+     */
     @Override
     public String getName() {
         return "Context Manager";
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Provides a high-level overview of the root 
+     * orchestrator's role in maintaining the conversation and provider state.
+     * </p>
+     */
     @Override
     public String getDescription() {
         return "The central orchestrator for the AI context, managing providers, resources, and history.";
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Aggregates all registered {@link ContextProvider}s 
+     * (excluding toolkits) and injects the manager itself to represent 
+     * the conversation history branch.
+     * </p>
+     */
     @Override
     protected List<?> fetchChildObjects() {
         List<Object> objects = new ArrayList<>();
@@ -58,7 +77,13 @@ public class ContextManagerNode extends AbstractContextNode<ContextManager> {
         return objects;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Maps domain-level orchestrators to their specialized 
+     * context nodes, including {@link ResourcesNode} and {@link HistoryNode}.
+     * </p>
+     */
     @Override
     protected AbstractContextNode<?> createChildNode(Object obj) {
         if (obj instanceof ResourceManager rm2) {
@@ -71,13 +96,26 @@ public class ContextManagerNode extends AbstractContextNode<ContextManager> {
         return null;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: The manager node is a logical container and does 
+     * not contribute tokens directly. All token metrics are aggregated from 
+     * its children.
+     * </p>
+     */
     @Override
     protected void calculateLocalTokens() {
         // The manager itself doesn't have tokens, it just aggregates.
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Fixed to "Providing" as the manager is always 
+     * the active source of the AGI's context.
+     * </p>
+     */
     @Override
     protected void updateStatus() {
         this.status = "Providing";

@@ -24,9 +24,13 @@ import com.vladsch.flexmark.ext.tables.TablesExtension; // Added import
 import com.vladsch.flexmark.util.misc.Extension; // Corrected import for Extension
 
 /**
- * Utility class for rendering Markdown to HTML and creating the corresponding
- * Swing JEditorPane components.
- *
+ * Centralized utility for rendering Markdown and HTML content within the ASI Swing UI.
+ * <p>
+ * This class leverages the Flexmark parser to transform agentic output into high-fidelity 
+ * Swing components. It ensures visual consistency across all conversation parts by 
+ * managing CSS rules, line-wrapping constraints, and theme-aware color mapping.
+ * </p>
+ * 
  * @author anahata
  */
 @UtilityClass
@@ -47,13 +51,18 @@ public class HtmlRendererUtils {
     }
 
     /**
-     * Creates a JComponent (a JPanel wrapper containing a WrappingEditorPane)
-     * that renders the given markdown text as HTML.
+     * Orchestrates the creation of a theme-aware HTML rendering component.
+     * <p>
+     * This method parses raw markdown, applies a "Diff-and-Update" friendly word-wrapping 
+     * strategy via {@link WrappingEditorPane}, and injects specialized CSS rules for 
+     * model thoughts and data tables. The resulting component is wrapped in a 
+     * BorderLayout JPanel to force strict width adherence.
+     * </p>
      *
-     * @param markdown The markdown text to render.
-     * @param isThought If true, applies thought-specific styling (italic, gray).
-     * @param theme The UI theme to use for colors.
-     * @return A JComponent containing the rendered HTML.
+     * @param markdown The raw markdown content from the agi session.
+     * @param isThought Whether to apply italicized, low-contrast "thought" styling.
+     * @param theme The current UI theme for coordinate-accurate color rendering.
+     * @return A ready-to-display JComponent containing the rendered content.
      */
     public static JComponent createHtmlPane(String markdown, boolean isThought, UITheme theme) {
         // Parse markdown to HTML

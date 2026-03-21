@@ -231,6 +231,16 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
      */
     protected abstract List<LineComment> getLineComments(String currentContent);
 
+    /** 
+     * Subclasses can provide a specialized panel to display the raw 'Surgical Intent' 
+     * (e.g., a list of insertions, replacements, and deletions) at the top of the diff viewer.
+     * 
+     * @return The intent component, or null.
+     */
+    protected JComponent createIntentPanel() {
+        return null;
+    }
+
     /**
      * Subclasses must be able to create a new DTO instance with updated content 
      * when the user manually edits the proposed document in the UI.
@@ -449,6 +459,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
     private JPanel createHeaderPanel(Resource resource, List<LineComment> comments, JCheckBox toggle, ToolExecutionStatus status) {
         JPanel panel = new JPanel(new BorderLayout());
         JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        topRow.setOpaque(false);
         
         JLabel htmlDisplayName = new JLabel(resource.getHtmlDisplayName());
         htmlDisplayName.setToolTipText(resource.getHandle().getUri().toString());
@@ -469,6 +480,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
             }
         }
 
+        toggle.setOpaque(false);
         toggle.addActionListener(e -> {
             if (layerUI != null) {
                 layerUI.setShowingComments(toggle.isSelected());
@@ -495,10 +507,22 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         
         panel.add(topRow, BorderLayout.NORTH);
         
+        // --- SURGICAL DASHBOARD ---
+        JPanel dashboard = new JPanel();
+        dashboard.setLayout(new javax.swing.BoxLayout(dashboard, javax.swing.BoxLayout.Y_AXIS));
+        dashboard.setOpaque(false);
+        dashboard.setBorder(BorderFactory.createEmptyBorder(0, 15, 5, 10));
+
+        JComponent intentPanel = createIntentPanel();
+        if (intentPanel != null) {
+            intentPanel.setOpaque(false);
+            dashboard.add(intentPanel);
+        }
+
         if (comments != null && !comments.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             for (LineComment lc : comments) {
-                sb.append("Line ").append(lc.getLineNumber()).append(": ").append(lc.getComment()).append("\n");
+                sb.append("Proposed Line ").append(lc.getLineNumber()).append(": ").append(lc.getComment()).append("\n");
             }
             
             JTextArea area = new JTextArea(sb.toString().trim());
@@ -509,9 +533,11 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
             area.setForeground(Color.GRAY);
             area.setOpaque(false);
             area.setBackground(new Color(0, 0, 0, 0));
-            area.setBorder(BorderFactory.createEmptyBorder(0, 15, 5, 10));
-            
-            panel.add(area, BorderLayout.CENTER);
+            dashboard.add(area);
+        }
+        
+        if (dashboard.getComponentCount() > 0) {
+            panel.add(dashboard, BorderLayout.CENTER);
         }
         
         return panel;

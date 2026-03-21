@@ -24,19 +24,36 @@ public class PartNode extends AbstractContextNode<AbstractPart> {
         super(agiPanel, userObject);
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Returns the simple class name of the part (e.g., 
+     * TextPart, BlobPart) along with its sequential ID.
+     * </p>
+     */
     @Override
     public String getName() {
         return userObject.getClass().getSimpleName() + " #" + userObject.getSequentialId();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Returns a basic description including the 
+     * concrete type of the message part.
+     * </p>
+     */
     @Override
     public String getDescription() {
         return "A " + userObject.getClass().getSimpleName() + " part.";
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Parts are leaf nodes and do not have child objects.
+     * </p>
+     */
     @Override
     protected List<?> fetchChildObjects() {
         return Collections.emptyList();
@@ -48,14 +65,26 @@ public class PartNode extends AbstractContextNode<AbstractPart> {
         return null;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Retrieves the token count directly from the 
+     * underlying domain part for history metrics.
+     * </p>
+     */
     @Override
     protected void calculateLocalTokens() {
         this.historyTokens = userObject.getTokenCount();
     }
 
     /** {@inheritDoc} */
-    @Override
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: Includes the remaining depth metric in the status 
+     * string to visualize the Context Window Garbage Collection (CwGC) state.
+     * </p>
+     */
     protected void updateStatus() {
         int remainingDepth = userObject.getRemainingDepth();
         if (userObject.isEffectivelyPruned()) {

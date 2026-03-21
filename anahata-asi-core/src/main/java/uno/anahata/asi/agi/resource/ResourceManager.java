@@ -115,6 +115,36 @@ public class ResourceManager extends BasicPropertyChangeSource implements Rebind
     }
 
     /**
+     * Unregisters multiple resources in a single operation and fires a single refresh event.
+     * @param ids The collection of resource UUIDs to unregister.
+     * @return The list of successfully unregistered resources.
+     */
+    public List<Resource> unregisterAll(@NonNull Collection<String> ids) {
+        if (ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Resource> unregistered = new ArrayList<>();
+        synchronized (resources) {
+            for (String id : ids) {
+                Resource res = resources.remove(id);
+                if (res != null) {
+                    res.dispose();
+                    unregistered.add(res);
+                    log.info("Unregistered V2 resource: {} ({})", res.getName(), id);
+                } else {
+                    log.error("Failed to unregister resource: UUID '{}' not found.", id);
+                }
+            }
+        }
+        
+        if (!unregistered.isEmpty()) {
+            propertyChangeSupport.firePropertyChange("resources", null, getResourcesList());
+        }
+        return unregistered;
+    }
+
+    /**
      * Returns an unmodifiable list of currently managed resources.
      * @return an unmodifiable list of all managed resources.
      */
