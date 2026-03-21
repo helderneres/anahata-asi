@@ -49,6 +49,12 @@ public class NbJava extends SwingJava {
         log.info("NbJava initialize() completed. default classPath:" + getDefaultClasspath());
     }
     
+    @Override
+    public void rebind() {
+        setDefaultClasspath(NetBeansModuleUtils.getNetBeansClasspath());
+        log.info("NbJava rebind() completed. default classPath:" + getDefaultClasspath());
+    }
+    
 
     /**
      * Compiles and executes Java source code within the context of a specific NetBeans project.
