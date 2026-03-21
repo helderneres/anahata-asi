@@ -110,14 +110,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
      * Container panel with a height cap to prevent "blank line heaps" from 
      * corrupting the conversation layout.
      */
-    protected final JPanel container = new JPanel(new BorderLayout()) {
-        @Override
-        public Dimension getPreferredSize() {
-            Dimension d = super.getPreferredSize();
-            // Cap height at 800px, allow growth up to that point.
-            return new Dimension(d.width, Math.min(d.height, 800));
-        }
-    };
+    protected final JPanel container = new JPanel(new BorderLayout());
 
     /** 
      * The NetBeans DiffController instance responsible for managing the two-pane
@@ -381,6 +374,17 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
                 // Create the UI Layer for agentic annotations
                 layerUI = new DiffAnnotationsLayerUI(comments);
                 jlayer = new JLayer<>(visualizer, layerUI);
+                
+                // Wrap the JLayer in a panel that enforces the height cap
+                // JLayer is final, so we cap the wrapper instead.
+                JPanel diffWrapper = new JPanel(new BorderLayout()) {
+                    @Override
+                    public Dimension getPreferredSize() {
+                        Dimension d = super.getPreferredSize();
+                        return new Dimension(d.width, Math.min(d.height, 800));
+                    }
+                };
+                diffWrapper.add(jlayer, BorderLayout.CENTER);
 
                 // Handle tab changes to show/hide bubbles
                 JTabbedPane tabs = SwingUtils.findComponent(visualizer, JTabbedPane.class);
@@ -400,7 +404,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
 
                 container.removeAll();
                 container.add(headerPanel, BorderLayout.NORTH);
-                container.add(jlayer, BorderLayout.CENTER);
+                container.add(diffWrapper, BorderLayout.CENTER);
                 
                 // Finalize layout after the component is realized
                 jlayer.addHierarchyListener(new HierarchyListener() {
@@ -510,9 +514,9 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         // --- SURGICAL DASHBOARD ---
         JPanel dashboard = new JPanel();
         dashboard.setLayout(new javax.swing.BoxLayout(dashboard, javax.swing.BoxLayout.Y_AXIS));
+        dashboard.setAlignmentX(Component.LEFT_ALIGNMENT);
         dashboard.setOpaque(false);
         dashboard.setBorder(BorderFactory.createEmptyBorder(0, 15, 5, 10));
-
         JComponent intentPanel = createIntentPanel();
         if (intentPanel != null) {
             intentPanel.setOpaque(false);
@@ -532,6 +536,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
             area.setFont(new java.awt.Font("SansSerif", java.awt.Font.ITALIC, 11));
             area.setForeground(Color.GRAY);
             area.setOpaque(false);
+            area.setAlignmentX(Component.LEFT_ALIGNMENT);
             area.setBackground(new Color(0, 0, 0, 0));
             dashboard.add(area);
         }

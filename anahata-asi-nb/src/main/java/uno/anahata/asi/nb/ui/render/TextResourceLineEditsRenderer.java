@@ -1,5 +1,6 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.ui.render;
+import java.awt.Component;
 import java.awt.Color;
 import java.awt.Font;
 import javax.swing.Box;
@@ -30,6 +31,7 @@ public class TextResourceLineEditsRenderer extends AbstractTextResourceWriteRend
     protected JComponent createIntentPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new javax.swing.BoxLayout(panel, javax.swing.BoxLayout.Y_AXIS));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.setOpaque(false);
 
         addEditsToPanel(panel, "Insertions", update.getInsertions(), 
@@ -54,11 +56,13 @@ public class TextResourceLineEditsRenderer extends AbstractTextResourceWriteRend
         JLabel titleLabel = new JLabel(title + ":");
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 11));
         titleLabel.setForeground(Color.DARK_GRAY);
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(titleLabel);
         
         for (E edit : edits) {
             JLabel editLabel = new JLabel("  • " + formatter.apply(edit));
             editLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            editLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
             panel.add(editLabel);
         }
         panel.add(Box.createVerticalStrut(5));
