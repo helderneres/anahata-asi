@@ -117,7 +117,9 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
     }
 
     /**
-     * Initializes the UI components and layout using a JTabbedPane.
+     * Orchestrates the construction of the entire UI tree for the configuration panel.
+     * This method organizes settings into three primary logical tabs: Request, Loop, and Metabolic,
+     * ensuring a clean separation between model-specific parameters and framework-level execution logic.
      */
     private void initComponents() {
         setLayout(new BorderLayout());
@@ -135,6 +137,11 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
         requestPanel.add(new JLabel("Thinking Level:"));
         thinkingLevelDropdown = new JComboBox<>(ThinkingLevel.values());
         thinkingLevelDropdown.setRenderer(new DefaultListCellRenderer() {
+            /**
+             * {@inheritDoc}
+             * <p>Customizes the display of {@link ThinkingLevel} items by using their 
+             * descriptive display values instead of the enum names.</p>
+             */
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
@@ -258,6 +265,14 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
         setupListeners();
     }
 
+    /**
+     * Creates a standardized, titled container panel for grouping related configuration settings.
+     * This helper ensures visual consistency across all configuration sections by applying 
+     * a uniform border and font styling.
+     * 
+     * @param title The localized title to be displayed on the section's border.
+     * @return A newly constructed JPanel configured as a section container.
+     */
     private JPanel createSectionPanel(String title) {
         JPanel panel = new JPanel();
         panel.setOpaque(false);
@@ -273,6 +288,12 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
         return panel;
     }
 
+    /**
+     * Establishes reactive bindings between the UI components and the underlying domain models.
+     * This method wires up listeners for both the provider-level {@link RequestConfig} and 
+     * the framework-level {@link AgiConfig}, ensuring that user interactions are immediately 
+     * reflected in the session state.
+     */
     private void setupListeners() {
         // Request Config Listeners
         temperatureControl.addChangeListener(e -> config.setTemperature(((Number) temperatureControl.getValue()).floatValue()));
@@ -306,9 +327,10 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
     }
 
     /**
-     * Loads the current configuration into the UI components.
-     * This method prioritizes user-set values in the RequestConfig,
-     * falling back to model defaults if necessary.
+     * Synchronizes the UI components with the current state of the {@link Agi} session.
+     * This method prioritizes explicit user-set values in the {@link RequestConfig}, 
+     * falling back to the selected {@link AbstractModel} defaults when no override is present. 
+     * It also refreshes model-dependent components like server tools and response modalities.
      */
     private void loadConfig() {
         AbstractModel model = agi.getSelectedModel();
@@ -360,9 +382,11 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
     }
 
     /**
-     * Updates the response modalities checkboxes based on the selected model.
+     * Dynamically generates checkbox controls for the response modalities supported by the model.
+     * This ensures the UI remains in sync with the current model's capabilities while 
+     * allowing the user to toggle which modalities should be requested in the next API call.
      * 
-     * @param model The selected model.
+     * @param model The active model whose modalities are being displayed.
      */
     private void updateModalities(AbstractModel model) {
         modalitiesPanel.removeAll();
@@ -385,9 +409,11 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
     }
 
     /**
-     * Updates the server tools checkboxes based on the selected model.
+     * Dynamically generates checkbox controls for the server-side tools provided by the model.
+     * This allows for granular control over hosted capabilities (like Google Search or 
+     * Maps) that are available for the selected model.
      * 
-     * @param model The selected model.
+     * @param model The active model whose server tools are being listed.
      */
     private void updateServerTools(AbstractModel model) {
         serverToolsPanel.removeAll();
@@ -415,11 +441,11 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
         serverToolsPanel.repaint();
     }
 
-    /**
-     * Handles property change events from the parent Agi session.
-     * Specifically, it listens for "selectedModel" changes to refresh the UI.
-     * 
-     * @param evt The property change event.
+    /** 
+     * {@inheritDoc} 
+     * <p>Listens for structural changes in the {@link Agi} session, specifically targeting 
+     * model swaps. When a new model is selected, this method triggers a full UI refresh 
+     * to reflect the new model's parameters and capabilities.</p> 
      */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {

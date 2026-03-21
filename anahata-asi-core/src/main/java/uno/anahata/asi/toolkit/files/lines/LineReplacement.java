@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@Schema(description = "Replaces a specific range of lines [startLine, endLine] inclusive.")
+@Schema(description = "Replaces a specific range of lines [startLine, endLine] inclusive. Use startLine=endLine to replace a single line. All lines from startLine to endLine will be replaced/overriden with the new content. The new content can contain any number of lines.")
 public class LineReplacement extends AbstractLineEdit {
 
     @Schema(description = "The 1-based line number where the replacement starts (Inclusive).", required = true)

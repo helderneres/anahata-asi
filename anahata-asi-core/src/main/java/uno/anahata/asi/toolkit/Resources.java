@@ -297,9 +297,10 @@ public class Resources extends AnahataToolkit {
      */
     @AiTool("An ultra precise surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled. "
             + "Targets absolute 1-based line numbers from the RAG message using semantic intent (Insert, Replace, Delete). "
-            + "Vertification is line number + optimstic locking based (Does not use anchors or surrounding context like git patch style tools)."
+            + "Vertification is line number + optimstic locking based (Does not use anchors or surrounding context like git patch style tools). "
+            + "Never use replacements for pure insertions "
             + "Always verify line numbers against the resource in the RAG message you intend to edit.")
-    public String applyLineEdits(
+    public String editTextResource(
             @AiToolParam("A set of semantic line edits targeting absolute line numbers of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
         try {
             edits.validate(getAgi());

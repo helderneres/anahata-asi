@@ -15,6 +15,7 @@ import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JCheckBox;
+import javax.swing.JEditorPane;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JLayer;
@@ -324,6 +325,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
             baseDoc.insertString(0, baseContent, null);
 
             this.modDoc = kit.createDefaultDocument();
+            modDoc.putProperty("AsiRole", "Proposed");
             modDoc.insertString(0, proposedContent, null);
 
             // 4. Sync user edits back to the tool call's modifiedArgs (only if pending)
@@ -396,6 +398,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
                             if (layerUI != null) {
                                 // Only show bubbles on the Graphical tab (index 0)
                                 layerUI.setShowingComments(toggle.isSelected() && tabs.getSelectedIndex() == 0);
+                                applyVisualizerSettings(jlayer);
                                 jlayer.repaint();
                             }
                         }
@@ -411,7 +414,10 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
                     @Override
                     public void hierarchyChanged(HierarchyEvent e) {
                         if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && jlayer.isShowing()) {
-                            SwingUtils.runInEDT(() -> fixSplitPane(jlayer));
+                            SwingUtils.runInEDT(() -> {
+                                fixSplitPane(jlayer);
+                                applyVisualizerSettings(jlayer);
+                            });
                             jlayer.removeHierarchyListener(this);
                         }
                     }
@@ -572,6 +578,14 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
      * @param c The component to start the configuration from.
      */
     private void applyVisualizerSettings(Component c) {
+        if (c instanceof JEditorPane pane) {
+            Object role = pane.getDocument().getProperty("AsiRole");
+            if ("Proposed".equals(role)) {
+                pane.setEditable(call.getResponse().getStatus() == ToolExecutionStatus.PENDING);
+            } else {
+                pane.setEditable(false);
+            }
+        }
         if (c instanceof JComponent jc) {
             jc.putClientProperty("diff_merger", Boolean.TRUE);
             jc.putClientProperty("showMergeButtons", Boolean.TRUE);
