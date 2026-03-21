@@ -16,9 +16,7 @@ import uno.anahata.asi.agi.resource.handle.PathHandle;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.resources.DefaultResourceUI;
-import uno.anahata.asi.swing.icons.IconUtils;
 import uno.anahata.asi.swing.icons.NextIcon;
-import uno.anahata.asi.swing.icons.SearchIcon;
 
 /**
  * NetBeans-specific implementation of {@link uno.anahata.asi.swing.agi.resources.ResourceUI}.
