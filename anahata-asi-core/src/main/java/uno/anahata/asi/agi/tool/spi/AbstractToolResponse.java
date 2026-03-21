@@ -195,7 +195,7 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
      * 
      * @param reason The reason for the rejection.
      */
-    public void reject(String reason) {
+    public void fail(String reason) {
         setErrors(reason);
         setStatus(ToolExecutionStatus.FAILED);
     }
@@ -206,7 +206,7 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
      * @param reason The high-level reason for rejection.
      * @param details Additional technical details (e.g., a diff of the failed intent).
      */
-    public void reject(String reason, String details) {
+    public void fail(String reason, String details) {
         if (details != null && !details.isBlank()) {
             setErrors(reason + "\n\nDetails:\n" + details);
         } else {
@@ -224,9 +224,7 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
         if (thread != null) {
             this.threadName = thread.getName();
             propertyChangeSupport.firePropertyChange("threadName", null, threadName);
-        } else {
-            this.threadName = null;
-        }
+        } 
         this.thread = thread;
         propertyChangeSupport.firePropertyChange("thread", null, thread);
     }
@@ -240,6 +238,11 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
         setResult(null);
         setErrors(null);
         setThread(null);
+        
+        String tn = threadName;
+        this.threadName = null;
+        propertyChangeSupport.firePropertyChange("threadName", tn, null);
+        
         setExecutionTimeMillis(0);
         clearLogs();
         this.attachments.clear();
