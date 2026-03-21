@@ -196,7 +196,7 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if the update fails.
      */
-    @AiTool("Updates an existing text file using full content replacement. Returns a standard unified diff of the changes applied.")
+    @AiTool("Updates an existing text resource in the RAG message using full content replacement. Returns a standard unified diff of the changes applied.")
     public String updateTextResource(@AiToolParam("The update details.") FullTextResourceUpdate update) throws Exception {
         try {
             update.validate(getAgi());
@@ -224,7 +224,7 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if replacements fail.
      */
-    @AiTool("Performs multiple text replacements in a text resource. Returns a standard unified diff of the changes applied.")
+    @AiTool("Performs multiple text replacements in a text resource in the RAG message. Returns a standard unified diff of the changes applied.")
     public String findAndReplaceInTextResource(@AiToolParam("The set of replacements.") TextResourceReplacements replacements) throws Exception {
         try {
             replacements.validate(getAgi());
@@ -295,11 +295,12 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if application fails.
      */
-    @AiTool("An ultra precise surgical text resource editor for text resources with 'includeLineNumbers' enabled. "
+    @AiTool("An ultra precise surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled. "
             + "Targets absolute 1-based line numbers from the RAG message using semantic intent (Insert, Replace, Delete). "
-            + "Always verify line numbers against the latest RAG message.")
+            + "Vertification is line number + optimstic locking based (Does not use anchors or surrounding context like git patch style tools)."
+            + "Always verify line numbers against the resource in the RAG message you intend to edit.")
     public String applyLineEdits(
-            @AiToolParam("A set of semantic line edits targeting absolute coordinates of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
+            @AiToolParam("A set of semantic line edits targeting absolute line numbers of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
         try {
             edits.validate(getAgi());
 
