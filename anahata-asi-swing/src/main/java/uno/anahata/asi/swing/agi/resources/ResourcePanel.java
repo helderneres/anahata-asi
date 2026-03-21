@@ -105,7 +105,7 @@ public class ResourcePanel extends ScrollablePanel {
      * Tab pane for metadata.
      */
     private final AdjustingTabPane metadataTabs;
-    
+
     /**
      * Tab pane for content.
      */
@@ -258,6 +258,7 @@ public class ResourcePanel extends ScrollablePanel {
 
     /**
      * Sets the resource to manage and initializes the dynamic viewer.
+     *
      * @param res The one and only Anahata Resource
      */
     public void setResource(Resource res) {
@@ -286,6 +287,11 @@ public class ResourcePanel extends ScrollablePanel {
             res.reloadIfNeeded();
             return null;
         }, done -> {
+            //resource has changed
+            if (this.currentResource != res) {
+                log.info("Resource {} changed to {}, ejecting!", currentResource, res);
+                return;
+            }
             this.resourceListener = new EdtPropertyChangeListener(this, res, null, evt -> syncUiWithResource());
             assembleResourceUI();
         }, error -> {
@@ -328,6 +334,7 @@ public class ResourcePanel extends ScrollablePanel {
 
             viewerContainer.add(activeViewer, BorderLayout.CENTER);
             actionPanel.removeAll();
+            log.info("Populating actions for {}", currentResource);
             activeStrategy.populateActions(actionPanel, currentResource, agiPanel);
         }
 
