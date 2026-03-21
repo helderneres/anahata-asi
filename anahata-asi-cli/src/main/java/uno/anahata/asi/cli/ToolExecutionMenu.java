@@ -56,7 +56,7 @@ public class ToolExecutionMenu {
                 case "D":
                     responses.stream()
                         .filter(r -> r.getStatus() == ToolExecutionStatus.PENDING)
-                        .forEach(r -> r.reject("Denied by user."));
+                        .forEach(r -> r.fail("Denied by user."));
                     return false; // Wait for user input
                 case "V":
                     runDetailMenu();
