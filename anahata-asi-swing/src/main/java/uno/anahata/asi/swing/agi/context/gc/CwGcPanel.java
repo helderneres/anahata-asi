@@ -100,6 +100,12 @@ public class CwGcPanel extends JPanel {
         this.resourcesListener = new EdtPropertyChangeListener(this, agi.getResourceManager(), "resources", evt -> refresh());
     }
 
+    /**
+     * Constructs and organizes the complex UI tree for the metabolism dashboard.
+     * This method uses {@link MigLayout} to create a responsive, high-fidelity grid
+     * that balances the detailed metric labels with the metabolic donut chart 
+     * and the historical recycling log.
+     */
     private void initComponents() {
         JPanel mainContent = new JPanel(new MigLayout("insets 10, fill", "[grow]", "[350!][grow]"));
 
@@ -188,6 +194,15 @@ public class CwGcPanel extends JPanel {
         add(infoPanel, BorderLayout.SOUTH);
     }
 
+    /**
+     * Helper factory method for creating standardized value labels.
+     * These labels are styled with a specific font and color to maintain 
+     * visual consistency across different token categories (System, Tools, History, etc.).
+     * 
+     * @param font The font to apply to the label.
+     * @param color The foreground color for the label text.
+     * @return A newly constructed and styled JLabel.
+     */
     private JLabel createValueLabel(Font font, Color color) {
         JLabel label = new JLabel("0");
         label.setFont(font);
@@ -247,6 +262,11 @@ public class CwGcPanel extends JPanel {
         }).execute();
     }
 
+    /**
+     * Synchronizes the recycling log table with the latest records from the 
+     * {@link ContextWindowGarbageCollector}. This method performs a partial refresh
+     * by comparing record counts to optimize EDT performance.
+     */
     private void refreshLogTable() {
         List<GarbageCollectorRecord> records = agi.getContextManager().getGarbageCollector().getRecords();
         if (records.size() == logModel.getRowCount()) {
@@ -264,94 +284,11 @@ public class CwGcPanel extends JPanel {
         }
     }
 
-    /**
-     * A high-fidelity donut chart visualizing the categorized token distribution.
-     */
-    private static class MetabolicDonutChart extends JComponent {
-        private ContextWindowGarbageCollector.Stats stats;
-        private int threshold;
 
-        public void update(ContextWindowGarbageCollector.Stats stats, int threshold) {
-            this.stats = stats;
-            this.threshold = threshold;
-            repaint();
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            if (stats == null) {
-                return;
-            }
-
-            Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            int size = Math.min(getWidth(), getHeight()) - 60;
-            int x = (getWidth() - size) / 2;
-            int y = (getHeight() - size) / 2;
-            int stroke = 50;
-
-            // Background Ring
-            g2d.setStroke(new BasicStroke(stroke, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
-            g2d.setColor(new Color(236, 240, 241));
-            g2d.drawOval(x + stroke/2, y + stroke/2, size - stroke, size - stroke);
-
-            double total = stats.getTotalPromptLoad();
-            if (total == 0) {
-                total = 1;
-            }
-
-            double currentAngle = 90;
-
-            // 1. System (Blue)
-            currentAngle = drawArc(g2d, x, y, size, stroke, currentAngle, stats.getSystemInstructionsTokens() / total, new Color(52, 152, 219));
-            // 2. Tools (Purple)
-            currentAngle = drawArc(g2d, x, y, size, stroke, currentAngle, stats.getToolDeclarationsTokens() / total, new Color(155, 89, 182));
-            // 3. Metadata (Orange)
-            currentAngle = drawArc(g2d, x, y, size, stroke, currentAngle, stats.getMetadataTokens() / total, new Color(243, 156, 18));
-            // 4. History (Green)
-            currentAngle = drawArc(g2d, x, y, size, stroke, currentAngle, stats.getActiveHistoryTokens() / total, new Color(46, 204, 113));
-            // 5. RAG (Turquoise)
-            currentAngle = drawArc(g2d, x, y, size, stroke, currentAngle, stats.getRagTokens() / total, new Color(26, 188, 156));
-
-            // Inner Ring: Pruned (Grey)
-            if (stats.getPrunedHistoryTokens() > 0) {
-                g2d.setStroke(new BasicStroke(15, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
-                g2d.setColor(new Color(189, 195, 199));
-                g2d.drawOval(x + stroke + 15, y + stroke + 15, size - (stroke*2) - 30, size - (stroke*2) - 30);
-            }
-
-            // Center Text
-            double usagePct = Math.min(1.0, total / threshold);
-            g2d.setFont(getFont().deriveFont(Font.BOLD, 28f));
-            String usageText = (int)(usagePct * 100) + "%";
-            int tw = g2d.getFontMetrics().stringWidth(usageText);
-            g2d.setColor(usagePct > 0.9 ? new Color(192, 57, 43) : Color.DARK_GRAY);
-            g2d.drawString(usageText, getWidth()/2 - tw/2, getHeight()/2 + 10);
-            
-            g2d.setFont(getFont().deriveFont(12f));
-            g2d.setColor(Color.GRAY);
-            String subText = "CAPACITY";
-            int stw = g2d.getFontMetrics().stringWidth(subText);
-            g2d.drawString(subText, getWidth()/2 - stw/2, getHeight()/2 + 30);
-
-            g2d.dispose();
-        }
-
-        private double drawArc(Graphics2D g2d, int x, int y, int size, int stroke, double startAngle, double pct, Color color) {
-            if (pct <= 0) {
-                return startAngle;
-            }
-            double angle = pct * 360.0;
-            g2d.setColor(color);
-            g2d.draw(new Arc2D.Double(x + stroke/2, y + stroke/2, size - stroke, size - stroke, startAngle, -angle, Arc2D.OPEN));
-            return startAngle - angle;
-        }
-    }
-
-    /** {@inheritDoc} 
-     * Initial refresh on display.
+    /** 
+     * {@inheritDoc} 
+     * <p>Triggers an initial metabolism refresh when the panel is added to a container, 
+     * ensuring that the visualization is up-to-date as soon as it becomes visible to the user.</p> 
      */
     @Override
     public void addNotify() {

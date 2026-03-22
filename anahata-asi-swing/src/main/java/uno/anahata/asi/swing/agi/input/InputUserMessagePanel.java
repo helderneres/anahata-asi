@@ -64,25 +64,39 @@ public class InputUserMessagePanel extends AbstractMessagePanel<InputUserMessage
         });
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the theme-specific starting gradient color for user message headers.</p> 
+     */
     @Override
     protected Color getHeaderStartColor() {
         return agiConfig.getTheme().getUserHeaderBg();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the theme-specific ending gradient color for user message headers, 
+     * typically blending into the content background.</p> 
+     */
     @Override
     protected Color getHeaderEndColor() {
         return agiConfig.getTheme().getUserContentBg();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the theme-specific text color for user message headers.</p> 
+     */
     @Override
     protected Color getHeaderForegroundColor() {
         return agiConfig.getTheme().getUserHeaderFg();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns a specialized border for user messages, often rounded to 
+     * distinguish them from model responses.</p> 
+     */
     @Override
     protected Border getMessageBorder() {
         return BorderFactory.createLineBorder(agiConfig.getTheme().getUserBorder(), 2, true);
@@ -90,31 +104,48 @@ public class InputUserMessagePanel extends AbstractMessagePanel<InputUserMessage
 
     // --- Scrollable Implementation ---
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Delegates the preferred size calculation to the standard Swing component logic.</p> 
+     */
     @Override
     public Dimension getPreferredScrollableViewportSize() {
         return getPreferredSize();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Provides a standardized unit increment for smooth vertical scrolling.</p> 
+     */
     @Override
     public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
         return 24;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Provides block increments equal to the visible viewport height for efficient paging.</p> 
+     */
     @Override
     public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
         return (orientation == SwingConstants.VERTICAL) ? visibleRect.height : visibleRect.width;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Always returns true to ensure the preview panel wraps text and 
+     * fits within the horizontal bounds of the scroll pane.</p> 
+     */
     @Override
     public boolean getScrollableTracksViewportWidth() {
         return true;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns true only if the preferred height is smaller than the viewport, 
+     * allowing the panel to stretch and fill the space.</p> 
+     */
     @Override
     public boolean getScrollableTracksViewportHeight() {
         if (getParent() instanceof JViewport viewport) {

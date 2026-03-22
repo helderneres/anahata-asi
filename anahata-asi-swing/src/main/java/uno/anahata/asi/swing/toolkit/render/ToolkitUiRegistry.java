@@ -28,11 +28,20 @@ import uno.anahata.asi.yam.tools.Radio;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class ToolkitUiRegistry {
 
+    /**
+     * The singleton instance of the registry, providing global access to the toolkit 
+     * rendering subsystem.
+     */
     private static final ToolkitUiRegistry INSTANCE = new ToolkitUiRegistry();
 
     /**
      * Gets the singleton registry instance.
-     * @return The registry.
+     * <p>
+     * This is the primary entry point for managing toolkit renderers. It ensures 
+     * a unified discovery mechanism across all AGI sessions.
+     * </p>
+     * 
+     * @return The singleton registry instance.
      */
     public static ToolkitUiRegistry getInstance() {
         return INSTANCE;
@@ -43,7 +52,13 @@ public class ToolkitUiRegistry {
         INSTANCE.register(Radio.class, RadioRenderer.class);
     }
 
-    /** Map of toolkit class to renderer class. */
+    /** 
+     * Internal registry mapping toolkit classes to their specialized renderer implementations.
+     * <p>
+     * This map is accessed during the rendering phase of the {@link uno.anahata.asi.swing.agi.AgiPanel} 
+     * to resolve the correct visual component for a toolkit instance.
+     * </p>
+     */
     private final Map<Class<? extends AnahataToolkit>, Class<? extends ToolkitRenderer<?>>> rendererClasses = new HashMap<>();
 
     /**

@@ -69,7 +69,13 @@ public abstract class AbstractToolkitRenderer<T extends AnahataToolkit> extends 
      */
     protected abstract void onBind();
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Subclasses should override this method to handle reactive state changes 
+     * on the Event Dispatch Thread (EDT).
+     * </p> 
+     */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // Subclasses should override to handle state changes on the EDT

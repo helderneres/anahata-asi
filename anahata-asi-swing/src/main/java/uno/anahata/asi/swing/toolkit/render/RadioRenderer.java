@@ -39,11 +39,17 @@ import uno.anahata.asi.yam.tools.Radio;
  */
 public class RadioRenderer extends AbstractToolkitRenderer<Radio> {
 
+    /** The table displaying the list of available internet radio stations. */
     private JTable stationTable;
+    /** The backing data model for the station table. */
     private DefaultTableModel tableModel;
+    /** High-contrast LED status label (e.g., "SYSTEM READY", "STREAMING LIVE"). */
     private JLabel statusLabel;
+    /** LED display for the current station name. */
     private JLabel stationLabel;
+    /** The main playback control button. */
     private JButton playBtn;
+    /** Selector for the hardware output device (audio routing). */
     private JComboBox<AudioDevice> deviceCombo;
 
     /**
@@ -53,7 +59,13 @@ public class RadioRenderer extends AbstractToolkitRenderer<Radio> {
         super();
     }
 
-    /** {@inheritDoc} <p>Initializes the high-contrast radio console and binds listeners.</p> */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Initializes the high-contrast radio console, setting up the NEON visual theme, 
+     * the station discovery table, and the hardware-style LED control panel.
+     * </p> 
+     */
     @Override
     protected void onBind() {
         removeAll();
@@ -241,7 +253,13 @@ public class RadioRenderer extends AbstractToolkitRenderer<Radio> {
         deviceCombo.setSelectedItem(anahataToolkit.getSelectedOutputDevice());
     }
 
-    /** {@inheritDoc} <p>Refreshes the console display when toolkit properties change.</p> */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Synchronizes the high-contrast display and control states whenever the 
+     * underlying {@link Radio} toolkit's reactive properties change.
+     * </p> 
+     */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         syncUiWithToolkit();

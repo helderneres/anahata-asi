@@ -56,10 +56,9 @@ public class Resources extends AnahataToolkit {
         return Collections.singletonList(
                 "**Resources Toolkit** (Surgical Precision Rules):\n"
                 + "1. **Context Integrity**: Only modify resources currently in context. Always use the `lastModified` timestamp from the LATEST RAG message.\n"
-                + "2. **Line Reference**: Line numbers are 1-based and must be verified against the RAG message before every call. When sending multiple updates in a single call, all line numbers must refer to the original state in the RAG message (the tool handles index shifting internally). For adding javadoc, headers, or new code, ALWAYS prefer PURE INSERTION (`lineCount=0`). This places `newContent` BEFORE the `startLine`, pushing the original line down without any risk of deleting it. Only use `lineCount > 0` when you intend to remove or overwrite existing code.\n"
-                + "3. **Insertion Safety**: For adding javadoc, headers, or new code with the `Resources.updateLinesInTextResource` tool ALWAYS prefer PURE INSERTION (`lineCount=0`). This places `newContent` BEFORE the `startLine`, pushing the original line down without any risk of deleting it. Only use `lineCount > 0` when you intend to remove or overwrite existing code.\n"
-                + "4. **Reasoning**: Always provide a meaningful `reason` for each replacement; it will be displayed as an AI comment in the UI.\n"
-                + "5. **Updating text resources**: All update text resource methods flush the new content to disk inmediatly if EXECUTED and no changes are written to disk otherwise. Remember the Rag Message gets generated after all tool execution and it will reflect the changes of any successfully executed updates for LIVE resources.\n"
+                + "2. **Reasoning**: Always provide a meaningful `reason` each time you update a resource; it will be displayed as an AI comment in the UI.\n"
+                + "3. **Updating text resources**: All update text resource tools flush the changes to disk inmediatly if they are EXECUTED. "
+                + "4. **Rag Message**: The Rag Message is the source of truth for resource modification, it gets freshly generated on when the user completes his turn (i.e. after all tools in the batch have been executed or declined) and all LIVE resources are garanteed to have the latest content.\n"
         );
     }
 
@@ -297,11 +296,12 @@ public class Resources extends AnahataToolkit {
      */
     @AiTool("An ultra precise surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled. "
             + "Targets absolute 1-based line numbers from the RAG message using semantic intent (Insert, Replace, Delete). "
-            + "Vertification is line number + optimstic locking based (Does not use anchors or surrounding context like git patch style tools). "
-            + "Never use replacements for pure insertions "
-            + "Always verify line numbers against the resource in the RAG message you intend to edit.")
+            + "Vertification is based on line numbers and the lastModified timestamp in the RAG message. "
+            + "This tool Does not use or suppoert anchors or surrounding context (like git patch style tools). "
+            + "Never use replacements for pure insertions. "
+            + "All line numbers you use when calling this tool must correspond to the line numbers in the text resource in the RAG message.")
     public String editTextResource(
-            @AiToolParam("A set of semantic line edits targeting absolute line numbers of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
+            @AiToolParam("Contains the resource uuid, the lastModified timestamp and a set of line modifications targeting the absolute 1 based line numbers of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
         try {
             edits.validate(getAgi());
 

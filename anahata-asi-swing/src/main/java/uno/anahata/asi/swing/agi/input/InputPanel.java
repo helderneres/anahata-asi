@@ -133,6 +133,12 @@ public class InputPanel extends JPanel {
     /**
      * Initializes the UI components and sets up the real-time model binding.
      */
+    /**
+     * Initializes the UI components and sets up the real-time model binding.
+     * This method constructs the input area, preview pane, and action buttons,
+     * ensuring that the split pane is correctly balanced for a seamless 
+     * composition experience.
+     */
     private void initComponents() {
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); 
 
@@ -331,6 +337,11 @@ public class InputPanel extends JPanel {
     }
 
     /** Updates the underlying message model with the text area content. */
+    /** 
+     * Updates the underlying message model with the text area content. 
+     * This method is triggered by document changes to keep the live {@link InputUserMessage}
+     * in sync with the user's keystrokes.
+     */
     private void updateMessageText() {
         currentMessage.setText(inputTextArea.getText());
         updateSendButtonState();
@@ -363,6 +374,13 @@ public class InputPanel extends JPanel {
      * 
      * @param text The message text.
      */
+    /**
+     * Displays a transient notification message in the action panel.
+     * These notifications provide non-intrusive feedback for background operations
+     * like resource registration.
+     * 
+     * @param text The message text to display.
+     */
     private void showNotification(String text) {
         notificationLabel.setText(text);
         notificationLabel.setVisible(true);
@@ -386,6 +404,10 @@ public class InputPanel extends JPanel {
     }
 
     /** Opens file chooser and registers selected files as resources. */
+    /** 
+     * Opens a file chooser dialog and registers selected files as managed resources.
+     * This is the primary way for users to add persistent file context to the session.
+     */
     private void attachFiles() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setMultiSelectionEnabled(true);
@@ -396,6 +418,10 @@ public class InputPanel extends JPanel {
     }
 
     /** Captures desktop screenshot and attaches to history. */
+    /** 
+     * Captures a desktop screenshot of all screens and attaches them directly 
+     * to the composition history of the current message.
+     */
     private void attachScreenshot() {
         executeTask("Attach Screenshot", () -> {
             List<Path> files = UICapture.screenshotAllScreens();
@@ -406,6 +432,10 @@ public class InputPanel extends JPanel {
     }
 
     /** Captures application frames and attaches to history. */
+    /** 
+     * Captures high-fidelity frames of all open application windows and attaches 
+     * them to the composition history.
+     */
     private void attachWindowCaptures() {
         executeTask("Attach Application Frames", () -> {
             List<Path> files = UICapture.screenshotAllWindows();
@@ -416,6 +446,11 @@ public class InputPanel extends JPanel {
     }
 
     /** Sends the current message asynchronously. */
+    /** 
+     * Orchestrates the asynchronous sending of the current message.
+     * This method resets the input buffer and handles the transition to the
+     * API call phase, ensuring UI responsiveness during the network request.
+     */
     private void sendMessage() {
         setButtonsEnabled(false);
         final InputUserMessage messageToSend = this.currentMessage; 
@@ -431,6 +466,11 @@ public class InputPanel extends JPanel {
         });
     }
 
+    /**
+     * Declines all pending tool calls from the previous turn and sends the current message.
+     * This provides a "clean slate" shortcut for the user to continue the conversation
+     * without approving or manually declining individual tools.
+     */
     private void declinePendingAndSend() {
         AbstractModelMessage promptMsg = agi.getToolPromptMessage();
         if (promptMsg != null) {
@@ -439,6 +479,14 @@ public class InputPanel extends JPanel {
         sendMessage();
     }
 
+    /**
+     * Synchronizes the staged message panel visibility and content with the current {@link Agi} state.
+     * <p>
+     * If a message is staged (e.g., waiting for user review after a tool call), this method
+     * updates the summary label with a preview of the text and makes the panel visible.
+     * Otherwise, it hides the panel.
+     * </p>
+     */
     /**
      * Synchronizes the staged message panel visibility and content with the current {@link Agi} state.
      * <p>
@@ -489,6 +537,11 @@ public class InputPanel extends JPanel {
         }
     }
 
+    /**
+     * Moves a staged message back into the active input area for editing.
+     * This allows the user to refine a message that was automatically generated or
+     * suggested by the ASI before final submission.
+     */
     private void revertStagedMessage() {
         InputUserMessage staged = agi.getStagedUserMessage();
         if (staged != null) {
@@ -503,6 +556,9 @@ public class InputPanel extends JPanel {
         }
     }
 
+    /**
+     * Permanently deletes the current staged message, clearing it from the session state.
+     */
     private void deleteStagedMessage() {
         agi.setStagedUserMessage(null);
     }
@@ -512,6 +568,13 @@ public class InputPanel extends JPanel {
         inputMessagePreview.scrollToBottom();
     }
 
+    /**
+     * Helper to execute a background task with automatic progress tracking in the UI.
+     * 
+     * @param <T> The result type of the task.
+     * @param taskName The descriptive name of the task for logging and UI feedback.
+     * @param backgroundTask The actual logic to execute on a background thread.
+     */
     private <T> void executeTask(String taskName, Callable<T> backgroundTask) {
         new SwingTask<>(this, taskName, backgroundTask).execute();
     }
@@ -520,6 +583,10 @@ public class InputPanel extends JPanel {
         new SwingTask<>(this, taskName, backgroundTask, onDone, onError).execute();
     }
 
+    /**
+     * Resets the composition state, clearing the text area, undo history, and 
+     * creating a fresh {@link InputUserMessage} instance.
+     */
     private void resetMessage() {
         this.currentMessage = new InputUserMessage(agi);
         inputTextArea.setText("");
@@ -530,6 +597,13 @@ public class InputPanel extends JPanel {
         updateSendButtonState();
     }
 
+    /**
+     * Toggles the enabled state of all interactive components in the action panel.
+     * This is used to prevent concurrent operations during sensitive phases like
+     * API calls or resource registration.
+     * 
+     * @param enabled True to enable, false to disable.
+     */
     private void setButtonsEnabled(boolean enabled) {
         attachButton.setEnabled(enabled);
         screenshotButton.setEnabled(enabled);

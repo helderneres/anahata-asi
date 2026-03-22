@@ -35,7 +35,15 @@ public record TextSegmentDescriptor(TextSegmentType type, String content, String
         renderer.setClosed(closed);
         return renderer;
     }
-
+    
+    /**
+     * Internal factory method for constructing the appropriate code block renderer.
+     * This handles the special case for Mermaid diagrams while defaulting to the 
+     * host-native code viewer for all other languages.
+     * 
+     * @param agiPanel The agi panel instance.
+     * @return A configured {@link AbstractTextSegmentRenderer}.
+     */
     private AbstractTextSegmentRenderer createCodeBlockRenderer(AgiPanel agiPanel) {
         if ("mermaid".equalsIgnoreCase(language)) {
             return new MermaidCodeBlockSegmentRenderer(agiPanel, content, language);
