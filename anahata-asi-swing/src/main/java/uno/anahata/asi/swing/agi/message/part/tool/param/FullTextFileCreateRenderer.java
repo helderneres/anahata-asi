@@ -7,7 +7,6 @@ import java.awt.Font;
 import java.io.File;
 import java.util.Objects;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -40,29 +39,28 @@ import uno.anahata.asi.toolkit.files.FullTextFileCreate;
  */
 @Slf4j
 public class FullTextFileCreateRenderer implements ParameterRenderer<FullTextFileCreate> {
-
-    /** The agi panel instance. */
+    /** The agi panel instance providing session context. */
     private AgiPanel agiPanel;
-    /** The tool call containing the parameter. */
+    /** The tool call containing the parameter being rendered. */
     private AbstractToolCall<?, ?> call;
-    /** The name of the parameter. */
+    /** The technical name of the parameter. */
     private String paramName;
-    /** The current creation DTO. */
+    /** The current creation DTO containing path and content. */
     private FullTextFileCreate value;
     
-    /** The main container panel. */
+    /** The main container panel for the renderer. */
     private final JPanel container = new JPanel(new BorderLayout());
-    /** The toolbar for post-execution actions. */
+    /** The toolbar for post-execution actions (Open/Edit). */
     private final JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
     
-    /** The high-fidelity viewer component. */
+    /** The high-fidelity text viewer component. */
     private AbstractTextResourceViewer viewer;
-    /** The virtual handle used for the proposal phase. */
+    /** The virtual handle used to simulate the file before it exists on disk. */
     private StringHandle ephemeralHandle;
 
-    /** Cache of the last rendered state. */
+    /** Cache of the last rendered state to prevent redundant UI updates. */
     private FullTextFileCreate lastRenderedValue;
-    /** Cache of the last rendered status. */
+    /** Cache of the last rendered status to track transitions (Proposed -> Created). */
     private ToolExecutionStatus lastRenderedStatus;
 
     /** 
