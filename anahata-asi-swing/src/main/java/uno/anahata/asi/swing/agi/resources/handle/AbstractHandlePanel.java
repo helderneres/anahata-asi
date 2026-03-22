@@ -45,19 +45,19 @@ public class AbstractHandlePanel<H extends ResourceHandle> extends JPanel {
     /** The layout constraints for property labels/fields. */
     protected final GridBagConstraints gbc = new GridBagConstraints();
 
-    /** Label for the implementation class FQN. */
+    /** Label for the implementation class FQN of the handle. */
     protected final JLabel classLabel = new JLabel();
-    /** Text field for the authoritative resource URI. */
+    /** Text field for the authoritative resource URI, read-only. */
     protected final JTextField uriField = createReadOnlyField();
-    /** Label for the detected MIME type. */
+    /** Label for the detected MIME type of the underlying data. */
     protected final JLabel mimeLabel = new JLabel();
-    /** Label for the connectivity status (ONLINE/OFFLINE). */
+    /** Label for the real-time connectivity status (ONLINE/OFFLINE). */
     protected final JLabel statusLabel = new JLabel();
-    /** Label for the last modified timestamp. */
+    /** Label for the last modified timestamp of the resource. */
     protected final JLabel modifiedLabel = new JLabel();
-    /** Checkbox indicating if the resource is memory-backed. */
+    /** Non-editable checkbox indicating if the resource is purely memory-backed (Virtual). */
     protected final JCheckBox virtualBox = new JCheckBox("Virtual");
-    /** Checkbox indicating if the resource supports mutations. */
+    /** Non-editable checkbox indicating if the resource supports mutation operations (Writable). */
     protected final JCheckBox writableBox = new JCheckBox("Writable");
 
     /**

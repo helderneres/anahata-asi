@@ -17,6 +17,7 @@ import uno.anahata.asi.agi.resource.handle.PathHandle;
 @Slf4j
 public class PathHandlePanel extends AbstractHandlePanel<PathHandle> {
 
+    /** Text field for the absolute physical path on the host system. */
     private final JTextField pathField;
 
     /**

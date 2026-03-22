@@ -20,7 +20,9 @@ import uno.anahata.asi.agi.resource.handle.UrlHandle;
 @Slf4j
 public class UrlHandlePanel extends AbstractHandlePanel<UrlHandle> {
 
+    /** Text field for the source remote URL. */
     private final JTextField urlField;
+    /** Label for the network metadata cache status. */
     private final JLabel cacheLabel = new JLabel();
 
     /**

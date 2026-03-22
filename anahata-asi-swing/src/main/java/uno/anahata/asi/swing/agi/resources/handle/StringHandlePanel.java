@@ -17,6 +17,7 @@ import uno.anahata.asi.agi.resource.handle.StringHandle;
 @Slf4j
 public class StringHandlePanel extends AbstractHandlePanel<StringHandle> {
 
+    /** Label for the memory-specific URI of the snippet. */
     private final JLabel uriLabel = new JLabel();
 
     /**
