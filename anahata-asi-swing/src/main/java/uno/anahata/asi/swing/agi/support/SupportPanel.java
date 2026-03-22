@@ -9,8 +9,13 @@ import uno.anahata.asi.swing.components.ScrollablePanel;
 import uno.anahata.asi.swing.icons.IconUtils;
 
 /**
- * A panel providing support links and community resources for users.
- * Ported from V1 to the V2 architecture.
+ * A high-salience UI component providing support links and community resources.
+ * <p>
+ * This panel serves as the primary gateway for users to interact with the 
+ * Anahata ecosystem, providing direct access to Discord, GitHub, and 
+ * official documentation. It follows the ported V2 architecture for 
+ * consistent modal support and rendering.
+ * </p>
  * 
  * @author anahata
  */
@@ -26,6 +31,11 @@ public class SupportPanel extends ScrollablePanel {
 
     /**
      * Initializes the components and layout of the panel.
+     * <p>
+     * Sets up a {@link GridBagLayout} to organize support cards into a 
+     * responsive grid, ensuring proper alignment and spacing for the 
+     * user-facing community resources.
+     * </p>
      */
     private void initComponents() {
         setLayout(new GridBagLayout());
@@ -58,7 +68,7 @@ public class SupportPanel extends ScrollablePanel {
         gridGbc.weightx = 0.0;
 
         gridGbc.gridx = 0; gridGbc.gridy = 0;
-        linksGrid.add(createLinkCard("Join our Discord", "https://discord.com/invite/M396BNtX", 
+        linksGrid.add(createLinkCard("Join our Discord", "https://discord.gg/e5Uf4fbE", 
                 "Connect with the community and get real-time help.", "discord.png"), gridGbc);
 
         gridGbc.gridx = 1;
@@ -70,7 +80,7 @@ public class SupportPanel extends ScrollablePanel {
                 "Send us a direct message at support@anahata.uno", "email.png"), gridGbc);
 
         gridGbc.gridx = 1;
-        linksGrid.add(createLinkCard("Official Website", "https://anahata.uno/", 
+        linksGrid.add(createLinkCard("Official Website", "https://asi.anahata.uno/", 
                 "Learn more about the Anahata ecosystem.", "anahata.png"), gridGbc);
 
         gridGbc.gridx = 0; gridGbc.gridy = 2;
@@ -95,12 +105,17 @@ public class SupportPanel extends ScrollablePanel {
     }
 
     /**
-     * Creates a link card component.
+     * Creates a standardized link card component.
+     * <p>
+     * Encapsulates the UI logic for a single support entry, including 
+     * an icon, a title button with browser-launch capabilities, and 
+     * a descriptive text area.
+     * </p>
      * @param title The title of the card.
      * @param url The URL to open.
      * @param description The description text.
      * @param iconName The name of the icon file.
-     * @return A JPanel representing the link card.
+     * @return A {@link JPanel} representing the structured link card.
      */
     private JPanel createLinkCard(String title, String url, String description, String iconName) {
         JPanel card = new JPanel(new BorderLayout(5, 2));
@@ -130,8 +145,13 @@ public class SupportPanel extends ScrollablePanel {
     }
 
     /**
-     * Opens the specified URL in the default system browser.
-     * @param url The URL to open.
+     * Dispatches a URL request to the default system browser.
+     * <p>
+     * Utilizes {@link Desktop#browse(URI)} to open web-based resources. 
+     * Includes error handling and user feedback via {@link JOptionPane} 
+     * in case of hardware or OS-level dispatch failures.
+     * </p>
+     * @param url The target URL to open.
      */
     private void openWebpage(String url) {
         try {
