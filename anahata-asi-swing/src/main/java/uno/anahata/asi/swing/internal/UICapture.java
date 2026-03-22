@@ -23,24 +23,35 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.AsiContainer;
 
 /**
- * Utility class for capturing screenshots of the host system's display devices
- * and visible application windows.
+ * A native-aware utility for capturing visual snapshots of the host's desktop 
+ * environment and individual Swing frames.
+ * <p>
+ * This class serves as the <b>Vision Bridge</b> for the ASI, allowing it to 
+ * observe both its own UI and other application windows currently visible 
+ * to the user. It manages the storage and lifecycle of screenshot artifacts 
+ * within the ASI work directory.
+ * </p>
  *
  * @author anahata
  */
 @Slf4j
 public class UICapture {
 
+    /** Standard timestamp format for screenshot filenames to ensure chronological ordering. */
     public static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyyMMdd-HHmmss");
     
-    // FIX: Use the correct V2 AsiContainer to get the working folder as a Path
+    /** The dedicated subdirectory within the ASI working folder for visual artifacts. */
     public static final Path SCREENSHOTS_DIR = AsiContainer.getWorkDirSubDir("screenshots");
     
     /**
-     * Takes a screenshot of all connected graphics devices.
+     * Captures an image of every physical display device connected to the host system.
+     * <p>
+     * This method uses {@link java.awt.Robot} to perform low-level hardware scrapes, 
+     * ensuring that the screenshots reflect exactly what the user sees on their monitors.
+     * </p>
      * 
-     * @return A list of Paths containing the screenshots.
-     * @throws IOException if a file operation fails.
+     * @return A list of Paths to the generated PNG artifacts.
+     * @throws IOException if the native capture or file write operation fails.
      */
     public static List<Path> screenshotAllScreens() throws IOException {
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();

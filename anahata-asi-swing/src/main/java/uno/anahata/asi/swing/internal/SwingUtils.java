@@ -63,7 +63,10 @@ import uno.anahata.asi.swing.agi.message.part.text.MermaidCodeBlockSegmentRender
 @UtilityClass
 public class SwingUtils {
 
-    /** The maximum dimension for generated thumbnails. */
+    /** 
+     * The authoritative maximum dimension (width or height) for generated thumbnails 
+     * to ensure UI responsiveness. 
+     */
     private static final int THUMBNAIL_MAX_SIZE = 250;
 
     /**
@@ -112,7 +115,12 @@ public class SwingUtils {
 
 
     /**
-     * Recursively searches for a component of a specific type within a container.
+     * Recursively searches the containment hierarchy for a component of a specific type.
+     * <p>
+     * This is an essential tool for <b>Domain-UI Binding</b>, allowing logic to 
+     * locate deep-nested components (like a specific scroll pane) without 
+     * maintaining explicit references.
+     * </p>
      * 
      * @param <T> The type of component to find.
      * @param container The container to search.
@@ -342,8 +350,12 @@ public class SwingUtils {
     }
 
     /**
-     * Executes the given runnable on the Event Dispatch Thread (EDT).
-     * If the current thread is already the EDT, it is executed immediately.
+     * Executes a task on the EDT.
+     * <p>
+     * <b>Optimization:</b> If the current thread is already the EDT, the task 
+     * is executed synchronously to avoid unnecessary event queue overhead. 
+     * Otherwise, it is scheduled via {@link SwingUtilities#invokeLater(Runnable)}.
+     * </p>
      * 
      * @param runnable The code to execute.
      */

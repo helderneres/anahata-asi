@@ -1,4 +1,4 @@
-/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Fora Bara! */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.provider;
 
 import java.util.List;
@@ -6,17 +6,25 @@ import javax.swing.table.AbstractTableModel;
 import uno.anahata.asi.agi.provider.AbstractModel;
 
 /**
- * A table model for displaying AI models and their capabilities.
+ * A specialized {@link javax.swing.table.TableModel} for rendering the technical 
+ * specification and capabilities of AI models.
+ * <p>
+ * This model translates {@link AbstractModel} entities into a tabular format, 
+ * exposing critical parameters like token limits, supported actions, and 
+ * sampling defaults (temperature, Top-P, etc.).
+ * </p>
  * 
  * @author anahata
  */
 public class AgiModelTableModel extends AbstractTableModel {
 
+    /** The ordered set of column headers reflecting model specifications. */
     private final String[] columnNames = {
         "Model ID", "Display Name", "Version", "Description",
         "Supported Actions", "Input Tokens", "Output Tokens",
         "Temperature", "Top P", "Top K"
     };
+    /** The backing list of model entities. */
     private final List<AbstractModel> models;
 
     /**
@@ -41,25 +49,40 @@ public class AgiModelTableModel extends AbstractTableModel {
         return null;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the total number of registered models in the registry.</p> 
+     */
     @Override
     public int getRowCount() {
         return models.size();
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the number of technical parameters exposed by the model.</p> 
+     */
     @Override
     public int getColumnCount() {
         return columnNames.length;
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Provides the descriptive header for the technical parameter column.</p> 
+     */
     @Override
     public String getColumnName(int column) {
         return columnNames[column];
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Extracts and formats specific technical attributes from the {@link AbstractModel} 
+     * entity based on the column index.
+     * </p> 
+     */
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
         AbstractModel model = models.get(rowIndex);

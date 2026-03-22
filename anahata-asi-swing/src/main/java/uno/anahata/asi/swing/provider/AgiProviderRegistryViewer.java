@@ -20,16 +20,25 @@ import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.swing.internal.AnyChangeDocumentListener;
 
 /**
- * A panel for viewing and filtering the registered AI models.
- * It uses a JXTable for advanced table features.
+ * A high-fidelity visual registry for exploring and selecting registered AI models.
+ * <p>
+ * This panel utilizes a {@link org.jdesktop.swingx.JXTable} to provide advanced 
+ * discovery features such as real-time regex filtering, dynamic column 
+ * visibility, and high-performance horizontal scrolling. It acts as the primary 
+ * UI for model disambiguation and selection.
+ * </p>
  * 
  * @author anahata
  */
 public class AgiProviderRegistryViewer extends JPanel {
 
+    /** The advanced SwingX table instance for model discovery. */
     private final JXTable table;
+    /** The technical data model powering the table. */
     private final AgiModelTableModel tableModel;
+    /** The real-time search and filter input field. */
     private final JTextField filterField;
+    /** Reactive callback for notifying the system of a user's model selection. */
     private final Consumer<AbstractModel> modelSelectionCallback;
 
     /**
@@ -55,7 +64,13 @@ public class AgiProviderRegistryViewer extends JPanel {
         
         table = new JXTable(tableModel) {
             
-            /** {@inheritDoc} */
+            /** 
+             * {@inheritDoc} 
+             * <p>
+             * Provides the full, non-truncated model description as a tooltip 
+             * when hovering over a specific row.
+             * </p> 
+             */
             @Override
             public String getToolTipText(MouseEvent e) {
                 Point p = e.getPoint();
@@ -77,7 +92,13 @@ public class AgiProviderRegistryViewer extends JPanel {
         
         // Add double-click listener
         table.addMouseListener(new MouseAdapter() {
-            /** {@inheritDoc} */
+            /** 
+             * {@inheritDoc} 
+             * <p>
+             * Detects double-click gestures to trigger the model selection callback 
+             * for the row under the cursor.
+             * </p> 
+             */
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2 && modelSelectionCallback != null) {
