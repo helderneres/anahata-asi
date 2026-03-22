@@ -233,7 +233,7 @@ public class CodeModel extends AnahataToolkit {
      * @param pageSize The maximum number of results to return per page.
      * @return a paginated result of JavaType objects.
      */
-    @AiTool("Finds all types within a given package, with an option for recursive search.")
+    @AiTool("Finds all types within a given package, with an option for recursive search. Do not use for packages in open projects if the project's Structure context provider is 'providing' and already including the types of each package")
     public Page<JavaType> findTypesInPackage(
             @AiToolParam("The fully qualified name of the package to search (e.g., 'java.util').") String packageName,
             @AiToolParam(value = "Optional kind of type to search for.", required = false) ElementKind kindFilter,
