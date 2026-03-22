@@ -16,17 +16,30 @@ public class ResourcesNode extends AbstractContextNode<ResourceManager> {
 
     private static final Icon ICON = new PrismIcon(16);
 
+    /**
+     * Constructs a new ResourcesNode.
+     * @param agiPanel The parent AgiPanel.
+     * @param userObject The ResourceManager domain instance.
+     */
     public ResourcesNode(AgiPanel agiPanel, ResourceManager userObject) {
         super(agiPanel, userObject);
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Returns the static "Resources (V2)" name 
+     * for the root manager node.</p>
+     */
     @Override
     public String getName() {
         return "Resources (V2)";
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Uses a specialized PrismIcon to represent 
+     * the multifaceted nature of multimodal resources.</p>
+     */
     @Override
     public Icon getIcon() {
         return ICON;
@@ -38,7 +51,11 @@ public class ResourcesNode extends AbstractContextNode<ResourceManager> {
         return "URI-centric multimodal resources.";
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Delegates to the ResourceManager to list 
+     * all currently registered resources.</p>
+     */
     @Override
     protected List<?> fetchChildObjects() {
         return userObject.getResourcesList();
@@ -59,7 +76,11 @@ public class ResourcesNode extends AbstractContextNode<ResourceManager> {
         // Tokens aggregated from children
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Reflects the total count of active resources 
+     * managed by this container.</p>
+     */
     @Override
     protected void updateStatus() {
         if (!userObject.isProviding()) {
