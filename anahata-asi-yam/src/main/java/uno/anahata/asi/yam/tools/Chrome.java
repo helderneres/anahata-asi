@@ -75,6 +75,12 @@ public class Chrome extends AnahataToolkit implements Rebindable {
     /** The last port used for a successful connection. Persisted for rebind. */
     private int lastConnectedPort = -1;
 
+    @Override
+    public void initialize() {
+        getToolkit().setEnabled(false);
+    }
+
+    
     /** {@inheritDoc} */
     @Override
     public void rebind() {
