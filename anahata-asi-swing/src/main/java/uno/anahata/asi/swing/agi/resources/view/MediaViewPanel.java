@@ -20,7 +20,9 @@ import uno.anahata.asi.agi.resource.view.MediaView;
 @Slf4j
 public class MediaViewPanel extends AbstractViewPanel<MediaView> {
 
+    /** Label displaying the binary size of the media data. */
     private final JLabel sizeLabel = new JLabel();
+    /** Spinner for adjusting the visual scale of the media component. */
     private final JSpinner scaleSpinner;
 
     /**
