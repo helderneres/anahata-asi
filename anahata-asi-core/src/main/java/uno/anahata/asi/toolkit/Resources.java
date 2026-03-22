@@ -57,8 +57,9 @@ public class Resources extends AnahataToolkit {
                 "**Resources Toolkit** (Surgical Precision Rules):\n"
                 + "1. **Context Integrity**: Only modify resources currently in context. Always use the `lastModified` timestamp from the LATEST RAG message.\n"
                 + "2. **Reasoning**: Always provide a meaningful `reason` each time you update a resource; it will be displayed as an AI comment in the UI.\n"
-                + "3. **Updating text resources**: All update text resource tools flush the changes to disk inmediatly if they are EXECUTED. "
-                + "4. **Rag Message**: The Rag Message is the source of truth for resource modification, it gets freshly generated on when the user completes his turn (i.e. after all tools in the batch have been executed or declined) and all LIVE resources are garanteed to have the latest content.\n"
+                + "3. **Updating text resources**: All update text resource tools flush the changes to disk inmediatly when `EXECUTED`.\n "
+                + "4. **Rag Message**: The Rag Message is the source of truth for resource modifications, it gets freshly generated when the user completes his turn (i.e. after all tools in the batch have been executed or declined). "
+                        + "All resources registered with `LIVE` refresh policy are garanteed to be up to date (in sync) with the underlying storage.\n"
         );
     }
 

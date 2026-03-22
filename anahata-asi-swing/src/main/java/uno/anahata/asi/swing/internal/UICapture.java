@@ -1,6 +1,4 @@
-/*
- * Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça!
- */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.internal;
 
 import java.awt.GraphicsDevice;
@@ -64,11 +62,15 @@ public class UICapture {
     }
 
     /**
-     * Takes a screenshot of a specific graphics device.
+     * Captures a high-fidelity image of a specific physical display device.
+     * <p>
+     * This method is the atomic operation for multi-screen capture. It ensures 
+     * that the requested display index exists before attempting the hardware scrape.
+     * </p>
      * 
-     * @param deviceIdx The index of the device.
-     * @return The Path to the captured screenshot.
-     * @throws IOException if the capture fails.
+     * @param deviceIdx The 0-based index of the graphics device.
+     * @return The Path to the generated PNG artifact.
+     * @throws IOException if the capture or disk write operation fails.
      */
     public static Path screenshotScreen(int deviceIdx) throws IOException {
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -101,12 +103,18 @@ public class UICapture {
     }
 
     /**
-     * Takes a screenshot of all visible JFrames.
+     * Enumerates and captures all visible application windows currently 
+     * registered with the AWT Frame manager.
+     * <p>
+     * <b>EDT Awareness:</b> This method orchestrates a synchronous wait on the EDT 
+     * to perform the {@code paint()} operation safely, ensuring visual 
+     * consistency with the current UI state.
+     * </p>
      * 
-     * @return A list of Paths containing the captured screenshots.
-     * @throws InterruptedException if the EDT operation is interrupted.
-     * @throws InvocationTargetException if the EDT operation throws an exception.
-     * @throws IOException if a file operation fails.
+     * @return A list of Paths to the captured window snapshots.
+     * @throws InterruptedException if the EDT wait is interrupted.
+     * @throws InvocationTargetException if the paint operation fails.
+     * @throws IOException if the file write fails.
      */
     public static List<Path> screenshotAllWindows() throws InterruptedException, InvocationTargetException, IOException {
         log.debug("Starting screenshot capture of all windows.");
@@ -168,11 +176,17 @@ public class UICapture {
     }
 
     /**
-     * Captures a single Swing component as a PNG byte array.
+     * Captures a single Swing component by painting its current state 
+     * into an off-screen buffer.
+     * <p>
+     * This is the most granular vision tool, used for capturing specific 
+     * UI elements (like a single chart or a conversation part) without 
+     * capturing the surrounding window clutter.
+     * </p>
      * 
      * @param comp The component to capture.
-     * @return The PNG data.
-     * @throws IOException if the capture fails.
+     * @return The raw PNG bytes of the capture.
+     * @throws IOException if the capture or encoding fails.
      */
     public static byte[] screenshotComponent(java.awt.Component comp) throws IOException {
         final BufferedImage[] imageHolder = new BufferedImage[1];

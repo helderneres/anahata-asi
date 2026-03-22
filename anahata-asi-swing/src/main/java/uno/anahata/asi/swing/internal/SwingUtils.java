@@ -1,6 +1,4 @@
-/*
- * Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça!
- */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.internal;
 
 import uno.anahata.asi.swing.components.ExceptionDialog;
@@ -288,6 +286,12 @@ public class SwingUtils {
 
     /**
      * Displays a modal dialog with a syntax-highlighted code block.
+     * <p>
+     * This method dynamically resolves the appropriate renderer based on the 
+     * provided language. It supports high-fidelity rendering for technical 
+     * content (via RSyntaxTextArea) and the <b>Singularity Path</b> for 
+     * Mermaid diagrams.
+     * </p>
      * 
      * @param parent The parent component.
      * @param title The dialog title.
@@ -369,7 +373,12 @@ public class SwingUtils {
 
     /**
      * Executes the given runnable on the Event Dispatch Thread (EDT) and waits for it to complete.
-     * If the current thread is already the EDT, it is executed immediately.
+     * <p>
+     * <b>Synchronization:</b> This method blocks the calling thread. Use with 
+     * extreme caution inside tools to avoid deadlocks. It is intended for 
+     * scenarios where the tool must wait for user interaction or component 
+     * validation.
+     * </p>
      * 
      * @param runnable The code to execute.
      * @throws InterruptedException if the thread is interrupted while waiting.

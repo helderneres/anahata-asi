@@ -17,16 +17,18 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@Schema(description = "Replaces a specific range of lines [startLine, endLine] inclusive. Use startLine=endLine to replace a single line. All lines from startLine to endLine will be replaced/overriden with the new content. The new content can contain any number of lines.")
+@Schema(description = "Replaces a specific range of lines [startLine, endLine] inclusive."
+        + " Use `startLine`=`endLine` to replace a single line. All lines from `startLine` to `endLine` will be replaced with `content`."
+        + " The `content` can contain any number of lines.")
 public class LineReplacement extends AbstractLineEdit {
 
-    @Schema(description = "The 1-based line number where the replacement starts (Inclusive).", required = true)
+    @Schema(description = "The 1-based line number of the resource in the RAG message where the replacement starts (Inclusive).", required = true)
     private int startLine;
 
-    @Schema(description = "The 1-based line number where the replacement ends (Inclusive).", required = true)
+    @Schema(description = "The 1-based line number of the resource in the RAG message where the replacement ends (Inclusive).", required = true)
     private int endLine;
 
-    @Schema(description = "The new content for the range. Do not include surrounding anchors that exist in the resource before startLine or after endLine.", required = true)
+    @Schema(description = "The new content for the [startLine, endLine] range of the resource in the RAG message. It can have as many lines as you want. Do not include surrounding anchors because that is not the way this tool works.", required = true)
     private String content;
 
     @Override

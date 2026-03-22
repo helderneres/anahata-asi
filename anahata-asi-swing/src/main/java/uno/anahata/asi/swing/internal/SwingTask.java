@@ -1,6 +1,4 @@
-/*
- * Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça!
- */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.internal;
 
 import java.awt.Component;
@@ -30,17 +28,17 @@ import uno.anahata.asi.swing.components.ExceptionDialog;
 @Setter
 public class SwingTask<T> extends SwingWorker<T, Void> {
     
-    /** The parent component for centering error dialogs. Can be null. */
+    /** The parent component used as a reference for positioning modal dialogs. */
     private Component owner;
-    /** A descriptive name for the task, used in log messages and dialogs. */
+    /** A human-readable identifier for the task, displayed in progress and error reports. */
     private String taskName;
-    /** The actual logic to execute in the background thread. */
+    /** The functional core of the task, to be executed on a background worker thread. */
     private Callable<T> backgroundTask;
-    /** Callback triggered on the EDT upon successful completion. */
+    /** The EDT callback for handling successful results. */
     private Consumer<T> onDone;
-    /** Callback triggered on the EDT if an exception occurs. */
+    /** The EDT callback for handling execution failures. */
     private Consumer<Exception> onError;    
-    /** Whether to automatically display a modal error dialog on failure. */
+    /** Flag to enable/disable the automatic presentation of a modal ExceptionDialog. */
     private boolean showError;
 
     /**
@@ -98,21 +96,22 @@ public class SwingTask<T> extends SwingWorker<T, Void> {
         this(owner, taskName, backgroundTask, null, null, true);
     }
 
-    /**
-     * Executes the background logic in a worker thread.
-     * 
-     * @return The task result.
-     * @throws Exception if execution fails.
+    /** 
+     * {@inheritDoc} 
+     * <p>Delegates execution to the provided {@code backgroundTask} callable.</p> 
      */
     @Override
     protected T doInBackground() throws Exception {
         return backgroundTask.call();
     }
 
-    /**
-     * Handles task finalization on the Event Dispatch Thread (EDT).
-     * This method manages the execution of success/error callbacks and 
-     * handles standard worker exceptions (Interruption, ExecutionException).
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Performs clean-up and result propagation on the EDT. This method 
+     * centralizes the logic for unwrapping {@code ExecutionException}s and 
+     * triggering the appropriate success or error callbacks.
+     * </p> 
      */
     @Override
     protected void done() {

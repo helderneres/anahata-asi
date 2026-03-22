@@ -57,11 +57,6 @@ public class SwingJava extends Java {
         return instructions;
     }
     
-    /**
-     * The class the model should extend when generating Agi tools.
-     * 
-     * @return the SwingAgiTool class.
-     */
     /** 
      * {@inheritDoc} 
      * <p>

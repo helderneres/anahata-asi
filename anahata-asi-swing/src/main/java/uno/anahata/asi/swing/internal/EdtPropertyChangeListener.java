@@ -1,6 +1,4 @@
-/*
- * Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça!
- */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.internal;
 
 import java.awt.event.HierarchyEvent;
@@ -22,6 +20,7 @@ import uno.anahata.asi.agi.event.PropertyChangeSource;
  * This class eliminates the need for manual addNotify/removeNotify boilerplate
  * and prevents memory leaks by unregistering itself when the component is
  * removed from the UI hierarchy.
+ * </p>
  *
  * @author anahata
  */
@@ -36,11 +35,17 @@ public class EdtPropertyChangeListener implements PropertyChangeListener, Hierar
         INVOKE_AND_WAIT 
     }
 
+    /** The UI component whose displayability governs the listener's lifecycle. */
     private final JComponent component;
+    /** The domain-level model providing the property change events. */
     private final PropertyChangeSource source;
+    /** The specific property name to filter for, or null to listen to all changes. */
     private final String propertyName;
+    /** The reactive logic to execute on the EDT when a change is detected. */
     private final Consumer<PropertyChangeEvent> action;
+    /** The strategy for thread-switching (Later vs. Wait). */
     private final Mode mode;
+    /** Whether to force an initial execution of the action upon subscription. */
     private final boolean triggerImmediately;
     
     /** Tracks the current subscription state to prevent duplicate listeners. */
@@ -80,9 +85,13 @@ public class EdtPropertyChangeListener implements PropertyChangeListener, Hierar
         updateSubscription(); // Initial check in case component is already displayable
     }
 
-    /**
-     * Handles the property change event, switching to the EDT if necessary.
-     * @param evt The property change event.
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Orchestrates the thread-switch to the EDT using the configured {@link Mode}. 
+     * Ensures that the UI {@code action} is executed safely regardless of 
+     * which thread fired the model event.
+     * </p> 
      */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
@@ -97,9 +106,13 @@ public class EdtPropertyChangeListener implements PropertyChangeListener, Hierar
         }
     }
 
-    /**
-     * Monitors the component's displayability and updates the model subscription accordingly.
-     * @param e The hierarchy event.
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Monitors the component's {@link HierarchyEvent#DISPLAYABILITY_CHANGED} flag. 
+     * This is the "magic" that allows the listener to automatically connect to 
+     * or disconnect from the model as the UI is shown or hidden.
+     * </p> 
      */
     @Override
     public void hierarchyChanged(HierarchyEvent e) {
