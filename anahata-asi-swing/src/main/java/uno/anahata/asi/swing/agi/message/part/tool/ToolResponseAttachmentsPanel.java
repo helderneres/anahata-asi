@@ -38,12 +38,19 @@ import uno.anahata.asi.swing.audio.AudioPlaybackPanel;
 @Slf4j
 public class ToolResponseAttachmentsPanel extends JPanel {
 
+    /** The parent agi panel providing UI context. */
     private final AgiPanel agiPanel;
+    /** The tool response containing the attachments being rendered. */
     private AbstractToolResponse<?> response;
+    /** Cache of rendered panels to support incremental diff-based updates. */
     private final Map<ToolResponseAttachment, JPanel> cachedPanels = new HashMap<>();
-    /** Map to track playback stoppers for audio attachments. */
+    /** Map to track playback stoppers for audio attachments to ensure clean disposal. */
     private final Map<ToolResponseAttachment, Runnable> playbackStoppers = new HashMap<>();
 
+    /**
+     * Constructs a new ToolResponseAttachmentsPanel.
+     * @param agiPanel The parent panel.
+     */
     public ToolResponseAttachmentsPanel(@NonNull AgiPanel agiPanel) {
         this.agiPanel = agiPanel;
         setLayout(new MigLayout("fillx, insets 0, gap 0", "[grow]", "[]"));
@@ -96,6 +103,15 @@ public class ToolResponseAttachmentsPanel extends JPanel {
         repaint();
     }
 
+    /**
+     * Creates a specialized UI panel for a single attachment.
+     * <p>
+     * Supports high-fidelity rendering of images and integrated audio 
+     * playback observers.
+     * </p>
+     * @param attachment The attachment to render.
+     * @return The configured JPanel.
+     */
     private JPanel createAttachmentPanel(ToolResponseAttachment attachment) {
         JPanel itemPanel = new JPanel(new MigLayout("fillx, insets 5, gap 0", "[grow]", "[]0[]"));
         itemPanel.setOpaque(false);
@@ -142,6 +158,14 @@ public class ToolResponseAttachmentsPanel extends JPanel {
         return itemPanel;
     }
 
+    /**
+     * Dispatches an attachment to the host-native viewing application.
+     * <p>
+     * Creates a temporary file based on the detected MIME type and uses 
+     * {@link Desktop#open(File)} for high-fidelity inspection.
+     * </p>
+     * @param attachment The attachment to view.
+     */
     private void viewAttachment(ToolResponseAttachment attachment) {
         try {
             String extension = TikaUtils.getExtension(attachment.getMimeType());
@@ -156,6 +180,11 @@ public class ToolResponseAttachmentsPanel extends JPanel {
         }
     }
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Ensures all active audio playback stoppers 
+     * are triggered when the component is removed from the UI hierarchy.</p>
+     */
     @Override
     public void removeNotify() {
         playbackStoppers.values().forEach(Runnable::run);
