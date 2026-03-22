@@ -105,7 +105,11 @@ public class ObjectToStringParameterRenderer implements ParameterRenderer<Object
         }
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Returns the central container which encapsulates 
+     * the action strip and the high-fidelity viewer.</p>
+     */
     @Override
     public JComponent getComponent() {
         return container;
@@ -128,7 +132,11 @@ public class ObjectToStringParameterRenderer implements ParameterRenderer<Object
         }
     }
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details: Re-validates the container to ensure height 
+     * adjustments are propagated through the conversation layout.</p>
+     */
     @Override
     public boolean render() {
         container.revalidate();
