@@ -330,7 +330,16 @@ public abstract class AbstractTextResourceViewer extends JPanel {
      */
     public abstract JScrollPane getScrollPane();
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details:
+     * Calculates the required height based on the viewport content and 
+     * the integrated control strip. This ensures that "passthrough" components 
+     * (like chat snippets) expand to show their full content without internal 
+     * scrolling.
+     * </p>
+     */
     @Override
     public Dimension getPreferredSize() {
         Dimension ps = super.getPreferredSize();
