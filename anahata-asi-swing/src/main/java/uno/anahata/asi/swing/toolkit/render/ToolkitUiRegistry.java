@@ -90,7 +90,7 @@ public class ToolkitUiRegistry {
                     .flatMap(rendererClass -> {
                         try {
                             ToolkitRenderer<AnahataToolkit> renderer = (ToolkitRenderer<AnahataToolkit>) rendererClass.getDeclaredConstructor().newInstance();
-                            return Optional.of(renderer.bind(atk, parent));
+                            return Optional.of(renderer.createToolkitPanel(atk, parent));
                         } catch (Exception e) {
                             log.error("Failed to instantiate toolkit renderer: " + rendererClass.getName(), e);
                             return Optional.empty();
