@@ -47,39 +47,100 @@
                     <p>The primary container for an AGI session. It coordinates the chat interface, resource management, and real-time status monitoring in a unified, responsive layout.</p>
                 </div>
             </section>
-
             <section id="diff-update">
-                <h2>Diff-and-Update Strategy</h2>
+                <h2>The "Tiki-Taka" Rendering Engine</h2>
+                <p>To maintain extreme performance in conversations with thousands of turns, Anahata Swing uses a surgical <b>Diff-and-Update</b> rendering engine. This hierarchical strategy ensures that only the atomic units of the UI are updated, preventing "flicker" and minimizing memory pressure.</p>
+                
                 <div class="strategy-card">
-                    <p>To maintain extreme performance in conversations with thousands of turns, Anahata Swing uses a surgical "Diff-and-Update" rendering engine:</p>
-                    <ul>
-                        <li><b>Message Level:</b> ConversationPanel tracks AbstractMessage objects and reuses panel instances.</li>
-                        <li><b>Part Level:</b> Individual message parts are rendered using specialized, reusable PartPanels.</li>
-                        <li><b>Text Level:</b> Markdown is parsed into descriptors and rendered via high-performance segments.</li>
-                    </ul>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+                        <div>
+                            <h4 style="color: var(--barca-gold);">1. Message Level</h4>
+                            <p style="font-size: 0.85rem; opacity: 0.8;">The <code>ConversationPanel</code> tracks <code>AbstractMessage</code> objects and reuses <code>AbstractMessagePanel</code> instances via an identity-based cache.</p>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--barca-gold);">2. Part Level</h4>
+                            <p style="font-size: 0.85rem; opacity: 0.8;">Individual parts (Text, Blob, ToolCall) use specialized <code>AbstractPartPanel</code> implementations determined by the <code>PartPanelFactory</code>.</p>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--barca-gold);">3. Segment Level</h4>
+                            <p style="font-size: 0.85rem; opacity: 0.8;">Markdown parts are parsed into <code>TextSegmentDescriptor</code> records, allowing the UI to recycle individual code blocks or UML diagrams.</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
             <section id="rendering">
-                <h2>Multimodal Rendering</h2>
-                <p>Anahata Swing goes beyond simple text. It supports rich, interactive rendering for:</p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem;">
+                <h2>Multimodal High-Fidelity Rendering</h2>
+                <p>Anahata Swing transforms raw domain data into interactive, human-readable components. It doesn't just show text; it visualizes the ASI's internal state.</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
                     <div class="feature-box" style="margin: 0;">
-                        <i class="fas fa-file-alt"></i>
-                        <h4>Dynamic Resources</h4>
-                        <p>Specialized viewers for code, images, and project files with live sync.</p>
+                        <i class="fas fa-terminal" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem;"></i>
+                        <h4>Syntax Highlighting</h4>
+                        <p>Powered by <code>RSyntaxTextArea</code>, the <code>CodeBlockSegmentRenderer</code> provides IDE-grade highlighting for hundreds of languages directly in the chat.</p>
                     </div>
                     <div class="feature-box" style="margin: 0;">
-                        <i class="fas fa-project-diagram"></i>
+                        <i class="fas fa-project-diagram" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem;"></i>
                         <h4>UML & Mermaid</h4>
-                        <p>Real-time rendering of Mermaid diagrams within the chat flow.</p>
+                        <p>The <code>MermaidCodeBlockSegmentRenderer</code> captures Mermaid markdown and renders it as interactive SVG/PNG diagrams within the flow.</p>
+                    </div>
+                    <div class="feature-box" style="margin: 0;">
+                        <i class="fas fa-microchip" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem;"></i>
+                        <h4>Tool Previews</h4>
+                        <p>The <code>ParameterRendererFactory</code> generates high-fidelity previews for complex tool arguments (like file diffs or JSON structures) before user approval.</p>
+                    </div>
+                    <div class="feature-box" style="margin: 0;">
+                        <i class="fas fa-wave-square" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem;"></i>
+                        <h4>Live Media</h4>
+                        <p>The <code>MediaRenderer</code> manages the lifecycle of audio playback and image rendering, ensuring resources are disposed of when the turn is recycled.</p>
                     </div>
                 </div>
             </section>
 
             <section id="binding">
                 <h2>Reactive Domain Binding</h2>
-                <p>Leveraging <code>PropertyChangeSource</code> and <code>EdtPropertyChangeListener</code>, the UI reflects domain changes instantly and safely on the Event Dispatch Thread (EDT).</p>
+                <p>The UI is a pure reflection of the Domain state. Leveraging <code>PropertyChangeSource</code> and <code>EdtPropertyChangeListener</code>, the Swing layer remains perfectly synchronized with the Core engine without direct coupling.</p>
+                
+                <div class="strategy-card">
+                    <p><b>EDT Safety:</b> The <code>SwingUtils.runInEDT</code> pattern ensures that asynchronous events from the ASI model (like streaming text or tool status updates) are marshaled safely onto the Event Dispatch Thread.</p>
+                </div>
+            </section>
+
+            <section id="observability">
+                <h2>Digital Observability & Metabolism</h2>
+                <p>Monitor the "Physical Health" of your ASI session with specialized management panels.</p>
+                
+                <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 2rem; margin-top: 2rem;">
+                    <div class="feature-box" style="margin: 0;">
+                        <h4>Context Explorer</h4>
+                        <p>A JNDI-style <code>JXTreeTable</code> allowing users to browse the entire session graph: history, toolkits, and context providers.</p>
+                        <ul style="font-size: 0.85rem; opacity: 0.8; margin-top: 1rem;">
+                            <li>Inspect raw token counts per part.</li>
+                            <li>Manually trigger GC or pin specific messages.</li>
+                            <li>Browse the registered <code>ResourceHandle</code> metadata.</li>
+                        </ul>
+                    </div>
+                    <div class="feature-box" style="margin: 0;">
+                        <h4>Metabolic Visualizers</h4>
+                        <p>The <code>CwGcPanel</code> provides real-time donut charts of token usage and the <b>Recycling Log</b>.</p>
+                        <i class="fas fa-chart-pie" style="font-size: 4rem; opacity: 0.1; position: absolute; bottom: 1rem; right: 1rem;"></i>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tooling">
+                <h2>Swing-Aware Tools</h2>
+                <p>The <code>SwingAgiTool</code> pattern enables AI tools to interact with the UI safely. This is critical for tools that need to capture screenshots, record audio, or interact with IDE components.</p>
+                
+                <pre><code class="language-java">public class MyTool extends SwingAgiTool {
+    @AiTool("Captures a UI element")
+    public byte[] capture() {
+        return runInEdtAndWait(() -> {
+            // This logic executes safely on the Swing EDT
+            return UICapture.capture(myComponent);
+        });
+    }
+}</code></pre>
             </section>
         </main>
     </div>
