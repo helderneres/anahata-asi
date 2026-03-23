@@ -21,7 +21,8 @@
                     <li><a href="#diff-update">Diff-and-Update</a></li>
                     <li><a href="#rendering">Multimodal Rendering</a></li>
                     <li><a href="#binding">Reactive Binding</a></li>
-                    <li><a href="#observability">Digital Observability</a></li>
+                    <li><a href="#observability">Surgical Precision</a></li>
+                    <li><a href="#metabolism">Digital Observability</a></li>
                     <li><a href="#tooling">Swing-Aware Tools</a></li>
                 </ul>
             </div>
@@ -32,16 +33,16 @@
                 <h1>Anahata <span style="color: var(--barca-gold)">Swing</span></h1>
                 <p class="tagline" style="text-align: left;">High-fidelity, provider-agnostic UI components for building agentic workflows in Java.</p>
                 
-                <div class="feature-box">
+                <div class="nb-card" style="border-top-color: var(--barca-gold);">
                     <h3>The AgiPanel</h3>
                     <p>The primary container for an AGI session. It coordinates the chat interface, resource management, and real-time status monitoring in a unified, responsive layout.</p>
                 </div>
                 <div class="showcase-box" style="margin-top: 2rem; text-align: center;">
-                    <video autoplay loop muted playsinline style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                    <video autoplay loop muted playsinline class="clickable-media" data-caption="Real-time interaction with the AgiPanel orchestrator: Multi-model selection and live streaming." style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
                         <source src="assets/agipanel.webm" type="video/webm">
                         Your browser does not support the video tag.
                     </video>
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">Real-time interaction with the AgiPanel orchestrator.</p>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">Click to expand: The AgiPanel in action.</p>
                 </div>
 
                 <div class="code-header" style="margin-top: 3rem;">Implementation: Embedding an AGI Session</div>
@@ -60,12 +61,13 @@ public void focus(@NonNull Agi agi) {
     agi.setOpen(true);
 }</code></pre>
             </section>
+
             <section id="diff-update">
                 <h2>The "Tiki-Taka" Rendering Engine</h2>
                 <p>To maintain extreme performance in conversations with thousands of turns, Anahata Swing uses a surgical <b>Diff-and-Update</b> rendering engine. This hierarchical strategy ensures that only the atomic units of the UI are updated, preventing "flicker" and minimizing memory pressure.</p>
                 
-                <div class="strategy-card">
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+                <div class="nb-card" style="border-top-color: var(--barca-blue);">
+                    <div class="responsive-grid" style="margin: 0;">
                         <div>
                             <h4 style="color: var(--barca-gold);">1. Message Level</h4>
                             <p style="font-size: 0.85rem; opacity: 0.8;">The <code>ConversationPanel</code> tracks <code>AbstractMessage</code> objects and reuses <code>AbstractMessagePanel</code> instances via an identity-based cache.</p>
@@ -81,38 +83,39 @@ public void focus(@NonNull Agi agi) {
                     </div>
                 </div>
                 <div class="showcase-box" style="margin-top: 2rem; text-align: center;">
-                    <img src="screenshots/context-explorer-tree.png" alt="Tiki-Taka Rendering" style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">The Context Explorer browsing the hierarchical domain state.</p>
+                    <img src="screenshots/context-explorer-tree.png" alt="Tiki-Taka Rendering" class="clickable-media" data-caption="The Context Explorer: A hierarchical JNDI-style view of the entire ASI session graph." style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">Click to expand: The Context Explorer tree.</p>
                 </div>
+            </section>
 
             <section id="rendering">
                 <h2>Multimodal High-Fidelity Rendering</h2>
                 <p>Anahata Swing transforms raw domain data into interactive, human-readable components. It doesn't just show text; it visualizes the ASI's internal state.</p>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
-                    <div class="feature-box" style="margin: 0;">
-                        <i class="fas fa-terminal" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem;"></i>
+                <div class="responsive-grid">
+                    <div class="nb-card" style="margin: 0; border-top-color: var(--primary-light);">
+                        <i class="fas fa-terminal" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem; display: block;"></i>
                         <h4>Syntax Highlighting</h4>
                         <p>Powered by <code>RSyntaxTextArea</code>, the <code>CodeBlockSegmentRenderer</code> provides IDE-grade highlighting for hundreds of languages directly in the chat.</p>
                     </div>
-                    <div class="feature-box" style="margin: 0;">
-                        <i class="fas fa-project-diagram" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem;"></i>
+                    <div class="nb-card" style="margin: 0; border-top-color: var(--primary-light);">
+                        <i class="fas fa-project-diagram" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem; display: block;"></i>
                         <h4>UML & Mermaid</h4>
                         <p>The <code>MermaidCodeBlockSegmentRenderer</code> captures Mermaid markdown and renders it as interactive SVG/PNG diagrams within the flow.</p>
                     </div>
-                    <div class="feature-box" style="margin: 0;">
-                        <i class="fas fa-microchip" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem;"></i>
+                    <div class="nb-card" style="margin: 0; border-top-color: var(--primary-light);">
+                        <i class="fas fa-microchip" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem; display: block;"></i>
                         <h4>Tool Previews</h4>
                         <p>The <code>ParameterRendererFactory</code> generates high-fidelity previews for complex tool arguments (like file diffs or JSON structures) before user approval.</p>
                     </div>
-                    <div class="feature-box" style="margin: 0;">
-                        <i class="fas fa-wave-square" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem;"></i>
+                    <div class="nb-card" style="margin: 0; border-top-color: var(--primary-light);">
+                        <i class="fas fa-wave-square" style="color: var(--barca-gold); font-size: 1.5rem; margin-bottom: 1rem; display: block;"></i>
                         <h4>Live Media</h4>
                         <p>The <code>MediaRenderer</code> manages the lifecycle of audio playback and image rendering, ensuring resources are disposed of when the turn is recycled.</p>
                     </div>
-                <div class="showcase-box" style="margin-top: 2rem;">
-                    <img src="screenshots/syntax-highlighting_refined.png" alt="Syntax Highlighting" style="width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
                 </div>
+                <div class="showcase-box" style="margin-top: 2rem;">
+                    <img src="screenshots/syntax-highlighting_refined.png" alt="Syntax Highlighting" class="clickable-media" data-caption="IDE-grade syntax highlighting directly within the ASI chat panel." style="width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
                 </div>
             </section>
 
@@ -120,8 +123,8 @@ public void focus(@NonNull Agi agi) {
                 <h2>Reactive Domain Binding</h2>
                 <p>The UI is a pure reflection of the Domain state. Leveraging <code>PropertyChangeSource</code> and <code>EdtPropertyChangeListener</code>, the Swing layer remains perfectly synchronized with the Core engine without direct coupling.</p>
                 
-                <div class="strategy-card">
-                    <p><b>EDT Safety:</b> The <code>SwingUtils.runInEDT</code> pattern ensures that asynchronous events from the ASI model (like streaming text or tool status updates) are marshaled safely onto the Event Dispatch Thread.</p>
+                <div class="nb-card" style="border-left: 4px solid var(--barca-gold); border-top: none;">
+                    <p style="margin: 0;"><b>EDT Safety:</b> The <code>SwingUtils.runInEDT</code> pattern ensures that asynchronous events from the ASI model (like streaming text or tool status updates) are marshaled safely onto the Event Dispatch Thread.</p>
                 </div>
             </section>
 
@@ -129,30 +132,29 @@ public void focus(@NonNull Agi agi) {
                 <h2>Surgical Precision</h2>
                 <p>The Resources toolkit uses a visual-first diff engine that allows the user to review every insertion, replacement, and deletion with AI-provided reasoning.</p>
                 <div class="showcase-box" style="margin-top: 2rem; text-align: center;">
-                    <img src="screenshots/surgical-diff-viewer.png" alt="Surgical Diff" style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                    <img src="screenshots/surgical-diff-viewer.png" alt="Surgical Diff" class="clickable-media" data-caption="Surgical Precision: Reviewing model-generated code changes with AI reasoning overlays." style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
                 </div>
             </section>
 
-            <section id="observability">
+            <section id="metabolism">
                 <h2>Digital Observability & Metabolism</h2>
                 <p>Monitor the "Physical Health" of your ASI session with specialized management panels.</p>
                 
-                <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 2rem; margin-top: 2rem;">
-                    <div class="feature-box" style="margin: 0;">
+                <div class="asymmetric-grid">
+                    <div class="nb-card" style="margin: 0; border-top-color: var(--barca-blue);">
                         <h4>Context Explorer</h4>
                         <p>A JNDI-style <code>JXTreeTable</code> allowing users to browse the entire session graph: history, toolkits, and context providers.</p>
-                        <ul style="font-size: 0.85rem; opacity: 0.8; margin-top: 1rem;">
-                            <li>Inspect raw token counts per part.</li>
-                            <li>Manually trigger GC or pin specific messages.</li>
-                            <li>Browse the registered <code>ResourceHandle</code> metadata.</li>
+                        <ul style="font-size: 0.85rem; opacity: 0.8; margin-top: 1rem; list-style: none; padding: 0;">
+                            <li style="margin-bottom: 0.5rem;"><i class="fas fa-check" style="color: var(--verified-green); margin-right: 8px;"></i> Inspect raw token counts per part.</li>
+                            <li style="margin-bottom: 0.5rem;"><i class="fas fa-check" style="color: var(--verified-green); margin-right: 8px;"></i> Manually trigger GC or pin messages.</li>
+                            <li style="margin-bottom: 0.5rem;"><i class="fas fa-check" style="color: var(--verified-green); margin-right: 8px;"></i> Browse ResourceHandle metadata.</li>
                         </ul>
                     </div>
-                    <div class="feature-box" style="margin: 0;">
+                    <div class="nb-card" style="margin: 0; border-top-color: var(--barca-red);">
                         <h4>Metabolic Visualizers</h4>
-                        <p>The <code>CwGcPanel</code> provides real-time donut charts of token usage and the <b>Recycling Log</b>.</p>
-                        <i class="fas fa-chart-pie" style="font-size: 4rem; opacity: 0.1; position: absolute; bottom: 1rem; right: 1rem;"></i>
-                        <div style="text-align: center; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                            <img src="screenshots/metabolic-donut-gc.png" alt="Metabolic Donut" style="width: 100%; height: auto; border-radius: 8px;">
+                        <p>The <code>CwGcPanel</code> provides real-time donut charts of token usage.</p>
+                        <div style="text-align: center; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); margin-top: 1rem;">
+                            <img src="screenshots/metabolic-donut-gc.png" alt="Metabolic Donut" class="clickable-media" data-caption="Metabolic Monitoring: Visualizing the token composition and depth policies of the active session." style="width: 100%; height: auto; border-radius: 8px;">
                         </div>
                     </div>
                 </div>
@@ -170,16 +172,20 @@ public void focus(@NonNull Agi agi) {
             return UICapture.capture(myComponent);
         });
     }
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+}</code></pre>
+                
+                <div class="responsive-grid">
                     <div class="nb-card" style="margin: 0; border-top-color: var(--barca-gold);">
-                        <h5 style="color: var(--barca-gold); margin-top: 0; text-transform: uppercase; font-size: 0.7rem;">Active Toolkit Renderer</h5>
-                        <img src="screenshots/radio-toolkit-ui.png" alt="Radio Toolkit" style="width: 100%; border-radius: 8px; margin-top: 1rem;">
+                        <h5 style="color: var(--barca-gold); margin-top: 0; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 1px;">Active Toolkit Renderer</h5>
+                        <img src="screenshots/radio-toolkit-ui.png" alt="Radio Toolkit" class="clickable-media" data-caption="Active Toolkit UI: Specialized, stateful renderer for the Radio toolkit." style="width: 100%; border-radius: 8px; margin-top: 1rem;">
                     </div>
-                    <div class="nb-card" style="margin: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.01);">
-                        <p style="font-size: 0.9rem; opacity: 0.5; font-style: italic;">[Placeholder for Screenshot Capture Tooling]</p>
+                    <div class="nb-card" style="margin: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.01); border-top-color: var(--primary-light);">
+                        <div style="text-align: center;">
+                            <i class="fas fa-camera" style="font-size: 2rem; color: var(--barca-gold); opacity: 0.3;"></i>
+                            <p style="font-size: 0.8rem; opacity: 0.5; margin-top: 0.5rem;">Toolkit Visualizer Interface</p>
+                        </div>
                     </div>
                 </div>
-}</code></pre>
             </section>
         </main>
     </div>

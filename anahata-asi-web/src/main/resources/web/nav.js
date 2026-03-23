@@ -105,5 +105,48 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+
+    // Media Lightbox Logic
+    const modalHtml = `
+        <div id="media-modal" class="modal">
+            <div id="modal-media-container"></div>
+            <div class="modal-close"><i class="fas fa-times"></i></div>
+            <div class="modal-caption" id="modal-caption"></div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const modal = document.getElementById('media-modal');
+    const container = document.getElementById('modal-media-container');
+    const caption = document.getElementById('modal-caption');
+
+    document.querySelectorAll('.clickable-media').forEach(media => {
+        media.addEventListener('click', () => {
+            container.innerHTML = '';
+            const isVideo = media.tagName.toLowerCase() === 'video';
+            const clone = media.cloneNode(true);
+            
+            clone.classList.remove('clickable-media');
+            clone.classList.add('modal-content');
+            clone.removeAttribute('style');
+            
+            if (isVideo) {
+                clone.controls = true;
+                clone.autoplay = true;
+                clone.muted = false; // Unmute for full-screen experience
+            }
+
+            container.appendChild(clone);
+            caption.textContent = media.getAttribute('data-caption') || '';
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+    });
+
+    modal.addEventListener('click', () => {
+        modal.classList.remove('active');
+        container.innerHTML = '';
+        document.body.style.overflow = '';
+    });
     initScrollSpy();
 });

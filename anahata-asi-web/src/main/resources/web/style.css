@@ -125,6 +125,7 @@ body {
 
 
 /* Documentation Sidebars */
+/* Global Documentation Layout */
 .docs-wrapper { display: flex; max-width: 1400px; margin: 0 auto; padding: 160px 2rem 100px; gap: 4rem; }
 .sidebar { width: 300px; flex-shrink: 0; position: sticky; top: 130px; height: calc(100vh - 160px); overflow-y: auto; padding-right: 1.5rem; }
 .sidebar-nav h4 { color: var(--barca-gold); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(237, 187, 0, 0.2); padding-bottom: 8px; }
@@ -133,8 +134,36 @@ body {
 .sidebar-nav a:hover, .sidebar-nav a.active { color: var(--primary-light); border-left-color: var(--primary-light); background: linear-gradient(to right, rgba(44, 122, 123, 0.1), transparent); }
 
 .main-content { flex-grow: 1; max-width: 900px; min-width: 0; }
-section { scroll-margin-top: 140px; margin-bottom: 80px; }
+.main-content h1 { font-size: 4rem; margin-bottom: 1.5rem; color: var(--white); }
+.main-content h2 { font-size: 2.5rem; margin-top: 4rem; margin-bottom: 1.5rem; color: var(--white); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; }
+.main-content p { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.8; }
 
+.responsive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.asymmetric-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 2.5rem;
+    margin: 2.5rem 0;
+}
+
+@media (max-width: 1100px) {
+    .asymmetric-grid { grid-template-columns: 1fr; }
+}
+
+.code-header { 
+    color: var(--barca-gold); 
+    font-size: 0.75rem; 
+    margin-bottom: 1rem; 
+    text-transform: uppercase; 
+    letter-spacing: 1.5px;
+    font-weight: 700;
+}
 /* Custom Component Cards for Modules */
 .nb-card, .toolkit-card, .adapter-box, .launcher-card { 
     background: rgba(255,255,255,0.02); 
@@ -711,4 +740,74 @@ footer {
     .comparison-card { padding: 1.2rem; }
     .tech-grid { gap: 1.5rem !important; }
     .philosophy-grid { gap: 2rem; }
+}
+
+/* Cinematic Media Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.95);
+    backdrop-filter: blur(15px);
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    padding: 2rem;
+    cursor: zoom-out;
+}
+
+.modal.active {
+    display: flex;
+    animation: fadeIn 0.4s ease;
+}
+
+.modal-content {
+    max-width: 90vw;
+    max-height: 80vh;
+    border-radius: 12px;
+    box-shadow: 0 0 100px rgba(0,0,0,0.8), 0 0 40px rgba(237, 187, 0, 0.2);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.modal-caption {
+    margin-top: 2rem;
+    color: var(--barca-gold);
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-align: center;
+    max-width: 800px;
+    animation: fadeInUp 0.5s ease 0.2s backwards;
+}
+
+.clickable-media {
+    cursor: zoom-in;
+    transition: var(--transition);
+}
+
+.clickable-media:hover {
+    transform: scale(1.02);
+    box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+    border-color: var(--barca-gold) !important;
+}
+
+.modal-close {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    color: var(--white);
+    font-size: 2.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+    z-index: 2001;
+    opacity: 0.6;
+}
+
+.modal-close:hover {
+    color: var(--barca-gold);
+    transform: rotate(90deg);
+    opacity: 1;
 }
