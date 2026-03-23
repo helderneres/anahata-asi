@@ -23,13 +23,13 @@ public interface ToolkitRenderer<T extends AnahataToolkit> {
     /**
      * Binds the renderer to a specific toolkit instance and its parent panel.
      * <p>
-     * This method acts as the "re-bind" point for the UI, ensuring that the 
-     * component reflects the active toolkit state.
-     * </p>
+This method acts as the "re-createToolkitPanel" point for the UI, ensuring that the 
+component reflects the active toolkit state.
+</p>
      * 
      * @param toolkit The toolkit instance.
      * @param parent The parent AgiPanel.
      * @return A JPanel representing the toolkit's UI (usually 'this').
      */
-    JPanel bind(T toolkit, AgiPanel parent);
+    JPanel createToolkitPanel(T toolkit, AgiPanel parent);
 }
