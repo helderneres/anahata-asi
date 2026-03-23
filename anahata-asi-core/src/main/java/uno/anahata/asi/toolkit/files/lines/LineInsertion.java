@@ -32,7 +32,9 @@ public class LineInsertion extends AbstractLineEdit {
             throw new AiToolException("Insertion line " + atLine + " is out of bounds (1-" + (lines.size() + 1) + ")");
         }
         
-        if (content == null || content.isEmpty()) return;
+        if (content == null || content.isEmpty()) {
+            return;
+        }
 
         // Split into lines, treating trailing newline as structural (absorption)
         List<String> newLines = new java.util.ArrayList<>(Arrays.asList(content.split("\\R", -1)));

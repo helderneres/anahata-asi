@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import uno.anahata.asi.toolkit.files.AbstractTextResourceWrite;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -55,8 +54,10 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
             allEdits.addAll(deletions);
         }
 
-        // Sort DESCENDING by line number to maintain coordinate stability during application
-        allEdits.sort(Comparator.comparingInt(AbstractLineEdit::getSortLine).reversed());
+        // Sort DESCENDING by line number with tie-breaker for application order.
+        // For the same coordinate, the range edit (replacement/deletion) must be applied 
+        // before the point insertion to ensure logical space is cleared before push-down.
+        allEdits.sort(new SurgicalEditComparator().reversed());
 
         for (AbstractLineEdit edit : allEdits) {
             edit.apply(lines);
@@ -100,27 +101,39 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
 
         // 2. Perform Overlap Detection
         List<AbstractLineEdit> sorted = new ArrayList<>();
-        if (insertions != null) sorted.addAll(insertions);
-        if (replacements != null) sorted.addAll(replacements);
-        if (deletions != null) sorted.addAll(deletions);
+        if (insertions != null) {
+            sorted.addAll(insertions);
+        }
+        if (replacements != null) {
+            sorted.addAll(replacements);
+        }
+        if (deletions != null) {
+            sorted.addAll(deletions);
+        }
         
-        sorted.sort(Comparator.comparingInt(AbstractLineEdit::getSortLine));
-        
+        // Ascending sort with tie-breaker: point-insertions come before range-edits for the same coordinate.
+        sorted.sort(new SurgicalEditComparator());
+
         int lastEnd = -1;
+        int lastInsertionPoint = -1;
         for (AbstractLineEdit edit : sorted) {
             int start = edit.getSortLine();
-            if (start <= lastEnd) {
-                throw new uno.anahata.asi.agi.tool.AiToolException("Overlapping surgical edits detected at line " + start);
-            }
             
-            if (edit instanceof LineReplacement rep) {
-                lastEnd = rep.getEndLine();
-            } else if (edit instanceof LineDeletion del) {
-                lastEnd = del.getEndLine();
+            if (edit instanceof LineInsertion) {
+                if (start <= lastEnd) {
+                    throw new uno.anahata.asi.agi.tool.AiToolException("Overlapping surgical edits: insertion at line " + start + " is inside a previous range ending at " + lastEnd);
+                }
+                if (start == lastInsertionPoint) {
+                    throw new uno.anahata.asi.agi.tool.AiToolException("Overlapping surgical edits: multiple insertions at the exact same line " + start);
+                }
+                lastInsertionPoint = start;
             } else {
-                // Insertions are point-targets, they don't advance the 'lastEnd' for replacement checks
-                // but we prevent multiple insertions at the exact same point to maintain intent clarity.
-                lastEnd = start; 
+                // For range edits (replacement/deletion)
+                if (start <= lastEnd) {
+                    throw new uno.anahata.asi.agi.tool.AiToolException("Overlapping surgical edits: range starting at line " + start + " overlaps with a previous range ending at " + lastEnd);
+                }
+                // Note: start == lastInsertionPoint is ALLOWED. The insertion is logically "above" the range.
+                lastEnd = (edit instanceof LineReplacement rep) ? rep.getEndLine() : ((LineDeletion)edit).getEndLine();
             }
         }
     }

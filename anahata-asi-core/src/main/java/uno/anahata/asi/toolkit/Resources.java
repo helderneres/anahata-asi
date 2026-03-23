@@ -295,12 +295,16 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if application fails.
      */
-    @AiTool("An ultra precise surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled. "
+    @AiTool("An ultra-precise, surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled. "
             + "Targets absolute 1-based line numbers from the RAG message using semantic intent (Insert, Replace, Delete). "
             + "Vertification is based on line numbers and the lastModified timestamp in the RAG message. "
             + "This tool Does not use or suppoert anchors or surrounding context (like git patch style tools). "
-            + "Never use replacements for pure insertions. "
-            + "All line numbers you use when calling this tool must correspond to the line numbers in the text resource in the RAG message.")
+            + "Never use replacements for pure insertions. "            
+            + "All line numbers you use when calling this tool must correspond to the line numbers in the text resource in the RAG message.\n\n"
+            + "This is presented to the user in a graphical diff viewer where he reviews your proposed changes with a comic style bubble overlayed over the code showing your comment/reason for each edit when the user hovers over it. "
+            + "Always make sure that each edit (regardless of wether it is an insert a replacement or a delete correspond to a single 'intent': for example, if you need to add javadoc to two fields and a constructor that are next to each other, always use 3 inserts rather than 1 big replacement. "
+            + "When doing replacements, do not include content that it is already in the file. Always be as minimal and surgical as possible and try to no include lines that do not need to change. "
+            + "")
     public String editTextResource(
             @AiToolParam("Contains the resource uuid, the lastModified timestamp and a set of line modifications targeting the absolute 1 based line numbers of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
         try {
