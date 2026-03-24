@@ -25,7 +25,7 @@ import uno.anahata.asi.swing.AgiController;
 @ActionID(category = "Window", id = "uno.anahata.asi.OpenAsiCardsTopComponent")
 @ActionReference(path = "Menu/Window", position = 101)
 @TopComponent.OpenActionRegistration(
-        displayName = "Anahata ASI",
+        displayName = "ASI Container (Cards)",
         preferredID = "asi"
 )
 @Slf4j
