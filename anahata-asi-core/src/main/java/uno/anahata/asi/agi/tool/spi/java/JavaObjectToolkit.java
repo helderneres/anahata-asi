@@ -220,4 +220,31 @@ public class JavaObjectToolkit extends AbstractToolkit<JavaMethodTool> implement
         }
         return annotatedMethods;
     }
+
+    
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * Implementation details: 
+     * 1. Warm up tools: triggers restoration of reflection methods and parameters.
+     * 2. Delegates to the underlying implementation if it is an {@link AnahataToolkit}.
+     * </p> 
+     */
+    @Override
+    public void postActivate() {
+        log.info("Post-activating Java toolkit: {}", name);
+        // 1. Warm up tools to prevent race conditions during UI rendering
+        for (JavaMethodTool tool : getAllTools()) {
+            try {
+                tool.postActivate();
+            } catch (Exception e) {
+                log.error("Failed to postActivate tool: {}", tool.getName(), e);
+            }
+        }
+        
+        // 2. Delegate to implementation
+        if (toolkitInstance instanceof AnahataToolkit at) {
+            at.postActivate();
+        }
+    }
 }
