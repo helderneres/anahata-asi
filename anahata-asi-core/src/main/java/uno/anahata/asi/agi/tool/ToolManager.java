@@ -442,4 +442,14 @@ public class ToolManager extends BasicPropertyChangeSource implements ContextPro
     public List<ContextProvider> getChildrenProviders() {
         return getAllContextProviders();
     }
+
+    /**
+     * Propagates the post-activation signal to all registered toolkits.
+     */
+    public void postActivate() {
+        log.info("Post-activating ToolManager...");
+        for (AbstractToolkit<?> toolkit : toolkits.values()) {
+            toolkit.postActivate();
+        }
+    }
 }
