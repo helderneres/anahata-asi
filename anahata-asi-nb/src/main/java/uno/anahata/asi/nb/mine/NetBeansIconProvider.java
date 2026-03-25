@@ -31,8 +31,13 @@ import uno.anahata.asi.swing.icons.IconUtils;
 @Slf4j
 public class NetBeansIconProvider implements IconProvider {
 
-    /**
-     * {@inheritDoc}
+    /** 
+     * {@inheritDoc} 
+     * <p>Implementation details:
+     * 1. If the provider is a project, retrieves the authentic project icon (including badges).
+     * 2. If the provider is a resource with a {@link NbHandle}, uses the IDE's {@link DataObject} 
+     *    mechanism to fetch the live, annotated icon (Git/Error badges).
+     * 3. Falls back to the global registry for static icons.</p> 
      */
     @Override
     public Icon getIconFor(ContextProvider cp) {
@@ -64,8 +69,10 @@ public class NetBeansIconProvider implements IconProvider {
         return IconUtils.getIcon(cp.getIconId());
     }
 
-    /**
-     * {@inheritDoc}
+    /** 
+     * {@inheritDoc} 
+     * <p>This implementation returns null to delegate icon resolution to the renderer's 
+     * default toolkit logic (typically rendering java.png for toolkits).</p> 
      */
     @Override
     public Icon getIconFor(AbstractToolkit<?> toolkit) {
@@ -73,8 +80,10 @@ public class NetBeansIconProvider implements IconProvider {
         return null;
     }
 
-    /**
-     * {@inheritDoc}
+    /** 
+     * {@inheritDoc} 
+     * <p>This implementation returns null to delegate icon resolution to the renderer's 
+     * default tool logic.</p> 
      */
     @Override
     public Icon getIconFor(AbstractTool<?, ?> tool) {
