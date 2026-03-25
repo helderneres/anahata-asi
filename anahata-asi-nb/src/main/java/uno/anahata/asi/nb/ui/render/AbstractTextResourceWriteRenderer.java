@@ -186,7 +186,9 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         }
 
         try {
+            //call.getResponse().getLogs().add("Validating...");
             update.validate(agiPanel.getAgi());
+            //call.getResponse().getLogs().add("Validation passed for:\n");
             return true;
         } catch (Exception e) {
             log.warn("Pre-flight validation failed for resource {}: {}", update.getResourceUuid(), e.getMessage());
