@@ -202,6 +202,9 @@ public final class AgiTopComponent extends TopComponent {
         }
     }
 
+    /**
+     * Displays a loading message in the component while the session brain is being initialized.
+     */
     private void showLoading() {
         removeAll();
         JPanel loadingPanel = new JPanel(new BorderLayout());
@@ -213,6 +216,11 @@ public final class AgiTopComponent extends TopComponent {
         repaint();
     }
 
+    /**
+     * Displays an error message in the component if session initialization fails.
+     * 
+     * @param message The error message to display.
+     */
     private void showError(String message) {
         removeAll();
         JPanel errorPanel = new JPanel(new BorderLayout());
@@ -260,6 +268,11 @@ public final class AgiTopComponent extends TopComponent {
         private static final long serialVersionUID = 1L;
         private final String sessionId;
 
+        /**
+         * Constructs a new Resolvable proxy for the given session ID.
+         * 
+         * @param sessionId The session ID to preserve.
+         */
         Resolvable(String sessionId) {
             this.sessionId = sessionId;
         }
