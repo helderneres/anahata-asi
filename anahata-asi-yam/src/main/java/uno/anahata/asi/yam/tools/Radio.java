@@ -101,8 +101,7 @@ public class Radio extends AnahataToolkit {
 
     /** {@inheritDoc} */
     @Override
-    public void rebind() {
-        super.rebind();
+    public void postActivate() {
         if (selectedOutputDevice != null) {
             uno.anahata.asi.toolkit.audio.AudioDevice live = uno.anahata.asi.toolkit.audio.AudioDevice.findDevice(Type.OUTPUT, selectedOutputDevice.getId());
             if (live == null) {
@@ -117,7 +116,7 @@ public class Radio extends AnahataToolkit {
         if (playing && currentStationUrl != null) {
             log.info("Attempting to resume radio stream: {}", currentStationUrl);
             //agi executor service not ready during rebind() Agi is probably the last object to get deserialized.
-            //start(currentStationUrl);
+            start(currentStationUrl);
         }
     }
 
