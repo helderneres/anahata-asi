@@ -18,6 +18,7 @@ import uno.anahata.asi.agi.resource.handle.ResourceHandle;
 import uno.anahata.asi.toolkit.Resources;
 import uno.anahata.asi.agi.resource.handle.UrlHandle;
 import uno.anahata.asi.toolkit.Audio;
+import uno.anahata.asi.toolkit.History;
 import uno.anahata.asi.toolkit.Session;
 import uno.anahata.asi.toolkit.Java;
 import uno.anahata.asi.toolkit.Shell;
@@ -62,6 +63,7 @@ public class AgiConfig extends BasicPropertyChangeSource {
     {
         // Pre-populate with core, essential tools.
         toolClasses.add(Session.class);
+        toolClasses.add(History.class);
         toolClasses.add(Resources.class);
         toolClasses.add(Java.class);        
         toolClasses.add(Shell.class);
