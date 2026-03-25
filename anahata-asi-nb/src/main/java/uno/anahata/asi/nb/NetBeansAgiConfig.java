@@ -69,8 +69,11 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
         super(asiConfig, sessionId);
     }
 
-    /** {@inheritDoc} 
+    /** 
+     * {@inheritDoc} 
+     * <p>
      * Overrides the factory to return the reactive NbHandle for local or JAR resources.
+     * </p>
      */
     @Override
     public ResourceHandle createResourceHandle(java.net.URI uri) {
