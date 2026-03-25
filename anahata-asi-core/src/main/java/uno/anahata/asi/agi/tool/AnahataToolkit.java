@@ -112,7 +112,9 @@ public abstract class AnahataToolkit extends ToolContext implements ContextProvi
     }
     
 
-    /** {@inheritDoc} */
+    /** 
+     * Callback method triggered by the Asi Container once the Agi session has been fully deserialized and associated to the ASI container.
+     */
     public void postActivate() {
         log.info("Post-activating toolkit: {}", getName());
     }
