@@ -527,8 +527,8 @@
                 <extensions>true</extensions>
                 <configuration>
                     <author>Anahata</author>
-                    <homePageUrl>https://anahata.uno</homePageUrl>
-                    <codeNameBase>uno.anahata.asi</codeNameBase>
+                    <homePageUrl>https://asi.anahata.uno</homePageUrl>
+                    <codeNameBase>uno.anahata.asi.nb</codeNameBase>
                     <brandingToken>anahata</brandingToken>
                     <!--
 <moduleIcon>src/main/resources/icons/anahata_32.png</moduleIcon>

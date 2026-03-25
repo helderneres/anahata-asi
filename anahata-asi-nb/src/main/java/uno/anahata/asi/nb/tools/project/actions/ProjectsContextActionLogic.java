@@ -1,5 +1,5 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.nb.tools.project.nb;
+package uno.anahata.asi.nb.tools.project.actions;
 
 import java.util.logging.Logger;
 import org.netbeans.api.project.Project;

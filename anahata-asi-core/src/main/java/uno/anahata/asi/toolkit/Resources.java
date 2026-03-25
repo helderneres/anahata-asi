@@ -60,6 +60,12 @@ public class Resources extends AnahataToolkit {
                 + "3. **Updating text resources**: All update text resource tools flush the changes to disk inmediatly when `EXECUTED`.\n "
                 + "4. **Rag Message**: The Rag Message is the source of truth for resource modifications, it gets freshly generated when the user completes his turn (i.e. after all tools in the batch have been executed or declined). "
                         + "All resources registered with `LIVE` refresh policy are garanteed to be up to date (in sync) with the underlying storage.\n"
+                + "5. **Resources.editTextResource tool**: This is not a git style tool that requires surrounding anchor lines. It is a strict, surgical 1-based line number tool with optimistic locking validation for text resources loaded with includeLineNumbers=true. The UI for this tool shows the user a rich graphical diff visualizer with the edits you intend to make to the text resource and overlays comic-style annotations with the reasons for your edits on the right hand side of the diff viewer. "
+                        + "\n\tUse this tool **paying careful attention to the line numbers in the RAG message** and use it in a **user-oriented way** choosing the appropiate type of edit (insert / replace / delete) for each logical change to the lines of the text resource. Do not use line replacement edits with 'surrounding lines' that need no change when you can implement the same with a pure insert. This is very important for the following reasons: "
+                        + "\n\ta)Providing surrounding anchor/context lines is more prone to fail as this is not the way the tool is designed"
+                        + "\n\tb)The graphical diff visualizer will not match the edits you intend to make to the text resource (will not show unchanged lines)"
+                        + "\n\tc)Will cause the comic-style bubbles to be offset (on a line that has no changes)."
+                        + "\n\tFor these reasons, you should always use inserts when the changes can be implemented with pure insert operation (rather than using a replace operation containing the lines before and after the block of code that you want to insert).\n"
         );
     }
 
@@ -297,12 +303,12 @@ public class Resources extends AnahataToolkit {
      */
     @AiTool("An ultra-precise, surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled. "
             + "Targets absolute 1-based line numbers from the RAG message using semantic intent (Insert, Replace, Delete). "
-            + "Vertification is based on line numbers and the lastModified timestamp in the RAG message. "
-            + "This tool Does not use or suppoert anchors or surrounding context (like git patch style tools). "
-            + "Never use replacements for pure insertions. "            
+            + "Vertification is based on line numbers and the lastModified timestamp in the RAG message and  "
+            + "not based on surrounding anchors like git patch style tools so do not use replacements (using existing lines as anchors) for pure insertions. "
+            + "If you need to insert new lines into the resource, use pure insertions instead of replacements that start with one or two lines of existing content."
             + "All line numbers you use when calling this tool must correspond to the line numbers in the text resource in the RAG message.\n\n"
             + "This is presented to the user in a graphical diff viewer where he reviews your proposed changes with a comic style bubble overlayed over the code showing your comment/reason for each edit when the user hovers over it. "
-            + "Always make sure that each edit (regardless of wether it is an insert a replacement or a delete correspond to a single 'intent': for example, if you need to add javadoc to two fields and a constructor that are next to each other, always use 3 inserts rather than 1 big replacement. "
+            + "Always make sure that each edit (regardless of wether it is an insert a replacement or a delete correspond to a single 'intent' that the user is going to review: for example, if you need to add javadoc to two fields and a constructor that are next to each other, always use 3 inserts rather than 1 big replacement."
             + "When doing replacements, do not include content that it is already in the file. Always be as minimal and surgical as possible and try to no include lines that do not need to change. "
             + "")
     public String editTextResource(

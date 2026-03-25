@@ -27,7 +27,7 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
     @Schema(description = "List of insertions (adding code without removal).")
     private List<LineInsertion> insertions = new ArrayList<>();
 
-    @Schema(description = "List of range replacements. Do not use for pure insertions. Strictly for the lines to be replaced. Do not provide surrounding context.")
+    @Schema(description = "List of range replacements. Do not use for pure insertions. Strictly for the lines to be replaced. Do not include surrounding context (existing lines).")
     private List<LineReplacement> replacements = new ArrayList<>();
 
     @Schema(description = "List of range deletions.")

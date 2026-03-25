@@ -41,7 +41,7 @@ public class AnahataContextActionPresenter extends AbstractAction implements Pre
      * @param files The selected files.
      */
     public AnahataContextActionPresenter(Set<? extends FileObject> files) {
-        super("AI Context");
+        super("AGI Context");
         this.files = files;
     }
 

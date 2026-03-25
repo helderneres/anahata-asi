@@ -1,5 +1,5 @@
 /* Licensed under the Apache License, Version 2.0 */
-package uno.anahata.asi.nb.tools.project.nb;
+package uno.anahata.asi.nb.tools.project.actions;
 
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
@@ -19,25 +19,27 @@ import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.Utilities;
 import org.openide.util.actions.Presenter;
+import uno.anahata.asi.nb.AgiTopComponent;
 import uno.anahata.asi.nb.AnahataInstaller;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.nb.tools.project.Projects;
 import uno.anahata.asi.swing.icons.IconUtils;
 
 /**
- * Action to remove one or more projects from the AI context.
- * It provides a dynamic submenu listing all active agi sessions.
+ * Action to add one or more projects to the AI context.
+ * It provides a dynamic submenu listing all active agi sessions and an option
+ * to create a new agi.
  * <p>
  * This action implements {@link Presenter.Popup} to generate the dynamic menu.
  * 
  * @author anahata
  */
-@ActionID(category = "Tools", id = "uno.anahata.asi.nb.tools.project.actions.RemoveProjectFromContextAction")
-@ActionRegistration(displayName = "#CTL_RemoveProjectFromContextAction", lazy = false)
-@ActionReference(path = "Projects/Actions", position = 510)
-public final class RemoveProjectFromContextAction extends AbstractAction implements ContextAwareAction, Presenter.Popup {
+@ActionID(category = "Tools", id = "uno.anahata.asi.nb.tools.project.actions.AddProjectToContextAction")
+@ActionRegistration(displayName = "Add Project To AGI Context", lazy = false)
+@ActionReference(path = "Projects/Actions", position = 500)
+public final class AddProjectToContextAction extends AbstractAction implements ContextAwareAction, Presenter.Popup {
 
-    private static final Logger LOG = Logger.getLogger(RemoveProjectFromContextAction.class.getName());
+    private static final Logger LOG = Logger.getLogger(AddProjectToContextAction.class.getName());
     
     /** The lookup context containing the selected projects. */
     private final Lookup context;
@@ -45,7 +47,7 @@ public final class RemoveProjectFromContextAction extends AbstractAction impleme
     /**
      * Default constructor required by NetBeans action registration.
      */
-    public RemoveProjectFromContextAction() {
+    public AddProjectToContextAction() {
         this(Lookup.EMPTY);
     }
 
@@ -53,8 +55,8 @@ public final class RemoveProjectFromContextAction extends AbstractAction impleme
      * Constructs the action with a specific lookup context.
      * @param context The lookup context.
      */
-    private RemoveProjectFromContextAction(Lookup context) {
-        super(NbBundle.getMessage(RemoveProjectFromContextAction.class, "CTL_RemoveProjectFromContextAction"));
+    private AddProjectToContextAction(Lookup context) {
+        super("Remove Project From AGI Context");
         this.context = context;
     }
 
@@ -73,13 +75,13 @@ public final class RemoveProjectFromContextAction extends AbstractAction impleme
      */
     @Override
     public Action createContextAwareInstance(Lookup context) {
-        return new RemoveProjectFromContextAction(context);
+        return new AddProjectToContextAction(context);
     }
 
     /**
      * {@inheritDoc}
      * Generates a dynamic submenu listing all active agi sessions.
-     * It only shows agis that have at least one of the selected projects in context.
+     * It filters out agis where all selected projects are already in context.
      */
     @Override
     public JMenuItem getPopupPresenter() {
@@ -90,33 +92,50 @@ public final class RemoveProjectFromContextAction extends AbstractAction impleme
         
         int count = projects.size();
         if (count == 0) {
-            JMenuItem item = new JMenuItem(NbBundle.getMessage(RemoveProjectFromContextAction.class, "CTL_RemoveProjectFromContextAction"));
+            JMenuItem item = new JMenuItem(NbBundle.getMessage(AddProjectToContextAction.class, "CTL_AddProjectToContextAction"));
             item.setEnabled(false);
             return item;
         }
         
-        String label = count > 1 ? "Remove " + count + " projects from AI context" : "Remove project from AI context";
+        String label = count > 1 ? "Add " + count + " projects to AGI context" : "Add project to AGI context";
         JMenu main = new JMenu(label);
-        main.setIcon(IconUtils.getRemoveIcon());
+        main.setIcon(IconUtils.getAddIcon());
         
         List<Agi> activeAgis = AnahataInstaller.getContainer().getActiveAgis();
         final List<Project> finalProjects = projects;
 
+        // 1. Option to create a new session
+        JMenuItem newAgiItem = new JMenuItem("Create new session...");
+        newAgiItem.addActionListener(e -> {
+            Agi newAgi = AnahataInstaller.getContainer().createNewAgi();
+            
+            // Open the TopComponent for the new agi
+            AgiTopComponent tc = new AgiTopComponent(newAgi);
+            tc.open();
+            tc.requestActive();
+            
+            addProjectsToAgi(newAgi, finalProjects);
+            LOG.info("Created new session and added projects.");
+        });
+        main.add(newAgiItem);
+        main.addSeparator();
+
+        // 2. List active sessions (filtered)
         List<Agi> eligibleAgis = activeAgis.stream()
-                .filter(agi -> anyProjectInContext(agi, finalProjects))
+                .filter(agi -> !allProjectsInContext(agi, finalProjects))
                 .collect(Collectors.toList());
-        
+
         if (eligibleAgis.isEmpty()) {
-            JMenuItem item = new JMenuItem(activeAgis.isEmpty() ? "No active sessions" : "No projects in context");
+            JMenuItem item = new JMenuItem(activeAgis.isEmpty() ? "No active sessions" : "All projects already in context");
             item.setEnabled(false);
             main.add(item);
         } else {
-            // Remove from all sessions option
+            // Add to all sessions option
             if (eligibleAgis.size() > 1) {
-                JMenuItem allItem = new JMenuItem("Remove from all active sessions");
+                JMenuItem allItem = new JMenuItem("Add to all active sessions");
                 allItem.addActionListener(e -> {
                     for (Agi agi : eligibleAgis) {
-                        removeProjectsFromAgi(agi, finalProjects);
+                        addProjectsToAgi(agi, finalProjects);
                     }
                 });
                 main.add(allItem);
@@ -125,7 +144,7 @@ public final class RemoveProjectFromContextAction extends AbstractAction impleme
 
             for (Agi agi : eligibleAgis) {
                 JMenuItem item = new JMenuItem(agi.getDisplayName());
-                item.addActionListener(e -> removeProjectsFromAgi(agi, finalProjects));
+                item.addActionListener(e -> addProjectsToAgi(agi, finalProjects));
                 main.add(item);
             }
         }
@@ -134,28 +153,28 @@ public final class RemoveProjectFromContextAction extends AbstractAction impleme
     }
 
     /**
-     * Checks if any of the selected projects are in the context of the given agi.
+     * Checks if all selected projects are already in the context of the given agi.
      * 
      * @param agi The agi session to check.
      * @param projects The list of projects.
-     * @return {@code true} if at least one project is in context.
+     * @return {@code true} if all projects are in context.
      */
-    private boolean anyProjectInContext(Agi agi, List<Project> projects) {
-        return projects.stream().anyMatch(p -> ProjectsContextActionLogic.isProjectInContext(p, agi));
+    private boolean allProjectsInContext(Agi agi, List<Project> projects) {
+        return projects.stream().allMatch(p -> ProjectsContextActionLogic.isProjectInContext(p, agi));
     }
 
     /**
-     * Disables the project context provider for all selected projects in the given agi.
+     * Enables the project context provider for all selected projects in the given agi.
      * 
      * @param agi The target agi session.
-     * @param projects The list of projects to remove.
+     * @param projects The list of projects to add.
      */
-    private void removeProjectsFromAgi(Agi agi, List<Project> projects) {
+    private void addProjectsToAgi(Agi agi, List<Project> projects) {
         agi.getToolManager().getToolkitInstance(Projects.class).ifPresent(projectsTool -> {
             for (Project p : projects) {
                 String path = p.getProjectDirectory().getPath();
-                projectsTool.setProjectProviderEnabled(path, false);
-                LOG.info("Disabled project context for: " + path + " in session: " + agi.getDisplayName());
+                projectsTool.setProjectProviderEnabled(path, true);
+                LOG.info("Enabled project context for: " + path + " in session: " + agi.getDisplayName());
             }
         });
     }

@@ -4,7 +4,7 @@ package uno.anahata.asi.nb;
 import uno.anahata.asi.AsiContainer;
 import uno.anahata.asi.gemini.GeminiAgiProvider;
 import uno.anahata.asi.nb.mine.NetBeansIconProvider;
-import uno.anahata.asi.nb.tools.Refactor;
+import uno.anahata.asi.nb.tools.ide.Refactor;
 
 import uno.anahata.asi.nb.tools.ide.Editor;
 import uno.anahata.asi.nb.tools.ide.IDE;
