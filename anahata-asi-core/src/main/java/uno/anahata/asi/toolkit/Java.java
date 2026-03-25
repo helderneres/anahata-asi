@@ -95,26 +95,31 @@ public class Java extends AnahataToolkit {
     public List<String> getSystemInstructions() throws Exception {
         StringBuilder sb = new StringBuilder();
         sb.append(" Java Toolkit Instructions: \n");
-        sb.append("When using `compileAndExecute`, your class should be **public**, named **Anahata**, extend `" + getConcreteClassModelShouldExtend().getName() + "`, have no package declaration and implement the call() method of " + Callable.class.getName()+ "<Object>. ");
+        sb.append("When using `compileAndExecute`, your class should be **public**, named **Anahata**, extend `" + getConcreteClassModelShouldExtend().getName() + "`, have no package declaration and implement the call() method of " + Callable.class.getName() + "<Object>. ");
         sb.append("This provides the following helper methods for a rich, context-aware execution:\n\n");
 
         sb.append(" Available Methods that you can use within the code you write:\n");
-        
-        sb.append("- **Inherited from ToolContext**:\n");
-        appendMethods(sb, ToolContext.class);
+
+        sb.append("- **Inherited from " + getConcreteClassModelShouldExtend().getName() + "**:\n");
+        appendMethods(sb, getConcreteClassModelShouldExtend());
 
         sb.append("\n Multi-threading and Thread Safety:\n");
         //sb.append("The `log()`, `error()`, and `addAttachment()` methods rely on a thread-local context and will fail if called from a subthread or the EDT (Event Dispatch Thread).\n");
         sb.append("- To access the context from another thread, capture it in a final variable: `final ToolContext ctx = getToolContext();` and use `ctx.log(...)`, `ctx.error(...)`, etc.\n");
 
-        sb.append("\nAbout the maps: the Session Map is for this session only (agi scoped), the ASI Container map is shared across sessions (agis) in the current AsiContainer. The application map is a static field shared across all sessions of all containers running in this jvm\n");
-        sb.append("\nAbout the attachments: at the time of this release (only tested with gemini-3-flash) only pdf, text and image attachments are supported\n");
+        sb.append("\nAbout the attribute maps:"
+                + "\n- The Turn attribute map is for sharing data across tool calls within the same turn. (what in Servlet terms you could call 'request scoped')"
+                + "\n The Session Map is for the agi session. Anything stored in this map during one turn will be available subsequent turns. Gets serialized "
+                + "\n The ASI Container map is shared across sessions (agis) in the current AsiContainer (a given JVM could be running multiple ASI Containers). Does not get serialized."
+                + "\n The Application Map is a static field shared across all sessions of all containers running in this jvm\n");
+
+        sb.append("\nAbout attachments: at the time of this release only pdf, text and image attachments are supported, there seems to be an issue attaching audio files to a tools response, however you can always load audio files as managed resources.\n");
 
         sb.append("\n Example:\n");
         sb.append("```java\n");
         sb.append("import " + getConcreteClassModelShouldExtend().getName() + ";\n");
         sb.append("\n");
-        sb.append("public class Anahata extends " + getConcreteClassModelShouldExtend().getSimpleName()+ "{\n");
+        sb.append("public class Anahata extends " + getConcreteClassModelShouldExtend().getSimpleName() + "{\n");
         sb.append("    @Override\n");
         sb.append("    public Object call() throws Exception {\n");
         sb.append("        log(\"Starting script execution...\");\n");
@@ -138,10 +143,10 @@ public class Java extends AnahataToolkit {
 
         return Collections.singletonList(sb.toString());
     }
-    
+
     /**
      * The class the model should extend when generating Agi tools.
-     * 
+     *
      * @return the base AgiTool class.
      */
     protected Class<? extends ToolContext> getConcreteClassModelShouldExtend() {
@@ -209,10 +214,12 @@ public class Java extends AnahataToolkit {
      */
     protected void appendMethods(StringBuilder sb, Class<?> clazz) {
 
-        for (Method m : clazz.getDeclaredMethods()) {
-            String methodString = JavaMethodTool.buildMethodSignature(m);
-            if (!methodString.contains("anahata") && !methodString.contains("lambda$")) {
-                sb.append("- `").append(methodString).append("`\n");
+        for (Method m : clazz.getMethods()) {
+            if (!m.getDeclaringClass().equals(Object.class)) {
+                String methodString = JavaMethodTool.buildMethodSignature(m);
+                if (!methodString.contains("anahata") && !methodString.contains("lambda$")) {
+                    sb.append("- `").append(methodString).append("`\n");
+                }
             }
         }
     }
@@ -421,7 +428,7 @@ public class Java extends AnahataToolkit {
             + "The class should:\n"
             + "- be public, \n"
             + "- have no package declaration, \n"
-            + "- extend AgiTool (or any subtype) and \n" 
+            + "- extend AgiTool (or any subtype) and \n"
             + "- implement the call method of java.util.concurrent.Callable<Object>.\n",
             requiresApproval = true
     )
