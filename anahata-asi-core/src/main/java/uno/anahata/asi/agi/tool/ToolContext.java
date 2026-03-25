@@ -13,6 +13,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.AsiContainer;
 import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.internal.TikaUtils;
 import uno.anahata.asi.agi.tool.spi.java.JavaMethodTool;
 import uno.anahata.asi.agi.tool.spi.java.JavaMethodToolCall;
@@ -79,7 +80,16 @@ public class ToolContext {
      * @return The id of model that is executing the tool.
      */
     public String getModelId() {
-        return getResponse().getCall().getMessage().getModelId();
+        return getModelMessage().getModelId();
+    }
+    
+    /**
+     * The id of model that is executing the tool.
+     *
+     * @return The id of model that is executing the tool.
+     */
+    public AbstractModelMessage getModelMessage() {
+        return getResponse().getCall().getMessage();
     }
 
     /**
@@ -255,6 +265,16 @@ public class ToolContext {
             throw new IOException("Failed to detect MIME type for " + path, e);
         }
         addAttachment(data, mimeType);
+    }
+    
+    /**
+     * Gets a shared map for storing state across turns within the current agi
+     * session.
+     *
+     * @return The turn-scoped attributes map.
+     */
+    public Map getTurnMap() {
+        return getModelMessage().getTurnAttributes();
     }
 
     /**
