@@ -217,16 +217,10 @@ public class Session extends AnahataToolkit {
         sb.append("- **Display Name**: ").append(domainAgi.getDisplayName()).append("\n");
         sb.append("- **Summary**: ").append(domainAgi.getConversationSummary() != null ? domainAgi.getConversationSummary() : "N/A").append("\n");
         sb.append("- **Selected Model**: ").append(domainAgi.getSelectedModel() != null ? domainAgi.getSelectedModel().getModelId() : "None").append("\n");
+        sb.append("- **Thinking Level**: ").append(domainAgi.getRequestConfig().getThinkingLevel()).append("\n");
         sb.append("- **Expand Thoughts**: ").append(config.isExpandThoughts()).append(config.isExpandThoughts() ? " (user's ui expands the thought parts with your reasoning when a new part arrives)" : "(**reasonig not showing**)\n");
-        sb.append("- **Context Window Usage (previous turn)**: ").append(String.format("%.1f%%", domainAgi.getContextWindowUsage() * 100))
+        sb.append("- **Context Window Usage (Last turn)**: ").append(String.format("%.1f%%", domainAgi.getContextWindowUsage() * 100))
                 .append(" (").append(domainAgi.getLastTotalTokenCount()).append(" / ").append(config.getTokenThreshold()).append(" tokens)\n");
-
-        sb.append("\n Default Max Depth Policies:\n");
-        sb.append("- **Text Parts**: ").append(config.getDefaultTextPartMaxDepth()).append("\n");
-        sb.append("- **Model Thought Parts**: ").append(config.getDefaultThoughtPartMaxDepth()).append("\n");
-        sb.append("- **Tool Calls**: ").append(config.getDefaultToolMaxDepth()).append("\n");
-        sb.append("- **Blob Parts**: ").append(config.getDefaultBlobPartMaxDepth()).append("\n");        
-        sb.append("*(Note: Individual tools or toolkits may override these defaults)*\n");
 
         sb.append("\n Capabilities:\n");
         sb.append("- **Local Java Tools**: ").append(config.isLocalToolsEnabled() ? "ENABLED" : "DISABLED").append("\n");
