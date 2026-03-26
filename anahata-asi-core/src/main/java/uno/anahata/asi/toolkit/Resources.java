@@ -21,8 +21,6 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.tool.AiToolParam;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.resource.ResourceManager;
-import uno.anahata.asi.internal.AnahataDiffUtils;
-import uno.anahata.asi.toolkit.files.AbstractTextResourceWrite;
 import uno.anahata.asi.toolkit.files.FullTextFileCreate;
 import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.files.TextResourceReplacements;
@@ -67,6 +65,7 @@ public class Resources extends AnahataToolkit {
                         + "\n\tb)The graphical diff visualizer will not display the changes you intend to make to the text resource (because it will not highlight surrounding lines that have not changed)"
                         + "\n\tc)Will cause the comic-style bubbles to be offset (on a line that has no changes)."
                         + "\n\tFor these reasons, when using the editTextResource tool, **you MUST always choose 'inserts' over 'replacements' when possible**.\n"
+                        + "\n\tWhen adding Javadoc or comments, always use LineInsertion unless you are explicitly correcting an existing (and poorly formatted) comment. Replacing a line with 'itself plus more' is a common source of coordinate errors."
         );
     }
 
@@ -205,23 +204,12 @@ public class Resources extends AnahataToolkit {
      */
     @AiTool("Updates an existing text resource in the RAG message using full content replacement. Returns a standard unified diff of the changes applied.")
     public String updateTextResource(@AiToolParam("The update details.") FullTextResourceUpdate update) throws Exception {
-        try {
-            update.validate(getAgi());
-
-            Resource res = getAgi().getResourceManager().getResources().get(update.getResourceUuid());
-            if (res != null) {
-                String original = res.asText();
-                update.setOriginalContent(original);
-                String revised = update.getNewContent();
-
-                res.write(revised);
-                log("Updated text file: " + res.getName());
-                return AnahataDiffUtils.generateUnifiedDiff(res.getName(), original, revised);
-            }
-            return "";
-        } catch (Exception e) {
-            throw wrapWithDiff(update, e);
-        }
+        update.validate(getAgi());
+        Resource res = getAgi().getResourceManager().getResources().get(update.getResourceUuid());
+        String revised = update.calculateResultingContent();
+        res.write(revised);
+        log("Updated text file: " + res.getName());
+        return update.getUnifiedDiff();
     }
 
     /**
@@ -233,24 +221,12 @@ public class Resources extends AnahataToolkit {
      */
     @AiTool("Performs multiple text replacements in a text resource in the RAG message. Returns a standard unified diff of the changes applied.")
     public String findAndReplaceInTextResource(@AiToolParam("The set of replacements.") TextResourceReplacements replacements) throws Exception {
-        try {
-            replacements.validate(getAgi());
-
-            Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
-            if (res != null) {
-                String original = res.asText();
-                replacements.setOriginalContent(original);
-                String revised = replacements.performReplacements(original);
-
-                res.write(revised);
-                log("Performed replacements in: " + res.getName());
-
-                return AnahataDiffUtils.generateUnifiedDiff(res.getName(), original, revised);
-            }
-            return "";
-        } catch (Exception e) {
-            throw wrapWithDiff(replacements, e);
-        }
+        replacements.validate(getAgi());
+        Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
+        String revised = replacements.calculateResultingContent();
+        res.write(revised);
+        log("Performed replacements in: " + res.getName());
+        return replacements.getUnifiedDiff();
     }
 
     /**
@@ -274,50 +250,15 @@ public class Resources extends AnahataToolkit {
             + "This is presented to the user in a graphical diff viewer where he reviews your proposed changes with a comic style bubble overlayed over the code showing your comment/reason for each edit when the user hovers over it. "
             + "Always make sure that each edit (regardless of wether it is an insert a replacement or a delete correspond to a single 'intent' that the user is going to review: for example, if you need to add javadoc to two fields and a constructor that are next to each other, always use 3 inserts rather than 1 big replacement."
             + "When doing replacements, do not include content that it is already in the file. Always be as minimal and surgical as possible and try to no include lines that do not need to change. "
-            + "")
+            + "When adding Javadoc or comments, always use LineInsertion unless you are explicitly correcting an existing (and poorly formatted) comment. Replacing a line with 'itself plus more' is a common source of coordinate errors."
+            + "Tip: Before submitting, always check the content of startLine - 1 and endLine + 1 in the RAG message to ensure you are not creating redundant syntax (e.g., double brackets, double javadoc markers, or broken indentation).")
     public String editTextResource(
             @AiToolParam("Contains the resource uuid, the lastModified timestamp and a set of line modifications targeting the absolute 1 based line numbers of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
-        try {
-            edits.validate(getAgi());
-
-            Resource res = getAgi().getResourceManager().getResources().get(edits.getResourceUuid());
-            if (res != null) {
-                String original = res.asText();
-                edits.setOriginalContent(original);
-                String revised = edits.calculateResultingContent(original);
-
-                res.write(revised);
-                log("Applied semantic line edits to: " + res.getName());
-
-                return AnahataDiffUtils.generateUnifiedDiff(res.getName(), original, revised);
-            }
-            return "";
-        } catch (Exception e) {
-            throw wrapWithDiff(edits, e);
-        }
-    }
-
-    /**
-     * Helper to wrap exceptions with a unified diff of the failed intent.
-     *
-     * @param update The update operation.
-     * @param e The original exception.
-     * @return A new exception enriched with diff context.
-     */
-    private Exception wrapWithDiff(AbstractTextResourceWrite update, Exception e) {
-        try {
-            Resource res = getAgi().getResourceManager().getResources().get(update.getResourceUuid());
-            if (res != null) {
-                String current = res.asText();
-                String proposed = update.calculateResultingContent(current);
-                String diff = AnahataDiffUtils.generateUnifiedDiff(res.getName(), current, proposed);
-                if (!diff.isBlank()) {
-                    return new AiToolException(e.getMessage() + "\n\nProposed Diff (Not Applied):\n" + diff, e);
-                }
-            }
-        } catch (Exception inner) {
-            log.error("Failed to generate intent diff for error context", inner);
-        }
-        return e;
+        edits.validate(getAgi());
+        Resource res = getAgi().getResourceManager().getResources().get(edits.getResourceUuid());
+        String revised = edits.calculateResultingContent();
+        res.write(revised);
+        log("Applied semantic line edits to: " + res.getName());
+        return edits.getUnifiedDiff();
     }
 }

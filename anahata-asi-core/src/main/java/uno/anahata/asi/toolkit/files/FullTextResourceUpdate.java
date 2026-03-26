@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.tool.AiToolException;
 
 /**
@@ -39,15 +38,18 @@ public class FullTextResourceUpdate extends AbstractTextResourceWrite {
     private List<LineComment> lineComments;
 
     @Builder
-    public FullTextResourceUpdate(String path, long lastModified, String newContent, List<LineComment> lineComments) {
-        super(path, lastModified);
+    public FullTextResourceUpdate(String resourceUuid, long lastModified, String newContent, List<LineComment> lineComments) {
+        super(resourceUuid, lastModified);
         this.newContent = newContent;
         this.lineComments = lineComments;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String calculateResultingContent(String currentContent) throws Exception {
+    public String calculateResultingContent() throws Exception {
+        if (originalContent == null) {
+            throw new AiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
+        }
         return newContent;
     }
 
@@ -55,22 +57,6 @@ public class FullTextResourceUpdate extends AbstractTextResourceWrite {
     @Override
     public void validate(Agi agi) throws Exception {
         super.validate(agi);
-        
-        Resource r = agi.getResourceManager().get(resourceUuid);
-        if (r != null) {
-            try {
-                // Ensure we are comparing against the latest physical state
-                r.reloadIfNeeded();
-                if (java.util.Objects.equals(r.asText(), newContent)) {
-                    throw new AiToolException("Update rejected: The provided content is identical to the current file content on disk.");
-                }
-            } catch (AiToolException e) {
-                throw e;
-            } catch (Exception e) {
-                // EXCEPTION POLICY: Strictly forbidding quiet catching. 
-                // All read/reload failures during validation must be reported.
-                throw new AiToolException("Failed to validate file identity for update: " + e.getMessage(), e);
-            }
-        }
+        // Identical content check is now in parent validate()
     }
 }

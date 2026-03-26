@@ -95,6 +95,9 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
      */
     public void setPruningState(PruningState pruningState, String reason) {
         PruningState oldState = this.pruningState;
+        if (oldState == pruningState && java.util.Objects.equals(this.prunedReason, reason)) {
+            return;
+        }
         this.pruningState = pruningState;
         this.prunedReason = reason;
         propertyChangeSupport.firePropertyChange("pruningState", oldState, pruningState);
@@ -107,6 +110,9 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
      */
     public void setTokenCount(int tokenCount) {
         int oldTokenCount = this.tokenCount;
+        if (oldTokenCount == tokenCount) {
+            return;
+        }
         this.tokenCount = tokenCount;
         propertyChangeSupport.firePropertyChange("tokenCount", oldTokenCount, tokenCount);
     }
@@ -118,6 +124,9 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
      */
     public void setExpanded(boolean expanded) {
         boolean oldExpanded = this.expanded;
+        if (oldExpanded == expanded) {
+            return;
+        }
         this.expanded = expanded;
         propertyChangeSupport.firePropertyChange("expanded", oldExpanded, expanded);
     }
@@ -277,7 +286,7 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
         if (rd != Integer.MAX_VALUE) {
             sb.append(" | Remaining Depth: ").append(rd);
         }
-
+        
         appendMetadata(sb);
 
         sb.append(" | pruningState: ").append(pruningState);

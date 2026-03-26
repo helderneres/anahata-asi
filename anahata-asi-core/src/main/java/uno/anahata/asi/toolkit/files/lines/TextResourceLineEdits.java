@@ -9,6 +9,7 @@ import uno.anahata.asi.toolkit.files.AbstractTextResourceWrite;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import uno.anahata.asi.agi.tool.AiToolException;
 
 /**
  * The next-generation surgical line editor for AGI.
@@ -38,9 +39,12 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
     }
 
     @Override
-    public String calculateResultingContent(String currentContent) throws Exception {
-        String separator = currentContent.contains("\r\n") ? "\r\n" : "\n";
-        List<String> lines = new ArrayList<>(Arrays.asList(currentContent.split("\\R", -1)));
+    public String calculateResultingContent() throws Exception {
+        if (originalContent == null) {
+            throw new AiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
+        }
+        String separator = originalContent.contains("\r\n") ? "\r\n" : "\n";
+        List<String> lines = new ArrayList<>(Arrays.asList(originalContent.split("\\R", -1)));
 
         // Aggregate all edits
         List<AbstractLineEdit> allEdits = new ArrayList<>();
@@ -78,9 +82,8 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
     public void validate(uno.anahata.asi.agi.Agi agi) throws Exception {
         super.validate(agi);
 
-        uno.anahata.asi.agi.resource.Resource res = agi.getResourceManager().get(resourceUuid);
-        // Calculate line count once for normalization
-        int lineCount = res.asText().split("\\R", -1).length;
+        // Calculate line count using the authoritative snapshot
+        int lineCount = originalContent.split("\\R", -1).length;
 
         // 1. Normalize 'Magic' coordinates
         if (replacements != null) {

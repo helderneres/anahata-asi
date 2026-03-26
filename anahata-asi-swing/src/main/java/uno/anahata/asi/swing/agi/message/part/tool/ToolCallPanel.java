@@ -18,6 +18,7 @@ import java.awt.Rectangle;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
 import java.util.HashMap;
 import java.util.List;
 
@@ -129,8 +130,23 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
     public ToolCallPanel(@NonNull AgiPanel agiPanel, @NonNull AbstractToolCall<?, ?> part) {
         super(agiPanel, part);
         // Listen to both the call and its response for state changes
-        new EdtPropertyChangeListener(this, part, null, evt -> render());
-        new EdtPropertyChangeListener(this, part.getResponse(), null, evt -> render());
+        new EdtPropertyChangeListener(this, part, null, this::handlePropertyChange);
+        new EdtPropertyChangeListener(this, part.getResponse(), null, this::handlePropertyChange);
+    }
+
+    /**
+     * Handles property change events from the tool call or response.
+     * It avoids full re-renders for purely metadata changes like token counts.
+     * 
+     * @param evt The property change event.
+     */
+    private void handlePropertyChange(PropertyChangeEvent evt) {
+        String prop = evt.getPropertyName();
+        if ("tokenCount".equals(prop)) {
+            updateHeaderInfoText();
+        } else {
+            render();
+        }
     }
 
     /** 

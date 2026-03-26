@@ -19,7 +19,8 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "Replaces a specific range of lines [startLine, endLine] inclusive."
         + " Use `startLine`=`endLine` to replace a single line. All lines from `startLine` to `endLine` will be replaced with `content`."
-        + " The `content` can contain any number of lines. Never include in content lines that do not need to change and make sure that startLine is exactly the first line that needs to be replaced.")
+        + " The `content` can contain any number of lines. Never include in content lines that do not need to change and make sure that startLine is exactly the first line that needs to be replaced. \n"
+        + "STRICT RULE: If the first line of your content is identical to the original line at startLine, or the last line is identical to endLine, your range is too wide. Shrink the range to only include lines with actual character changes.")
 public class LineReplacement extends AbstractLineEdit {
 
     @Schema(description = "The 1-based line number of the resource in the RAG message where the replacement starts (Inclusive).", required = true)

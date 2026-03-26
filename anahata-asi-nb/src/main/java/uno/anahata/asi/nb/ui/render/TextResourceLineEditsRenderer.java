@@ -67,15 +67,15 @@ public class TextResourceLineEditsRenderer extends AbstractTextResourceWriteRend
         }
         panel.add(Box.createVerticalStrut(5));
     }
-    @Override
-    protected String calculateProposedContent(String currentContent) throws Exception {
-        return update.calculateResultingContent(currentContent);
-    }
 
     /** {@inheritDoc} */
     @Override
-    protected List<LineComment> getLineComments(String currentContent) {
+    protected List<LineComment> getLineComments() {
         List<LineComment> comments = new ArrayList<>();
+        String content = update.getOriginalContent();
+        if (content == null) {
+            return comments;
+        }
         
         // 1. Aggregate and sort edits by their original start line
         List<AbstractLineEdit> allEdits = new ArrayList<>();
@@ -124,12 +124,14 @@ public class TextResourceLineEditsRenderer extends AbstractTextResourceWriteRend
         );
         dto.getReplacements().add(fullOverride);
         dto.setOriginalContent(update.getOriginalContent());
+        dto.setOriginalResourceName(update.getOriginalResourceName());
         return dto;
     }
 
     /** {@inheritDoc} */
     @Override
     protected int getInitialTabIndex() {
-        return 0; // Prefer graphical diff
+        // Now using recommendedTabIndex from base class validation, but we can override if needed
+        return super.getInitialTabIndex();
     }
 }

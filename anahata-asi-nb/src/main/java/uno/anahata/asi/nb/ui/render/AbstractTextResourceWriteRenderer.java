@@ -7,6 +7,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Image;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
@@ -32,6 +33,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.EditorKit;
 import lombok.extern.slf4j.Slf4j;
+import net.miginfocom.swing.MigLayout;
 import org.netbeans.api.diff.DiffController;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.openide.filesystems.FileObject;
@@ -40,7 +42,6 @@ import org.openide.util.ImageUtilities;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
-import uno.anahata.asi.internal.AnahataDiffUtils;
 import uno.anahata.asi.nb.resources.handle.NbHandle;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRenderer;
@@ -149,6 +150,11 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
      */
     private JLayer<JComponent> jlayer;
 
+    /**
+     * The tab index recommended based on diff size (0=Graphical, 1=Textual).
+     */
+    private int recommendedTabIndex = 0;
+
     /** No-arg constructor for factory instantiation. */
     protected AbstractTextResourceWriteRenderer() {}
 
@@ -186,20 +192,28 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         }
 
         try {
-            //call.getResponse().getLogs().add("Validating...");
             update.validate(agiPanel.getAgi());
-            //call.getResponse().getLogs().add("Validation passed for:\n");
+            
+            String diff = update.getUnifiedDiff();
+            
+            // Clear previous validation logs and log the current intent
+            call.getResponse().getLogs().clear();
+            call.getResponse().getLogs().add("Proposed Intent:\n" + diff);
+            
+            // Smart Tab selection: prefer textual for small changes
+            int lines = diff.split("\\R").length;
+            this.recommendedTabIndex = (lines <= 30) ? 1 : 0;
+
             return true;
         } catch (Exception e) {
             log.warn("Pre-flight validation failed for resource {}: {}", update.getResourceUuid(), e.getMessage());
             
             String diff = "";
             try {
-                Resource resource = agiPanel.getAgi().getResourceManager().get(update.getResourceUuid());
-                if (resource != null) {
-                    String current = resource.asText();
-                    String proposed = update.calculateResultingContent(current);
-                    diff = AnahataDiffUtils.generateUnifiedDiff(resource.getName(), current, proposed);
+                // If validation failed, it might be due to captureOriginalContent or logic.
+                // We try to generate whatever diff we can for context.
+                if (update.getOriginalContent() != null) {
+                    diff = update.getUnifiedDiff();
                 }
             } catch (Exception ex) {
                 log.error("Failed to generate intent diff for failed validation", ex);
@@ -211,21 +225,11 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
     }
 
     /**
-     * Subclasses must provide the full proposed content based on the current disk state.
-     * 
-     * @param currentContent The current text content of the file.
-     * @return The proposed new content.
-     * @throws Exception if calculation fails.
-     */
-    protected abstract String calculateProposedContent(String currentContent) throws Exception;
-
-    /**
      * Subclasses can provide line-level comments to be displayed in the diff gutter.
      * 
-     * @param currentContent The current text content of the file.
      * @return A list of {@link LineComment} objects.
      */
-    protected abstract List<LineComment> getLineComments(String currentContent);
+    protected abstract List<LineComment> getLineComments();
 
     /** 
      * Subclasses can provide a specialized panel to display the raw 'Surgical Intent' 
@@ -253,7 +257,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
      * @return 0 for Graphical, 1 for Textual.
      */
     protected int getInitialTabIndex() {
-        return 0;
+        return recommendedTabIndex;
     }
 
     /** 
@@ -282,24 +286,18 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         }
 
         try {
-            String currentOnDisk = resource.asText();
             boolean isPending = status == ToolExecutionStatus.PENDING;
+            boolean isExecuted = status == ToolExecutionStatus.EXECUTED;
 
-            // --- Historical Persistence Logic ---
-            String baseContent;
-            if (update.getOriginalContent() != null) {
-                // Use the persisted original content for history
-                baseContent = update.getOriginalContent();
-            } else {
-                // First render: capture current content from disk/IDE
-                baseContent = currentOnDisk;
-                if (isPending) {
-                    // Store it in the DTO. Kryo will serialize the change in the args map.
-                    update.setOriginalContent(baseContent);
-                }
+            String baseContent = update.getOriginalContent();
+            String proposedContent;
+            
+            try {
+                proposedContent = update.calculateResultingContent();
+            } catch (Exception e) {
+                log.error("Failed to calculate resulting content", e);
+                proposedContent = baseContent; // Fallback
             }
-
-            String proposedContent = isPending ? calculateProposedContent(currentOnDisk) : currentOnDisk;
 
             // 3. Secondary stability check: content + status
             if (modDoc != null) {
@@ -349,8 +347,15 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
                 });
             }
 
-            String leftTitle = isPending ? "Current" : "Original";
-            String rightTitle = isPending ? "Proposed" : "Applied";
+            String leftTitle = isPending ? "Current on Disk" : "Original State";
+            String rightTitle;
+            if (isPending) {
+                rightTitle = "Proposed Change";
+            } else if (isExecuted) {
+                rightTitle = "Applied Changes";
+            } else {
+                rightTitle = "Proposed Intent (Rejected/Failed)";
+            }
 
             DiffStreamSource baseSource = new DiffStreamSource(name, leftTitle, baseContent, mime);
             baseSource.setDocument(baseDoc);
@@ -370,7 +375,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
                 applyVisualizerSettings(visualizer);
 
                 // Create the header panel with the file hyperlink and toggle
-                List<LineComment> comments = getLineComments(isPending ? currentOnDisk : baseContent);
+                List<LineComment> comments = getLineComments();
                 
                 JCheckBox toggle = new JCheckBox("Show AI Comments", true);
                 JPanel headerPanel = createHeaderPanel(resource, comments, toggle, status);
@@ -519,34 +524,31 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         
         panel.add(topRow, BorderLayout.NORTH);
         
-        // --- SURGICAL DASHBOARD ---
-        JPanel dashboard = new JPanel();
-        dashboard.setLayout(new javax.swing.BoxLayout(dashboard, javax.swing.BoxLayout.Y_AXIS));
-        dashboard.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // --- SURGICAL DASHBOARD (Split Layout) ---
+        JPanel dashboard = new JPanel(new MigLayout("fillx, insets 0 15 5 10", "[grow][grow]", "[]"));
         dashboard.setOpaque(false);
-        dashboard.setBorder(BorderFactory.createEmptyBorder(0, 15, 5, 10));
+
+        // 1. Left: Surgical Intent Panel
         JComponent intentPanel = createIntentPanel();
         if (intentPanel != null) {
             intentPanel.setOpaque(false);
-            dashboard.add(intentPanel);
+            dashboard.add(intentPanel, "growx, aligny top");
+        } else {
+             dashboard.add(new JPanel(), "growx"); // Spacer if no intent
         }
 
+        // 2. Right: Line Comments Panel (Aligned Right)
         if (comments != null && !comments.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder("<html><div style='text-align: right;'>");
             for (LineComment lc : comments) {
-                sb.append("Proposed Line ").append(lc.getLineNumber()).append(": ").append(lc.getComment()).append("\n");
+                sb.append("<i style='color: #888888; font-size: 9pt;'>Proposed Line ").append(lc.getLineNumber()).append(":</i> ")
+                  .append("<span style='color: #666666; font-size: 9pt;'>").append(lc.getComment()).append("</span><br>");
             }
+            sb.append("</div></html>");
             
-            JTextArea area = new JTextArea(sb.toString().trim());
-            area.setEditable(false);
-            area.setLineWrap(true);
-            area.setWrapStyleWord(true);
-            area.setFont(new java.awt.Font("SansSerif", java.awt.Font.ITALIC, 11));
-            area.setForeground(Color.GRAY);
-            area.setOpaque(false);
-            area.setAlignmentX(Component.LEFT_ALIGNMENT);
-            area.setBackground(new Color(0, 0, 0, 0));
-            dashboard.add(area);
+            JLabel commentsLabel = new JLabel(sb.toString());
+            commentsLabel.setVerticalAlignment(JLabel.TOP);
+            dashboard.add(commentsLabel, "growx, aligny top, alignx right");
         }
         
         if (dashboard.getComponentCount() > 0) {

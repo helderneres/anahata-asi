@@ -3,6 +3,7 @@ package uno.anahata.asi.toolkit.files;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -11,6 +12,7 @@ import lombok.Setter;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.internal.AnahataDiffUtils;
 
 /**
  * Base DTO for text file operations, providing common fields for path, 
@@ -40,6 +42,14 @@ public abstract class AbstractTextResourceWrite {
     protected String originalContent;
 
     /**
+     * The name of the resource at the time of capture.
+     */
+    @JsonIgnore
+    @Schema(hidden = true)
+    @Setter
+    protected String originalResourceName;
+
+    /**
      * Optimistic locking: the expected last modified timestamp of the file on disk.
      */
     @Schema(description = "Optimistic locking: the expected last modified timestamp of the file on disk.", required = true)
@@ -48,7 +58,7 @@ public abstract class AbstractTextResourceWrite {
     /**
      * Minimal constructor for standard tool invocation and builder support.
      * 
-     * @param path The file path.
+     * @param uuid The resource uuid.
      * @param lastModified The locking timestamp.
      */
     public AbstractTextResourceWrite(String uuid, long lastModified) {
@@ -56,40 +66,68 @@ public abstract class AbstractTextResourceWrite {
         this.lastModified = lastModified;
     }
 
-
     /**
-     * Calculates the resulting content of the resource if this operation were applied.
+     * Authoritatively captures the current state of the resource from the resource manager.
+     * This is the mandatory first step before validation, calculation, or diffing.
      * 
-     * @param currentContent The current content of the resource.
-     * @return The resulting content.
-     * @throws Exception if the calculation fails.
+     * @param agi The parent agi session.
+     * @throws Exception if the resource cannot be resolved or is not textual.
      */
-    public abstract String calculateResultingContent(String currentContent) throws Exception;
+    public void captureOriginalContent(Agi agi) throws Exception {
+        Resource res = agi.getResourceManager().getResources().get(resourceUuid);
+        if (res == null) {
+            throw new AiToolException("Resource not found in context: " + resourceUuid);
+        }
+        if (!res.getHandle().isTextual()) {
+             throw new AiToolException("Resource is not a text resource: " + res.getName());
+        }
+        this.originalContent = res.asText();
+        this.originalResourceName = res.getName();
+    }
 
     /**
-     * Performs pre-flight validation of the update operation against the V2 resource context.
+     * Calculates the resulting content of the resource based on the captured {@code originalContent}.
+     * 
+     * @return The resulting content.
+     * @throws Exception if the calculation fails or original content is missing.
+     */
+    public abstract String calculateResultingContent() throws Exception;
+
+    /**
+     * Generates a unified diff of the proposed changes against the captured original content.
+     * 
+     * @return The unified diff string.
+     * @throws Exception if original content is missing or diff generation fails.
+     */
+    public String getUnifiedDiff() throws Exception {
+        if (originalContent == null) {
+            throw new AiToolException("Logic Error: getUnifiedDiff called before captureOriginalContent");
+        }
+        String proposed = calculateResultingContent();
+        return AnahataDiffUtils.generateUnifiedDiff(originalResourceName, originalContent, proposed);
+    }
+
+    /**
+     * Performs pre-flight validation of the update operation. 
+     * <b>Note:</b> This method ensures state is captured.
      * 
      * @param agi The parent agi session.
      * @throws Exception if validation fails.
      */
     public void validate(Agi agi) throws Exception {
+        // 1. Authoritative state capture
+        captureOriginalContent(agi);
 
+        // 2. Identical Content Check
+        if (Objects.equals(originalContent, calculateResultingContent())) {
+             throw new AiToolException("Update rejected: The resulting content is identical to the current file content on disk.");
+        }
 
-        // 2. Resource Context Check - Operation MUST be performed on a managed resource
+        // 3. Optimistic Locking Check
         Resource res = agi.getResourceManager().getResources().get(resourceUuid);
-        if (res == null) {
-             throw new AiToolException("No Resource in for uuid" + resourceUuid);
-        }
-
-        // 3. Capability Check
-        if (!res.getHandle().isTextual()) {
-             throw new AiToolException("Resource is not a text resource and cannot be updated via text tools: " + res.getName());
-        }
-
-        // 4. Optimistic Locking Check
         long actualLm = res.getHandle().getLastModified();
         if (lastModified > 0 && lastModified != actualLm) {
-            throw new AiToolException("Optimistic locking failure for " + res.getName() + ". The time stamp provided doesnt match the last modified timestamp on disk:" + actualLm + ", you provided=" + lastModified + ").");
+            throw new AiToolException("Optimistic locking failure for " + res.getName() + ". The time stamp provided doesn't match the last modified timestamp on disk: " + actualLm + " (provided: " + lastModified + ").");
         }
     }
 }

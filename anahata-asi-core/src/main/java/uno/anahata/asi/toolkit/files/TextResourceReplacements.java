@@ -11,7 +11,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.tool.AiToolException;
 
 /**
@@ -35,23 +34,40 @@ public class TextResourceReplacements extends AbstractTextResourceWrite {
     private List<TextReplacement> replacements;
 
     @Builder
-    public TextResourceReplacements(String path, long lastModified, List<TextReplacement> replacements) {
-        super(path, lastModified);
+    public TextResourceReplacements(String resourceUuid, long lastModified, List<TextReplacement> replacements) {
+        super(resourceUuid, lastModified);
         this.replacements = replacements;
     }
-    
-    /**
-     * Helper method to perform string replacements with validation.
-     * 
-     * @param currentContent The original content.
-     * @return The updated content.
-     * @throws AiToolException if a replacement fails.
-     */
-    public String performReplacements(String currentContent) throws AiToolException {
-        String newContent = currentContent;
+
+    /** {@inheritDoc} */
+    @Override
+    public String calculateResultingContent() throws Exception {
+        if (originalContent == null) {
+            throw new AiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
+        }
+        String newContent = originalContent;
+        for (TextReplacement replacement : replacements) {
+            newContent = newContent.replace(replacement.getTarget(), replacement.getReplacement());
+        }
+        return newContent;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void validate(Agi agi) throws Exception {
+        super.validate(agi);
+
+        if (replacements == null || replacements.isEmpty()) {
+             throw new AiToolException("No replacements provided.");
+        }
+
         for (TextReplacement replacement : replacements) {
             String target = replacement.getTarget();
-            int count = StringUtils.countMatches(newContent, target);
+            if (target == null || target.isEmpty()) {
+                throw new AiToolException("Replacement target cannot be null or empty.");
+            }
+            
+            int count = StringUtils.countMatches(originalContent, target);
             
             if (replacement.getExpectedCount() > 0 && count != replacement.getExpectedCount()) {
                 throw new AiToolException("Replacement failed for '" + target + "'. Expected " + replacement.getExpectedCount() + " occurrences, but found " + count);
@@ -60,34 +76,7 @@ public class TextResourceReplacements extends AbstractTextResourceWrite {
             if (count == 0 && replacement.getExpectedCount() != 0) {
                  throw new AiToolException("Target string not found in file: " + target);
             }
-
-            newContent = newContent.replace(target, replacement.getReplacement());
         }
-        return newContent;
+        // Identical content check is now in parent validate()
     }
-
-    /** {@inheritDoc} */
-    @Override
-    public String calculateResultingContent(String currentContent) throws Exception {
-        return performReplacements(currentContent);
-    }
-
-    /** {@inheritDoc} 
-     * Validates the replacements against the current state of the resource handle.
-     */
-    @Override
-    public void validate(Agi agi) throws Exception {
-        super.validate(agi);
-        
-        Resource res = agi.getResourceManager().get(resourceUuid);
-        
-        String current = res.asText();
-        String result = performReplacements(res.asText()); 
-        
-        if (current.equals(result)) {
-            throw new AiToolException("current and resulting (after performReplacements) are identical.");
-        }
-        
-    }
-
 }

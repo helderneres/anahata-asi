@@ -23,15 +23,10 @@ public class TextResourceReplacementsRenderer extends AbstractTextResourceWriteR
 
     /** {@inheritDoc} */
     @Override
-    protected String calculateProposedContent(String currentContent) throws Exception {
-        return update.performReplacements(currentContent);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    protected List<LineComment> getLineComments(String currentContent) {
+    protected List<LineComment> getLineComments() {
         List<LineComment> comments = new ArrayList<>();
-        if (update.getReplacements() == null || update.getReplacements().isEmpty()) {
+        String content = update.getOriginalContent();
+        if (content == null || update.getReplacements() == null || update.getReplacements().isEmpty()) {
             return comments;
         }
 
@@ -45,10 +40,10 @@ public class TextResourceReplacementsRenderer extends AbstractTextResourceWriteR
                 continue;
             }
             
-            int idx = currentContent.indexOf(target);
+            int idx = content.indexOf(target);
             while (idx != -1) {
                 events.add(new ReplacementEvent(tr, idx));
-                idx = currentContent.indexOf(target, idx + target.length());
+                idx = content.indexOf(target, idx + target.length());
                 // Avoid infinite loops if replacement contains target
                 if (tr.getReplacement() != null && tr.getReplacement().contains(target)) {
                     break;
@@ -63,7 +58,7 @@ public class TextResourceReplacementsRenderer extends AbstractTextResourceWriteR
         int cumulativeLineShift = 0;
         for (ReplacementEvent event : events) {
             TextReplacement tr = event.tr();
-            int originalLine = DiffCommentUtils.getLineAt(currentContent, event.index());
+            int originalLine = DiffCommentUtils.getLineAt(content, event.index());
             int proposedLine = originalLine + cumulativeLineShift;
             
             if (tr.getReason() != null && !tr.getReason().isBlank()) {
@@ -93,6 +88,7 @@ public class TextResourceReplacementsRenderer extends AbstractTextResourceWriteR
                         .build())
         );
         dto.setOriginalContent(update.getOriginalContent());
+        dto.setOriginalResourceName(update.getOriginalResourceName());
         return dto;
     }
 

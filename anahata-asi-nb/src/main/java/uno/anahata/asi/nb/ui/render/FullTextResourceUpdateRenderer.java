@@ -12,16 +12,13 @@ import uno.anahata.asi.toolkit.files.LineComment;
  */
 public class FullTextResourceUpdateRenderer extends AbstractTextResourceWriteRenderer<FullTextResourceUpdate> {
 
+    /** {@inheritDoc} */
     @Override
-    protected String calculateProposedContent(String currentContent) {
-        return update.getNewContent();
-    }
-
-    @Override
-    protected List<LineComment> getLineComments(String currentContent) {
+    protected List<LineComment> getLineComments() {
         return update.getLineComments();
     }
 
+    /** {@inheritDoc} */
     @Override
     protected FullTextResourceUpdate createUpdatedDto(String newContent) {
         FullTextResourceUpdate dto = new FullTextResourceUpdate(
@@ -31,6 +28,7 @@ public class FullTextResourceUpdateRenderer extends AbstractTextResourceWriteRen
                 update.getLineComments()
         );
         dto.setOriginalContent(update.getOriginalContent());
+        dto.setOriginalResourceName(update.getOriginalResourceName());
         return dto;
     }
 }
