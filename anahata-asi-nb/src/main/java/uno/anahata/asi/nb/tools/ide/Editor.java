@@ -46,6 +46,14 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
 @AiToolkit("A toolkit for interacting with the NetBeans editor.")
 public class Editor extends AnahataToolkit {
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Provides a real-time list of all open editor files, their associated projects, 
+     * current caret positions (line/offset), active selections, and visible code snippets.
+     * This information allows the ASI to "see" the current working context of the developer.
+     * </p>
+     */
     @Override
     public void populateMessage(RagMessage ragMessage) throws Exception {
         final List<TopComponent> editors = getOpenEditors();
@@ -243,6 +251,15 @@ public class Editor extends AnahataToolkit {
         return closedFiles.isEmpty() ? "No files were open to close." : "Closed the following files: " + String.join(", ", closedFiles);
     }
 
+    /**
+     * Gathers all TopComponents that are considered genuine file editors.
+     * <p>
+     * This method filters the global set of opened components to identify those
+     * that wrap a {@link DataObject} and are intended for source editing.
+     * </p>
+     * 
+     * @return A list of open editor TopComponents.
+     */
     private List<TopComponent> getOpenEditors() {
         final List<TopComponent> editors = new ArrayList<>();
         try {
@@ -260,6 +277,18 @@ public class Editor extends AnahataToolkit {
         return editors;
     }
 
+    /**
+     * Determines if a given TopComponent is a file editor based on architectural heuristics.
+     * <p>
+     * A TopComponent is considered an editor if it has an associated {@link DataObject}
+     * and either resides in the "editor" mode or is a multiview component (the standard
+     * wrapper for NetBeans editors). Components belonging to the Anahata framework itself
+     * (like {@link AgiTopComponent}) are explicitly excluded to prevent recursion.
+     * </p>
+     * 
+     * @param tc The TopComponent to evaluate.
+     * @return {@code true} if the component is a file editor, {@code false} otherwise.
+     */
     private boolean isFileEditor(TopComponent tc) {
         if (tc instanceof AgiTopComponent || tc instanceof AsiCardsTopComponent) {
             return false;
