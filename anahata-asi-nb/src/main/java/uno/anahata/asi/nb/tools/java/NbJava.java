@@ -43,12 +43,22 @@ import uno.anahata.asi.swing.toolkit.SwingJava;
 @AiToolkit("A NetBeans-aware toolkit for compiling and executing Java code.")
 public class NbJava extends SwingJava {
 
+    /** 
+     * {@inheritDoc} 
+     * <p>Sets the default classpath to include the NetBeans modules environment, 
+     * ensuring that compiled scripts can access IDE-specific APIs.</p> 
+     */
     @Override
     public void initialize() {
         setDefaultClasspath(NetBeansModuleUtils.getNetBeansClasspath());
         log.info("NbJava initialize() completed. default classPath:" + getDefaultClasspath());
     }
     
+    /** 
+     * {@inheritDoc} 
+     * <p>Re-establishes the default classpath after deserialization, 
+     * ensuring connectivity to the NetBeans module system is maintained.</p> 
+     */
     @Override
     public void rebind() {
         setDefaultClasspath(NetBeansModuleUtils.getNetBeansClasspath());
@@ -238,6 +248,15 @@ public class NbJava extends SwingJava {
         return compileAndExecute(sourceCode, extraClassPath, compilerOptions);
     }
 
+    /**
+     * Pauses execution until the IDE's background indexer has finished and 
+     * allows 'Compile on Save' events to settle. This prevents race conditions 
+     * when trying to execute recently modified code.
+     * 
+     * @param project The project being executed.
+     * @param cosStatus The current Compile on Save status of the project.
+     * @throws InterruptedException if the wait is interrupted.
+     */
     private void waitForIde(Project project, String cosStatus) throws InterruptedException {
         if (SourceUtils.isScanInProgress()) {
             log("Waiting for IDE to finish background scanning/indexing...");
@@ -256,6 +275,13 @@ public class NbJava extends SwingJava {
         }
     }
 
+    /**
+     * Extracts the base name of a JAR file by removing the extension and 
+     * version-specific suffixes. Used for deduplicating classpath entries.
+     * 
+     * @param filename The full filename of the JAR.
+     * @return The normalized base name.
+     */
     private static String getJarBaseName(String filename) {
         String name = filename.toLowerCase();
         if (name.endsWith(".jar")) {
