@@ -34,7 +34,11 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
 @AiToolkit("A toolkit for browsing types, members, sources and javadocs.")
 public class CodeModel extends AnahataToolkit {
 
-    /** {@inheritDoc} */
+    /** 
+     * {@inheritDoc} 
+     * <p>Provides context-aware instructions for the CodeModel toolkit, 
+     * detailing the usage of one-shot FQN methods versus discovery-based searches.</p> 
+     */
     @Override
     public List<String> getSystemInstructions() throws Exception {
         String instructions = "CodeModel Toolkit Instructions:\n"                
