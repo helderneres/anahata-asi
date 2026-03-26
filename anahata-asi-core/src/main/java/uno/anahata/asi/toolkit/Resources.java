@@ -242,17 +242,20 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if application fails.
      */
-    @AiTool("An ultra-precise, surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled. "
+    @AiTool("An ultra-precise, surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled.\n\n "
             + "Targets absolute 1-based line numbers from the RAG message using semantic intent (Insert, Replace, Delete). "
-            + "Vertification is based on line numbers and the lastModified timestamp in the RAG message and  "
-            + "not based on surrounding anchors like git patch style tools so do not use replacements (using existing lines as anchors) for changes that can and should be implemented with pure inserts. "
-            + "If you need to insert new lines into the resource, use pure insertions instead of replacements that start with one or two lines of existing 'anchor' content."
-            + "All line numbers you use when calling this tool must correspond to the line numbers in the text resource in the RAG message, all changes are performed based on the line numbers of the resource in the RAG message at the time of making the call, the tool handles index shifting automatically.\n\n"
-            + "This is presented to the user in a graphical diff viewer where he reviews your proposed changes with a comic style bubble overlayed over the code showing your comment/reason for each edit when the user hovers over it. "
-            + "Always make sure that each edit (regardless of wether it is an insert a replacement or a delete correspond to a single 'intent' that the user is going to review: for example, if you need to add javadoc to two fields and a constructor that are next to each other, always use 3 inserts rather than 1 big replacement."
-            + "When doing replacements, do not include content that it is already in the file. Always be as minimal and surgical as possible and try to no include lines that do not need to change. "
-            + "When adding Javadoc or comments, always use LineInsertion unless you are explicitly correcting an existing (and poorly formatted) comment. Replacing a line with 'itself plus more' is a common source of coordinate errors."
-            + "Tip: Before submitting, always check the content of startLine - 1 and endLine + 1 in the RAG message to ensure you are not creating redundant syntax (e.g., double brackets, double javadoc markers, or broken indentation).")
+            + "You must target the static line numbers of the RAG message, **don't calculate line shifts manually** for a batch of edits, the tool does this."
+            + "\n**Vertification**: is based on **otpimistic locking** with the **lastModified** timestamp in the RAG message and  "
+            + "**not based on surrounding anchors like git-patch style tools**. "
+            + "\n**Boundary Syntax Check**: Before finalizing a range, check the lines immediately above (startLine - 1) and below (endLine + 1). If they contain syntax markers like /**, */, {, or }, ensure you aren't accidentally orphaning them or creating duplicates."
+            + "\n**One tool call per resource per turn**: In any given turn, you can only use this tool once for each resource (you can't call this tool twice for the same resource on the same turn) "
+            + "\n**Do not use LineReplacements when you can achvie the same result with LineInserts**: if you can perform a change using pure insertions do it, never use replacements that start with one or two lines of existing 'anchor' content of the above lines or below lines, just the lines that need changing: For example, if you need to add javadoc to two fields and a constructor that are next to each other, always use 3 inserts rather than 1 big replacement."
+            + "\n\n"
+            + "All line numbers you use when calling this tool must correspond to the exact line numbers in the text resource in the RAG message, all changes are performed based on the line numbers of the resource in the RAG message, the tool handles index shifting automatically.\n\n"
+            + "\n\n**UI**:Your intended edits are presented to the user in a graphical diff viewer where the user reviews your proposed changes and sees the lines that have changed highlighted along with comic-style bubbles (annotations) with your comments / resons on the right hand side of the diff (the tool already works out the line numbers where the annotations on the right hand side of the diff are ment to be shown). "
+            //+ "Always make sure that each edit (regardless of wether it is an LineInsertion, a LineReplacement or a LineDeletion correspond to a single 'intent' that the user is going to review. "
+            + "\nWhen adding Javadoc or comments, always use LineInsertion unless you are explicitly correcting an existing (and poorly formatted) comment. Replacing a line with 'itself plus more' is a common source of coordinate errors."
+            + "\n\n**Tip**: Before submitting, always check the content of startLine - 1 and endLine + 1 in the RAG message to ensure you are not creating redundant syntax (e.g., double brackets, double javadoc markers, or broken indentation).")
     public String editTextResource(
             @AiToolParam("Contains the resource uuid, the lastModified timestamp and a set of line modifications targeting the absolute 1 based line numbers of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
         edits.validate(getAgi());
