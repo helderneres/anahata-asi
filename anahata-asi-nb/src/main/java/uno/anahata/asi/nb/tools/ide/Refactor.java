@@ -53,10 +53,14 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
 
 /**
  * A toolkit for performing programmatic refactoring operations within the NetBeans IDE.
+ * <p>
  * This toolkit leverages the NetBeans Refactoring API to ensure that changes are 
- * propagated correctly across the projects (e.g., updating imports, references, etc.).
+ * propagated correctly across the entire project (e.g., updating imports, references, 
+ * and string constants). It supports a wide range of standard Java refactorings 
+ * such as rename, move, copy, inline, and interface extraction.
+ * </p>
  * 
- * @author anahata-gemini-pro-2.5
+ * @author anahata
  */
 @Slf4j
 @AiToolkit("Programmatic refactoring tools for NetBeans. Use these tools to safely rename, move, copy, or delete code elements while maintaining integrity across all open projects.")

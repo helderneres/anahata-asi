@@ -21,6 +21,13 @@ public class OpenTopComponentsContextProvider extends BasicContextProvider {
         super("netbeans-open-topcomponents", "Open TopComponents", "A real-time Markdown table of all open TopComponents (windows) in the IDE.");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Injects a Markdown table representing the current state of all open TopComponents 
+     * into the RAG message. This allows the ASI to understand the user's visual workspace.
+     * </p>
+     */
     @Override
     public void populateMessage(RagMessage ragMessage) throws Exception {
         ragMessage.addTextPart(NetBeansTopComponents.getMarkdownReport());

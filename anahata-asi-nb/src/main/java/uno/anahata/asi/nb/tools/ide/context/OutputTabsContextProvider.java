@@ -22,6 +22,14 @@ public class OutputTabsContextProvider extends BasicContextProvider {
         super("netbeans-open-output-tabs", "Open Output Tabs", "A list of all open tabs in the NetBeans Output Window with a tail of their content.");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Injects a Markdown report of all active tabs in the Output Window, including 
+     * process status and a tail of recent log lines. This provides the ASI with 
+     * real-time build and execution feedback.
+     * </p>
+     */
     @Override
     public void populateMessage(RagMessage ragMessage) throws Exception {
         ragMessage.addTextPart(NetBeansOutput.getMarkdownReport());
