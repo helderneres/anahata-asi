@@ -1,4 +1,4 @@
-/* Licensed under the Apache License, Version 2.0 */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.tools.java;
 
 import java.net.URL;
@@ -60,20 +60,22 @@ public class JavaMember extends JavaType {
         this.modifiers = modifiers;
     }
 
-    /**
-     * Gets the source code for this member.
-     * @return a JavaMemberSource object.
-     * @throws Exception if the source cannot be retrieved.
+    /** 
+     * {@inheritDoc} 
+     * <p>This implementation specializes the source retrieval for class members, 
+     * returning a {@link JavaMemberSource} which extracts only the member's 
+     * specific source code fragment from the containing file.</p> 
      */
     @Override
     public JavaMemberSource getSource() throws Exception {
         return new JavaMemberSource(this);
     }
 
-    /**
-     * Gets the Javadoc for this member.
-     * @return a JavaMemberDocs object.
-     * @throws Exception if the Javadoc cannot be retrieved.
+    /** 
+     * {@inheritDoc} 
+     * <p>This implementation specializes the Javadoc retrieval for class members, 
+     * returning a {@link JavaMemberDocs} which leverages the element handle 
+     * to fish the member's specific documentation from sources or index.</p> 
      */
     @Override
     public JavaMemberDocs getJavadoc() throws Exception {

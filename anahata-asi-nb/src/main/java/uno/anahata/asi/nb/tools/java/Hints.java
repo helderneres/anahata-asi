@@ -149,12 +149,18 @@ public class Hints extends AnahataToolkit {
     }
 
     /**
-     * Applies a specific Java hint fix to a file.
-     *
+     * Applies the first available fix for a specific Java hint identified by its ID.
+     * <p>
+     * This tool computes all hints for the given file, searches for the one matching 
+     * the provided {@code hintId}, and invokes its primary fix implementation. 
+     * The operation is performed within a modification task to ensure atomic 
+     * application of changes to the underlying source.
+     * </p>
+     * 
      * @param filePath The absolute path of the Java file.
-     * @param hintId The ID of the hint to fix.
-     * @return A message indicating the result of the operation.
-     * @throws Exception if the operation fails.
+     * @param hintId The unique identifier of the hint whose fix should be applied.
+     * @return A descriptive message indicating whether the fix was successfully applied or if the hint/fix was not found.
+     * @throws Exception if the Java source cannot be resolved or the modification task fails.
      */
     @AiTool("Applies a specific netbeans hint fix to a file.")
     public String applyHintFix(
