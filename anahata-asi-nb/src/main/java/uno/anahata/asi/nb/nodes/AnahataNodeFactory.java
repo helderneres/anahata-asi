@@ -47,7 +47,8 @@ public class AnahataNodeFactory implements NodeFactory {
 
     /**
      * {@inheritDoc}
-     * Creates the "Anahata" virtual node for the given project.
+     * <p>Registers and creates the "Anahata" virtual node for the specified project, 
+     * integrating it into the Projects view logical hierarchy.</p>
      */
     @Override
     public NodeList<?> createNodes(Project project) {
@@ -81,13 +82,20 @@ public class AnahataNodeFactory implements NodeFactory {
             setDisplayName("Anahata");
         }
 
-        /** {@inheritDoc} */
+        /** 
+         * {@inheritDoc} 
+         * <p>Returns the merged folder icon with the Anahata overlay to visually 
+         * identify this as an AI-enabled folder.</p>
+         */
         @Override
         public Image getIcon(int type) {
             return createMergedIcon(FOLDER_ICON_PATH);
         }
 
-        /** {@inheritDoc} */
+        /** 
+         * {@inheritDoc} 
+         * <p>Returns the merged open folder icon with the Anahata overlay.</p>
+         */
         @Override
         public Image getOpenedIcon(int type) {
             return createMergedIcon(FOLDER_OPEN_ICON_PATH);
@@ -148,14 +156,22 @@ public class AnahataNodeFactory implements NodeFactory {
             };
         }
 
-        /** {@inheritDoc} */
+        /** 
+         * {@inheritDoc} 
+         * <p>Attaches a file change listener to the project directory to ensure 
+         * the "Anahata" folder contents stay in sync with the filesystem.</p>
+         */
         @Override
         protected void addNotify() {
             projectDir.addFileChangeListener(fileChangeListener);
             refreshKeys();
         }
 
-        /** {@inheritDoc} */
+        /** 
+         * {@inheritDoc} 
+         * <p>Detaches listeners and clears keys to prevent memory leaks when the 
+         * node is no longer needed.</p>
+         */
         @Override
         protected void removeNotify() {
             projectDir.removeFileChangeListener(fileChangeListener);
@@ -183,7 +199,11 @@ public class AnahataNodeFactory implements NodeFactory {
             setKeys(mdFiles);
         }
 
-        /** {@inheritDoc} */
+        /** 
+         * {@inheritDoc} 
+         * <p>Maps files to their respective nodes, applying the {@link AnahataMdNode} 
+         * filter for the master {@code anahata.md} file.</p>
+         */
         @Override
         protected Node[] createNodes(FileObject key) {
             try {
@@ -222,14 +242,20 @@ public class AnahataNodeFactory implements NodeFactory {
             super(original);
         }
 
-        /** {@inheritDoc} */
+        /** 
+         * {@inheritDoc} 
+         * <p>Returns the dedicated Anahata branding icon for the {@code anahata.md} file.</p>
+         */
         @Override
         public Image getIcon(int type) {
             Image icon = ImageUtilities.loadImage(ANAHATA_ICON_PATH);
             return icon != null ? icon : super.getIcon(type);
         }
 
-        /** {@inheritDoc} */
+        /** 
+         * {@inheritDoc} 
+         * <p>Uses the same Anahata icon for the opened state of the file.</p>
+         */
         @Override
         public Image getOpenedIcon(int type) {
             return getIcon(type);
