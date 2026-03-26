@@ -23,9 +23,11 @@ import lombok.NoArgsConstructor;
 @Schema(description = "A container that groups fully resolved dependencies by scope in an ultra-compact format.")
 public class ResolvedDependencyScope {
     
+    /** The dependency scope (e.g., compile, test, provided). */
     @Schema(description = "The dependency scope (e.g., compile, test, provided).", example = "compile")
     private String scope;
     
+    /** The list of dependency groups belonging to this scope. */
     @Schema(description = "The list of dependency groups belonging to this scope.")
     private List<ResolvedDependencyGroup> groups;
 }

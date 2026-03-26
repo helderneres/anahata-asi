@@ -24,9 +24,11 @@ import lombok.NoArgsConstructor;
 @Schema(description = "A container that groups fully resolved artifacts by their common groupId in an ultra-compact format.")
 public class ResolvedDependencyGroup {
     
+    /** The common groupId for all artifacts in this group. */
     @Schema(description = "The common groupId for all artifacts in this group.", example = "org.apache.commons")
     private String id;
     
+    /** The list of compact artifact IDs (artifactId:version[:classifier][:type]) belonging to this group. */
     @Schema(description = "The list of compact artifact IDs (artifactId:version[:classifier][:type]) belonging to this group.", 
             example = "[\"commons-lang3:3.12.0\", \"commons-io:2.11.0\"]")
     private List<String> artifacts;
