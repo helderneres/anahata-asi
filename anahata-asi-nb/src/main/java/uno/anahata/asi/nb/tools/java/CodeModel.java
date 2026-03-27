@@ -19,7 +19,7 @@ import org.netbeans.spi.java.classpath.support.ClassPathSupport;
 import org.openide.filesystems.FileObject;
 import uno.anahata.asi.agi.tool.Page;
 import uno.anahata.asi.nb.resources.handle.NbHandle;
-import uno.anahata.asi.toolkit.Resources;
+import uno.anahata.asi.toolkit.resources.Resources;
 import uno.anahata.asi.agi.tool.AiTool;
 import uno.anahata.asi.agi.tool.AiToolException;
 import uno.anahata.asi.agi.tool.AiToolParam;

@@ -11,12 +11,12 @@ import javax.swing.JPanel;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import uno.anahata.asi.toolkit.files.LineComment;
-import uno.anahata.asi.toolkit.files.lines.AbstractLineEdit;
-import uno.anahata.asi.toolkit.files.lines.LineDeletion;
-import uno.anahata.asi.toolkit.files.lines.LineInsertion;
-import uno.anahata.asi.toolkit.files.lines.LineReplacement;
-import uno.anahata.asi.toolkit.files.lines.TextResourceLineEdits;
+import uno.anahata.asi.toolkit.resources.text.LineComment;
+import uno.anahata.asi.toolkit.resources.text.lines.AbstractLineEdit;
+import uno.anahata.asi.toolkit.resources.text.lines.LineDeletion;
+import uno.anahata.asi.toolkit.resources.text.lines.LineInsertion;
+import uno.anahata.asi.toolkit.resources.text.lines.LineReplacement;
+import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
 
 /**
  * A rich renderer for the next-generation {@link TextResourceLineEdits} tool parameters.

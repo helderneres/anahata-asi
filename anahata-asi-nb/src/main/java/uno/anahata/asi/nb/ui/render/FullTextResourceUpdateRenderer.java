@@ -2,8 +2,8 @@
 package uno.anahata.asi.nb.ui.render;
 
 import java.util.List;
-import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
-import uno.anahata.asi.toolkit.files.LineComment;
+import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
+import uno.anahata.asi.toolkit.resources.text.LineComment;
 
 /**
  * A rich renderer for {@link FullTextResourceUpdate} tool parameters.

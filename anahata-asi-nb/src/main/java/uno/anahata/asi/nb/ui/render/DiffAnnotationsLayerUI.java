@@ -28,7 +28,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.plaf.LayerUI;
 import javax.swing.text.Element;
 import org.openide.util.ImageUtilities;
-import uno.anahata.asi.toolkit.files.LineComment;
+import uno.anahata.asi.toolkit.resources.text.LineComment;
 
 /**
  * A highly specialized {@link LayerUI} designed to decorate NetBeans components—specifically 

@@ -47,8 +47,8 @@ import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRenderer;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.internal.SwingUtils;
-import uno.anahata.asi.toolkit.files.AbstractTextResourceWrite;
-import uno.anahata.asi.toolkit.files.LineComment;
+import uno.anahata.asi.toolkit.resources.text.AbstractTextResourceWrite;
+import uno.anahata.asi.toolkit.resources.text.LineComment;
 
 /**
  * Base class for rendering file write operations (full updates or surgical replacements)

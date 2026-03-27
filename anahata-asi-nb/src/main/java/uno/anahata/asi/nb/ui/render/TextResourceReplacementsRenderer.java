@@ -4,9 +4,9 @@ package uno.anahata.asi.nb.ui.render;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import uno.anahata.asi.toolkit.files.LineComment;
-import uno.anahata.asi.toolkit.files.TextResourceReplacements;
-import uno.anahata.asi.toolkit.files.TextReplacement;
+import uno.anahata.asi.toolkit.resources.text.LineComment;
+import uno.anahata.asi.toolkit.resources.text.TextReplacement;
+import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
 
 /**
  * A rich renderer for {@link TextResourceReplacements} tool parameters.
