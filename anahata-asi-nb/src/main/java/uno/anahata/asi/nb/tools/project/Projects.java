@@ -1,6 +1,4 @@
-/*
- * Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça!
- */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.tools.project;
 
 import java.beans.PropertyChangeEvent;
@@ -80,8 +78,10 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
     /** Flag indicating if the toolkit is currently listening for global IDE project changes. */
     private transient boolean listening = false;
 
-    /**
-     * Registers project providers.
+    /** 
+     * {@inheritDoc} 
+     * <p>Registers project providers and ensures the hierarchical context 
+     * is synchronized with the current IDE state.</p> 
      */
     @Override
     public void initialize() {
@@ -90,14 +90,12 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
     
     
     
-    /**
-     * Rebinds the toolkit to the current agi instance.
-     * <p>
-     * Overrides the base rebind logic to trigger a lazy initialization of all 
+    /** 
+     * {@inheritDoc} 
+     * <p>Overrides the base rebind logic to trigger a lazy initialization of all 
      * project child providers and fires a UI refresh for all open projects. 
      * This ensures that IDE annotations and context status are correctly 
-     * reflected immediately upon session start or restoration.
-     * </p>
+     * reflected immediately upon session start or restoration.</p> 
      */
     @Override
     public void rebind() {
@@ -116,14 +114,14 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
         }
     }
     
-    /**
-     * Returns the mandatory system instructions for managing Compile on Save.
-     * <p>
-     * Provides a Markdown-formatted guide on how to handle project property 
-     * overrides, explaining the priority of IDE configuration over POM properties.
-     * </p>
+    /** 
+     * {@inheritDoc} 
+     * <p>Provides a Markdown-formatted guide on how to handle Compile On Save 
+     * (CoS) project property overrides, explaining the priority of IDE 
+     * configuration over POM properties and detailing FQN/path resolution
+     * strategies for loading java types by fqn or path.</p> 
      * 
-     * @return A list containing the CoS management instructions.
+     * @return A list containing the project management instructions.
      * @throws Exception on internal error.
      */
     @Override
@@ -144,13 +142,10 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
     }
 
 
-    /**
-     * Populates the RAG message with a high-level overview of the IDE environment.
-     * <p>
-     * Injects a Markdown summary including the projects folder, available folders, 
-     * open projects, and the current main project. This allows the model to 
-     * understand the scope of the user's workspace.
-     * </p>
+    /** 
+     * {@inheritDoc} 
+     * <p>Populates the RAG message with a high-level overview of the IDE environment, 
+     * including project folders, open projects, and the main project selection.</p> 
      * 
      * @param ragMessage The target RAG message.
      */
@@ -779,13 +774,11 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
         }
     }
 
-    /**
-     * Returns the list of active project child providers.
-     * <p>
-     * Implements a lazy-initialization pattern. On the first call, it registers 
-     * as a listener for global IDE project state changes and synchronizes 
-     * the initial provider list.
-     * </p>
+    /** 
+     * {@inheritDoc} 
+     * <p>Returns the list of active project child providers, implementing a 
+     * lazy-initialization pattern that registers a global IDE project 
+     * state listener on the first call.</p> 
      * 
      * @return A list of context providers.
      */
@@ -800,7 +793,7 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
     }
 
     /**
-     * Syncs project context providers with currently open IDE projects.
+     * Synchronizes project context providers with currently open IDE projects.
      * <p>
      * Uses canonical paths to detect newly opened projects and stale 
      * providers for closed projects. It maintains the hierarchical context 
@@ -875,12 +868,11 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
         return fo.getPath();
     }
 
-    /**
-     * Listens for IDE global project state changes.
-     * <p>
-     * Triggers a synchronization of the context provider hierarchy whenever 
-     * projects are opened or closed in the IDE.
-     * </p>
+    /** 
+     * {@inheritDoc} 
+     * <p>Listens for IDE global project state changes and triggers a 
+     * synchronization of the context provider hierarchy whenever 
+     * projects are opened or closed.</p> 
      * 
      * @param evt The property change event from the IDE.
      */
