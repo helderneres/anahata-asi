@@ -22,9 +22,11 @@ import lombok.NoArgsConstructor;
 @Schema(description = "A container that groups declared artifacts by their common groupId.")
 public class DependencyGroup {
     
+    /** The common groupId for all artifacts in this group. */
     @Schema(description = "The common groupId for all artifacts in this group.", example = "org.apache.commons")
     private String id;
     
+    /** The list of declared artifacts belonging to this groupId. */
     @Schema(description = "The list of artifacts belonging to this group.")
     private List<DeclaredArtifact> artifacts;
 }
