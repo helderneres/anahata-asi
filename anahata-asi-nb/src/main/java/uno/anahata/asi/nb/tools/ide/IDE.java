@@ -1,4 +1,4 @@
-/* Licensed under the Apache License, Version 2.0 */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.tools.ide;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -109,6 +109,28 @@ public class IDE extends AnahataToolkit {
             @AiToolParam("The target view to select in.") SelectInTarget target) throws Exception {
         selectInStatic(path, target);
     }
+    
+        /**
+     * Gets a Markdown table of all open IDE windows.
+     * 
+     * @return a Markdown table string.
+     * @throws Exception if an error occurs.
+     */
+    @AiTool("Gets a Markdown table of all open IDE windows.")
+    public String getTopComponentsMarkdown() throws Exception {
+        return NetBeansTopComponents.getMarkdownReport();
+    }
+
+    /**
+     * Gets a Markdown report of all open output tabs, including tails.
+     * 
+     * @return a Markdown string.
+     * @throws Exception if an error occurs.
+     */
+    @AiTool("Gets a Markdown report of all open output tabs, including tails.")
+    public String getOutputTabsMarkdown() throws Exception {
+        return NetBeansOutput.getMarkdownReport();
+    }
 
     /**
      * Static implementation of the universal selection logic.
@@ -156,23 +178,5 @@ public class IDE extends AnahataToolkit {
         }
     }
 
-    /**
-     * Gets a Markdown table of all open IDE windows.
-     * @return a Markdown table string.
-     * @throws Exception if an error occurs.
-     */
-    @AiTool("Gets a Markdown table of all open IDE windows.")
-    public String getTopComponentsMarkdown() throws Exception {
-        return NetBeansTopComponents.getMarkdownReport();
-    }
 
-    /**
-     * Gets a Markdown report of all open output tabs, including tails.
-     * @return a Markdown string.
-     * @throws Exception if an error occurs.
-     */
-    @AiTool("Gets a Markdown report of all open output tabs, including tails.")
-    public String getOutputTabsMarkdown() throws Exception {
-        return NetBeansOutput.getMarkdownReport();
-    }
 }
