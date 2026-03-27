@@ -92,7 +92,7 @@ public final class AddProjectToContextAction extends AbstractAction implements C
         
         int count = projects.size();
         if (count == 0) {
-            JMenuItem item = new JMenuItem(NbBundle.getMessage(AddProjectToContextAction.class, "CTL_AddProjectToContextAction"));
+            JMenuItem item = new JMenuItem("Add Project to AGI Context");
             item.setEnabled(false);
             return item;
         }
@@ -105,7 +105,7 @@ public final class AddProjectToContextAction extends AbstractAction implements C
         final List<Project> finalProjects = projects;
 
         // 1. Option to create a new session
-        JMenuItem newAgiItem = new JMenuItem("Create new session...");
+        JMenuItem newAgiItem = new JMenuItem("Create new AGI...");
         newAgiItem.addActionListener(e -> {
             Agi newAgi = AnahataInstaller.getContainer().createNewAgi();
             
@@ -132,7 +132,7 @@ public final class AddProjectToContextAction extends AbstractAction implements C
         } else {
             // Add to all sessions option
             if (eligibleAgis.size() > 1) {
-                JMenuItem allItem = new JMenuItem("Add to all active sessions");
+                JMenuItem allItem = new JMenuItem("Add to all active AGIs");
                 allItem.addActionListener(e -> {
                     for (Agi agi : eligibleAgis) {
                         addProjectsToAgi(agi, finalProjects);

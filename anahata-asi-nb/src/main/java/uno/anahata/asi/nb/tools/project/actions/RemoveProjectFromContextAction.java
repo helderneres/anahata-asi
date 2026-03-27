@@ -90,7 +90,7 @@ public final class RemoveProjectFromContextAction extends AbstractAction impleme
         
         int count = projects.size();
         if (count == 0) {
-            JMenuItem item = new JMenuItem(NbBundle.getMessage(RemoveProjectFromContextAction.class, "CTL_RemoveProjectFromContextAction"));
+            JMenuItem item = new JMenuItem("Remove Project from AGI Context");
             item.setEnabled(false);
             return item;
         }
@@ -113,7 +113,7 @@ public final class RemoveProjectFromContextAction extends AbstractAction impleme
         } else {
             // Remove from all sessions option
             if (eligibleAgis.size() > 1) {
-                JMenuItem allItem = new JMenuItem("Remove from all active sessions");
+                JMenuItem allItem = new JMenuItem("Remove from all active AGIs");
                 allItem.addActionListener(e -> {
                     for (Agi agi : eligibleAgis) {
                         removeProjectsFromAgi(agi, finalProjects);
