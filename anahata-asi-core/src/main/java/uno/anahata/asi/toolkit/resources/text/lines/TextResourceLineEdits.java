@@ -1,11 +1,11 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.toolkit.files.lines;
+package uno.anahata.asi.toolkit.resources.text.lines;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import uno.anahata.asi.toolkit.files.AbstractTextResourceWrite;
+import uno.anahata.asi.toolkit.resources.text.AbstractTextResourceWrite;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

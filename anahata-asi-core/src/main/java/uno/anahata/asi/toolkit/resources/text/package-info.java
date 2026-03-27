@@ -7,4 +7,4 @@
  * full content updates and line-based surgical replacements.
  * </p>
  */
-package uno.anahata.asi.toolkit.files;
+package uno.anahata.asi.toolkit.resources.text;

@@ -15,13 +15,13 @@ import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
 import uno.anahata.asi.agi.provider.AbstractAgiProvider;
 import uno.anahata.asi.agi.resource.handle.PathHandle;
 import uno.anahata.asi.agi.resource.handle.ResourceHandle;
-import uno.anahata.asi.toolkit.Resources;
+import uno.anahata.asi.toolkit.resources.Resources;
 import uno.anahata.asi.agi.resource.handle.UrlHandle;
 import uno.anahata.asi.toolkit.Audio;
 import uno.anahata.asi.toolkit.History;
 import uno.anahata.asi.toolkit.Session;
 import uno.anahata.asi.toolkit.Java;
-import uno.anahata.asi.toolkit.Shell;
+import uno.anahata.asi.toolkit.shell.Shell;
 
 /**
  * The definitive configuration blueprint for an individual Agi session.

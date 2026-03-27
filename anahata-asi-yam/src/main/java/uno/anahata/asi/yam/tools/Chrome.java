@@ -40,7 +40,7 @@ import uno.anahata.asi.agi.tool.AiTool;
 import uno.anahata.asi.agi.tool.AiToolParam;
 import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
-import uno.anahata.asi.toolkit.Shell;
+import uno.anahata.asi.toolkit.shell.Shell;
 import uno.anahata.asi.toolkit.shell.ShellExecutionResult;
 
 /**

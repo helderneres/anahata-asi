@@ -19,7 +19,7 @@ import uno.anahata.asi.swing.icons.IconProvider;
 import uno.anahata.asi.swing.toolkit.Screens;
 import uno.anahata.asi.swing.toolkit.SwingJava;
 import uno.anahata.asi.toolkit.Java;
-import uno.anahata.asi.toolkit.files.FullTextFileCreate;
+import uno.anahata.asi.toolkit.resources.text.FullTextFileCreate;
 import uno.anahata.asi.yam.tools.Chrome;
 import uno.anahata.asi.yam.tools.Radio;
 import uno.anahata.asi.yam.tools.Speech;

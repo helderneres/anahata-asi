@@ -1,5 +1,5 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.toolkit.files.lines;
+package uno.anahata.asi.toolkit.resources.text.lines;
 
 import java.io.Serializable;
 import java.util.Comparator;

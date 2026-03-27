@@ -20,7 +20,7 @@ import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.resources.view.AbstractTextResourceViewer;
 import uno.anahata.asi.swing.agi.resources.ResourceUI;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
-import uno.anahata.asi.toolkit.files.FullTextFileCreate;
+import uno.anahata.asi.toolkit.resources.text.FullTextFileCreate;
 
 /**
  * A unified, strategy-driven renderer for file creation operations.

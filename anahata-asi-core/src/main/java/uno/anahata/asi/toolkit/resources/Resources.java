@@ -1,5 +1,5 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.toolkit;
+package uno.anahata.asi.toolkit.resources;
 
 import uno.anahata.asi.agi.resource.view.TextViewportSettings;
 import uno.anahata.asi.agi.resource.view.TextView;
@@ -21,10 +21,10 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.tool.AiToolParam;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.resource.ResourceManager;
-import uno.anahata.asi.toolkit.files.FullTextFileCreate;
-import uno.anahata.asi.toolkit.files.FullTextResourceUpdate;
-import uno.anahata.asi.toolkit.files.TextResourceReplacements;
-import uno.anahata.asi.toolkit.files.lines.TextResourceLineEdits;
+import uno.anahata.asi.toolkit.resources.text.FullTextFileCreate;
+import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
+import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
+import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
 
 /**
  * The definitive V2 URI-centric toolkit for managed multimodal resources.
