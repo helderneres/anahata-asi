@@ -106,7 +106,7 @@
         
         <!-- 
             CRITICAL: flexmark and jsoup versions MUST match the versions 
-            bundled with the target NetBeans release (currently NB 28).
+            bundled with the target NetBeans release (currently NB 29).
             Mismatches cause MethodNotFound errors in the IDE logs.
         -->
         <flexmark.version>0.64.8</flexmark.version>
