@@ -576,8 +576,6 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
     }
 
     /**
-     * Testing manual edit
-     * 
      * Injects custom client properties into the NetBeans component tree.
      * This method recursively scans the visualizer to enable the merger UI 
      * and sets the editability of the proposed side editor based on its 
