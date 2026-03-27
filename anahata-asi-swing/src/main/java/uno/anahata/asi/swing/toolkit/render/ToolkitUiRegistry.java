@@ -1,6 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.toolkit.render;
 
+import uno.anahata.asi.swing.toolkit.radio.RadioRenderer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
