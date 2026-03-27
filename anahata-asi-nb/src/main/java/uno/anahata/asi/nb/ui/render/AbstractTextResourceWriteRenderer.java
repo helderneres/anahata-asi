@@ -21,6 +21,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JLayer;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
@@ -397,17 +398,9 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
                         Dimension d = super.getPreferredSize();
                         // Index 1 is usually the 'Textual' tab in the NetBeans Diff Viewer
                         if (tabs != null && tabs.getSelectedIndex() == 1) {
-                            Component textualTab = tabs.getComponentAt(1);
-                            log.info("Found textualTab " + textualTab);
-                            if (textualTab instanceof Container cont) {
-                                JEditorPane pane = SwingUtils.findComponent(cont, JEditorPane.class);
-                                log.info("Found editor pane " + pane);
-                                if (pane != null) {
-                                    int lineCount = pane.getDocument().getDefaultRootElement().getElementCount();
-                                    int lineHeight = pane.getFontMetrics(pane.getFont()).getHeight();
-                                    // Height = lines * height + margin for headers/tabs
-                                    return new Dimension(d.width, (lineCount * lineHeight) + 120);
-                                }
+                            int textualHeight = configureTextualTabWithEditorPrefHeight();
+                            if (textualHeight > 0) {
+                                return new Dimension(d.width, textualHeight);
                             }
                         }
                         return new Dimension(d.width, Math.min(d.height, 800));
@@ -597,6 +590,50 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
                 fixSplitPane(child);
             }
         }
+    }
+
+    /**
+     * Configures the textual tab by using the JEditorPane's reported preferred size.
+     * This method also disables internal vertical scrollbars to let the conversation
+     * handle the vertical flow.
+     * 
+     * @return The preferred height, or -1 if components are missing.
+     */
+    private int configureTextualTabWithEditorPrefHeight() {
+        if (tabs == null || tabs.getTabCount() < 2) return -1;
+        Component textualTab = tabs.getComponentAt(1);
+        if (textualTab instanceof Container cont) {
+            JScrollPane scroll = SwingUtils.findComponent(cont, JScrollPane.class);
+            if (scroll != null && scroll.getViewport().getView() instanceof JEditorPane pane) {
+                scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+                scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+                return pane.getPreferredSize().height + 50; 
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Configures the textual tab by manually calculating the height based on 
+     * font metrics and document line count. This method also disables internal
+     * vertical scrollbars.
+     * 
+     * @return The calculated height, or -1 if components are missing.
+     */
+    private int configureTextualTabWithCalculatedEditorHeight() {
+        if (tabs == null || tabs.getTabCount() < 2) return -1;
+        Component textualTab = tabs.getComponentAt(1);
+        if (textualTab instanceof Container cont) {
+            JScrollPane scroll = SwingUtils.findComponent(cont, JScrollPane.class);
+            if (scroll != null && scroll.getViewport().getView() instanceof JEditorPane pane) {
+                scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+                scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+                int lineCount = pane.getDocument().getDefaultRootElement().getElementCount();
+                int lineHeight = pane.getFontMetrics(pane.getFont()).getHeight();
+                return (lineCount * lineHeight) + 50; 
+            }
+        }
+        return -1;
     }
 
     /**
