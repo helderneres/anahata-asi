@@ -65,6 +65,7 @@ public final class NetBeansOutput {
                     sb.append(String.format("- **ID**: %d\n", tab.getId()));
                     sb.append(String.format("- **Lines**: %d\n", tab.getTotalLines()));
                     sb.append(String.format("- **Running**: %s\n\n", tab.isRunning()));
+                    sb.append(String.format("- **Last 20 lines**:\n", tab.isRunning()));
                     
                     String tail = getTabTailStatic(tab.getId(), 20);
                     if (!tail.isBlank()) {
