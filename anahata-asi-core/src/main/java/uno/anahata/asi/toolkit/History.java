@@ -206,7 +206,7 @@ public class History extends AnahataToolkit {
                 count++;
             }
         }
-        return "Updated " + count + " message(s). Remember to disable metadata injection when finished.";
+        return "Updated " + count + " message(s).";
     }
 
     /**
@@ -236,7 +236,7 @@ public class History extends AnahataToolkit {
                 }
             }
         }
-        return "Updated " + count + " part(s). Remember to disable metadata injection when finished.";
+        return "Updated " + count + " part(s).";
     }
 
     /**
