@@ -17,12 +17,14 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Represents a declared artifact in a compact format.")
 public class DeclaredArtifact {
 
+    /** The compact artifact identity string (e.g., 'groupId:artifactId:version'). */
     @Schema(
         description = "A compact string representing the artifact's coordinates in the format 'artifactId:version[:classifier][:type]'. Classifier and type are omitted if not present.", 
         example = "guava:33.4.8-jre"
     )
     private String id;
 
+    /** The list of dependency exclusions in 'groupId:artifactId' format. */
     @Schema(
         description = "A list of exclusions for this dependency, with each exclusion represented as a compact 'groupId:artifactId' string. This field will be null if there are no exclusions.",
         example = "[\"org.springframework.boot:spring-boot-starter-tomcat\"]"
