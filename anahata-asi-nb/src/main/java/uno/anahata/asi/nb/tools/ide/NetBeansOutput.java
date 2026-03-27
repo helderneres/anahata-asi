@@ -6,15 +6,15 @@ import java.awt.Container;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.swing.JEditorPane;
+import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
-import uno.anahata.asi.agi.resource.view.TextViewport;
-import uno.anahata.asi.agi.resource.view.TextViewportSettings;
 import uno.anahata.asi.swing.internal.SwingUtils;
 
 /**
@@ -44,7 +44,7 @@ public final class NetBeansOutput {
      */
     public static String getMarkdownReport() throws Exception {
         long start = System.currentTimeMillis();
-        final StringBuilder sb = new StringBuilder(" Open Output Tabs\n");
+        final StringBuilder sb = new StringBuilder("### Open Output Tabs\n\n");
         
         SwingUtils.runInEDTAndWait(() -> {
             TopComponent outputTC = WindowManager.getDefault().findTopComponent("output");
@@ -61,29 +61,19 @@ public final class NetBeansOutput {
             } else {
                 for (OutputTabInfo tab : tabs) {
                     String cleanName = tab.getDisplayName().replaceAll("<[^>]*>", "");
-                    sb.append(String.format("%s (ID: %d, Lines: %d, Running: %s)\n", 
-                            cleanName, tab.getId(), tab.getTotalLines(), tab.isRunning()));
+                    sb.append(String.format("#### %s\n", cleanName));
+                    sb.append(String.format("- **ID**: %d\n", tab.getId()));
+                    sb.append(String.format("- **Lines**: %d\n", tab.getTotalLines()));
+                    sb.append(String.format("- **Running**: %s\n\n", tab.isRunning()));
                     
-                    // Get tail content directly while on EDT
-                    findTextComponentById(tab.getId()).ifPresent(textComp -> {
-                        String text = textComp.getText();
-                        if (text != null && !text.isBlank()) {
-                            TextViewport viewport = new TextViewport();
-                            viewport.setSettings(TextViewportSettings.builder()
-                                    .tail(true)
-                                    .tailLines(20)
-                                    .columnWidth(512)
-                                    .build());
-                            /*
-                            viewport.process(text);
-                            sb.append("```text\n").append(viewport.getProcessedText()).append("\n```\n");
-                            */
-                        }
-                    });
+                    String tail = getTabTailStatic(tab.getId(), 20);
+                    if (!tail.isBlank()) {
+                        sb.append("```text\n").append(tail).append("\n```\n\n");
+                    }
                 }
             }
         });
-        log.info("Output Tabs Markdown report generated in {}ms (including EDT wait)", System.currentTimeMillis() - start);
+        log.info("Output Tabs Markdown report generated in {}ms", System.currentTimeMillis() - start);
         return sb.toString();
     }
 
@@ -102,7 +92,7 @@ public final class NetBeansOutput {
                 findOutputTabsRecursive(outputTC, tabInfos);
             }
         });
-        log.info("Gathered info for {} output tabs in {}ms (including EDT wait)", tabInfos.size(), System.currentTimeMillis() - start);
+        log.info("Gathered info for {} output tabs in {}ms", tabInfos.size(), System.currentTimeMillis() - start);
         return tabInfos;
     }
 
@@ -122,6 +112,40 @@ public final class NetBeansOutput {
         if (sb.length() == 0) {
             throw new Exception("Output tab not found or empty: " + id);
         }
+        return sb.toString();
+    }
+
+    /**
+     * Retrieves the last few lines of text from a specific output tab efficiently.
+     * <p>
+     * Instead of retrieving the entire document text, this method only extracts the 
+     * end of the document to minimize memory pressure.
+     * </p>
+     * 
+     * @param id The tab identifier.
+     * @param maxLines The maximum number of lines to retrieve.
+     * @return The tail of the output content, or an empty string if not found or empty.
+     */
+    public static String getTabTailStatic(long id, int maxLines) {
+        final StringBuilder sb = new StringBuilder();
+        findTextComponentById(id).ifPresent(textComp -> {
+            try {
+                Document doc = textComp.getDocument();
+                int length = doc.getLength();
+                int maxChars = 2048; // Sufficient for 20-50 lines
+                int offset = Math.max(0, length - maxChars);
+                String text = doc.getText(offset, length - offset);
+                
+                if (text != null && !text.isBlank()) {
+                    List<String> lines = text.lines().collect(Collectors.toList());
+                    int count = lines.size();
+                    int skip = Math.max(0, count - maxLines);
+                    sb.append(lines.stream().skip(skip).collect(Collectors.joining("\n")));
+                }
+            } catch (Exception e) {
+                log.error("Failed to extract tail for output tab " + id, e);
+            }
+        });
         return sb.toString();
     }
 
