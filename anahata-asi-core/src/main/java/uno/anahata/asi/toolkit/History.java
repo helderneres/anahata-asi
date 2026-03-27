@@ -196,10 +196,6 @@ public class History extends AnahataToolkit {
             @AiToolParam("The x-anahata-message-id of the messages to update.") List<Long> messageIds,
             @AiToolParam("The new pruning state.") PruningState newState) {
 
-        if (!getAgi().getRequestConfig().isInjectInbandMetadata()) {
-            throw new AiToolException("In-band metadata injection is not currently enabled. You must enable it first to see the IDs.");
-        }
-
         List<AbstractMessage> history = getAgi().getContextManager().getHistory();
         int count = 0;
         for (AbstractMessage msg : history) {
@@ -234,10 +230,6 @@ public class History extends AnahataToolkit {
     public String setPartPruningState(
             @AiToolParam("The x-anahata-part-id of the parts to update.") List<Long> partIds,
             @AiToolParam("The new pruning state.") PruningState newState) {
-
-        if (!getAgi().getRequestConfig().isInjectInbandMetadata()) {
-            throw new AiToolException("In-band metadata injection is not currently enabled. You must enable it first to see the IDs.");
-        }
 
         List<AbstractMessage> history = getAgi().getContextManager().getHistory();
         int count = 0;
