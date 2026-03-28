@@ -398,7 +398,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
                         Dimension d = super.getPreferredSize();
                         // Index 1 is usually the 'Textual' tab in the NetBeans Diff Viewer
                         if (tabs != null && tabs.getSelectedIndex() == 1) {
-                            int textualHeight = configureTextualTabWithEditorPrefHeight();
+                            int textualHeight = configureTextualTabWithCalculatedEditorHeight();
                             if (textualHeight > 0) {
                                 return new Dimension(d.width, textualHeight);
                             }
