@@ -19,7 +19,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.swing.icons.DeleteIcon;
 import uno.anahata.asi.swing.icons.CancelIcon;
@@ -39,7 +39,7 @@ public abstract class AbstractAsiContainerPanel extends JPanel implements AgiCon
 
     /** The application-wide ASI container. */
     @Getter
-    protected final AsiContainer asiContainer;
+    protected final AbstractAsiContainer asiContainer;
     
     /** The controller for handling session actions. */
     @Getter @Setter
@@ -60,7 +60,7 @@ public abstract class AbstractAsiContainerPanel extends JPanel implements AgiCon
      * 
      * @param container The ASI container.
      */
-    public AbstractAsiContainerPanel(@NonNull AsiContainer container) {
+    public AbstractAsiContainerPanel(@NonNull AbstractAsiContainer container) {
         this.asiContainer = container;
         
         // 1. Setup Toolbar

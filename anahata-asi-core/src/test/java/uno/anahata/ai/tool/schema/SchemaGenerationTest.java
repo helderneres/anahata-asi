@@ -23,7 +23,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.ai.tool.MockAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
@@ -43,7 +43,7 @@ public class SchemaGenerationTest {
 
     @BeforeAll
     public static void setUp() {
-        AsiContainer container = new MockAsiContainer("test-app");
+        AbstractAsiContainer container = new MockAsiContainer("test-app");
         AgiConfig config = new AgiConfig(container, "test-session");
         Agi agi = new Agi(config);
         toolManager = agi.getToolManager();

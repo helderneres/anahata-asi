@@ -11,7 +11,7 @@ import java.util.function.Consumer;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.internal.TikaUtils;
@@ -173,7 +173,7 @@ public class ToolContext {
      *
      * @return The container-scoped attributes map.
      */
-    public AsiContainer getAsiContainer() {
+    public AbstractAsiContainer getAsiContainer() {
         return getAgi().getConfig().getContainer();
     }
 
@@ -304,7 +304,7 @@ public class ToolContext {
      * @return The application-scoped attributes map.
      */
     public Map getApplicationMap() {
-        return AsiContainer.applicationAttributes;
+        return AbstractAsiContainer.applicationAttributes;
     }
 
     /**

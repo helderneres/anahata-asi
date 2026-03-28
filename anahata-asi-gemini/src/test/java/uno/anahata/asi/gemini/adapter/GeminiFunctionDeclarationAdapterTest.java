@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.ai.tool.MockAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
@@ -132,7 +132,7 @@ public class GeminiFunctionDeclarationAdapterTest {
     }
 
     private AbstractTool<?, ?> getTool(String methodName, boolean wrap) throws Exception {
-        AsiContainer container = new MockAsiContainer("test");
+        AbstractAsiContainer container = new MockAsiContainer("test");
         AgiConfig config = new AgiConfig(container) {
             @Override public List<Class<?>> getToolClasses() { return List.of(TestToolkit.class); }
         };

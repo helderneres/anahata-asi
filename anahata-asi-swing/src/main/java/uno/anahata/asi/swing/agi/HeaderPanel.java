@@ -11,7 +11,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.AgiConfig;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -235,7 +235,7 @@ public class HeaderPanel extends JPanel {
             // 2. Open File Chooser for manual "Save As"
             SwingUtilities.invokeLater(() -> {
                 AgiConfig config = agi.getConfig();
-                AsiContainer container = config.getContainer();
+                AbstractAsiContainer container = config.getContainer();
                 Path savedDir = container.getSavedSessionsDir();
                 
                 String nickname = agi.getNickname();

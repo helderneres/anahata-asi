@@ -9,13 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.table.AbstractTableModel;
 import lombok.NonNull;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.status.AgiStatus;
 
 /**
  * A reusable table model for displaying active AI agi sessions.
- * This model tracks the {@link AsiContainer} and provides real-time updates
+ * This model tracks the {@link AbstractAsiContainer} and provides real-time updates
  * on session status, message count, and context usage.
  * 
  * @author gemini-3-flash-preview
@@ -27,7 +27,7 @@ public class AgisTableModel extends AbstractTableModel {
     /** The localized column names for the table. */
     private final String[] columnNames = {"Nickname", "ID", "Status", "Msgs", "Context %"};
     /** The container configuration providing session data. */
-    private final AsiContainer asiConfig;
+    private final AbstractAsiContainer asiConfig;
     /** The listener for changes in the container's session list. */
     private final PropertyChangeListener asiListener = this::handleAsiChange;
 
@@ -47,7 +47,7 @@ public class AgisTableModel extends AbstractTableModel {
      * 
      * @param asiConfig The container to track.
      */
-    public AgisTableModel(@NonNull AsiContainer asiConfig) {
+    public AgisTableModel(@NonNull AbstractAsiContainer asiConfig) {
         this.asiConfig = asiConfig;
         refresh();
         asiConfig.addPropertyChangeListener(asiListener);
@@ -126,7 +126,7 @@ public class AgisTableModel extends AbstractTableModel {
     }
 
     /**
-     * Refreshes the table model by synchronizing with the {@link AsiContainer}.
+     * Refreshes the table model by synchronizing with the {@link AbstractAsiContainer}.
      */
     public final void refresh() {
         List<Agi> activeAgis = asiConfig.getActiveAgis();

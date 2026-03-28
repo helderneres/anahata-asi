@@ -291,7 +291,7 @@ public class CodeModel extends AnahataToolkit {
     @AiTool("Recursively searches for all subtypes (implementations and subclasses) of a given JavaType.")
     public JavaHierarchyNode getSubtypes(
             @AiToolParam("The keychain DTO for the starting type.") JavaType javaType,
-            @AiToolParam(value = "The maximum depth to recurse. Defaults to 3.", required = false) Integer maxDepth) throws Exception {
+            @AiToolParam(value = "The maximum depth to recurse. Defaults to 3 if null.", required = false) Integer maxDepth) throws Exception {
         return new JavaSubtypeSearch(javaType, maxDepth != null ? maxDepth : 3).getRootNode();
     }
 

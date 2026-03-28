@@ -4,7 +4,7 @@
 package uno.anahata.asi.standalone.swing;
 
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.gemini.GeminiAgiProvider;
 import uno.anahata.asi.swing.agi.SwingAgiConfig;
 
@@ -27,7 +27,7 @@ public class StandaloneAgiConfig extends SwingAgiConfig {
      * 
      * @param asiConfig The parent ASI container.
      */
-    public StandaloneAgiConfig(AsiContainer asiConfig) {
+    public StandaloneAgiConfig(AbstractAsiContainer asiConfig) {
         super(asiConfig);
     }
 
@@ -37,7 +37,7 @@ public class StandaloneAgiConfig extends SwingAgiConfig {
      * @param asiConfig The parent ASI container.
      * @param sessionId The unique ID of the session being restored.
      */
-    public StandaloneAgiConfig(AsiContainer asiConfig, String sessionId) {
+    public StandaloneAgiConfig(AbstractAsiContainer asiConfig, String sessionId) {
         super(asiConfig, sessionId);
         log.info("StandaloneAgiConfig registering: {}", GeminiAgiProvider.class);
     }

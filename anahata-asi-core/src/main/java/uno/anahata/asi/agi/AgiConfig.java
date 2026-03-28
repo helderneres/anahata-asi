@@ -10,7 +10,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
 import uno.anahata.asi.agi.provider.AbstractAgiProvider;
 import uno.anahata.asi.agi.resource.handle.PathHandle;
@@ -40,7 +40,7 @@ public class AgiConfig extends BasicPropertyChangeSource {
 
     /** A reference to the global, application-wide configuration. */
     @NonNull
-    private transient AsiContainer container;
+    private transient AbstractAsiContainer container;
 
     /** The unique identifier for this specific agi session. */
     @NonNull
@@ -75,7 +75,7 @@ public class AgiConfig extends BasicPropertyChangeSource {
      * 
      * @param asiConfig The global AI configuration.
      */
-    public AgiConfig(@NonNull AsiContainer asiConfig) {
+    public AgiConfig(@NonNull AbstractAsiContainer asiConfig) {
         this(asiConfig, UUID.randomUUID().toString());
     }
 
@@ -85,7 +85,7 @@ public class AgiConfig extends BasicPropertyChangeSource {
      * @param asiConfig The global AI configuration.
      * @param sessionId The unique session ID.
      */
-    public AgiConfig(@NonNull AsiContainer asiConfig, @NonNull String sessionId) {
+    public AgiConfig(@NonNull AbstractAsiContainer asiConfig, @NonNull String sessionId) {
         this.container = asiConfig;
         this.sessionId = sessionId;
     }
@@ -95,7 +95,7 @@ public class AgiConfig extends BasicPropertyChangeSource {
      * 
      * @param container The AsiContainer to bind to.
      */
-    public void rebind(@NonNull AsiContainer container) {
+    public void rebind(@NonNull AbstractAsiContainer container) {
         this.container = container;
     }
 

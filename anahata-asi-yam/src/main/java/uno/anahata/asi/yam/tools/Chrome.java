@@ -32,7 +32,7 @@ import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.internal.OsUtils;
 import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.persistence.Rebindable;
@@ -299,7 +299,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
         }
         
         File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
-        File screenshotDir = AsiContainer.getWorkDirSubDir("screenshots").toFile();
+        File screenshotDir = AbstractAsiContainer.getWorkDirSubDir("screenshots").toFile();
         File destFile = new File(screenshotDir, name + ".png");
         
         Files.copy(srcFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);

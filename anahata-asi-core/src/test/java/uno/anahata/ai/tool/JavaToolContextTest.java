@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
@@ -32,7 +32,7 @@ public class JavaToolContextTest {
 
     @BeforeEach
     public void setup() {
-        AsiContainer container = new MockAsiContainer("test-app");
+        AbstractAsiContainer container = new MockAsiContainer("test-app");
         AgiConfig config = new AgiConfig(container);
         config.getToolClasses().add(MockToolkit.class); // Explicitly register for the test
         agi = new Agi(config);

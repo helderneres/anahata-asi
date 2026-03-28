@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 
 /**
  * The abstract base class for all AI model providers, now with model caching.
@@ -146,7 +146,7 @@ public abstract class AbstractAgiProvider {
      * @return The path to the provider's directory.
      */
     public Path getProviderDirectory() {
-        return AsiContainer.getWorkDirSubDir(providerId);
+        return AbstractAsiContainer.getWorkDirSubDir(providerId);
     }
     
     public Path getKeysFilePath() {

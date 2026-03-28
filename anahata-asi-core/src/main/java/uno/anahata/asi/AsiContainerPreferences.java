@@ -40,7 +40,7 @@ public class AsiContainerPreferences {
      *
      * @param config The application-wide configuration, used to determine the correct storage location.
      */
-    public synchronized void save(AsiContainer config) {
+    public synchronized void save(AbstractAsiContainer config) {
         Path preferencesFile = getPreferencesFile(config);
         Path tmpFile = preferencesFile.resolveSibling(PREFERENCES_FILE_NAME + ".tmp");
         
@@ -77,7 +77,7 @@ public class AsiContainerPreferences {
      * @param config The application-wide configuration.
      * @return The loaded AsiContainerPreferences object, or a new empty one if not found or on error.
      */
-    public static synchronized AsiContainerPreferences load(AsiContainer config) {
+    public static synchronized AsiContainerPreferences load(AbstractAsiContainer config) {
         Path preferencesFile = getPreferencesFile(config);
         if (Files.exists(preferencesFile)) {
             log.info("Loading preferences from {}", preferencesFile);
@@ -93,7 +93,7 @@ public class AsiContainerPreferences {
         return new AsiContainerPreferences();
     }
 
-    private static Path getPreferencesFile(AsiContainer config) {
+    private static Path getPreferencesFile(AbstractAsiContainer config) {
         Path appWorkDir = config.getAppDir();
         return appWorkDir.resolve(PREFERENCES_FILE_NAME);
     }

@@ -1,6 +1,6 @@
 package uno.anahata.asi.standalone;
 
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.standalone.swing.StandaloneAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.cli.Cli;
@@ -17,7 +17,7 @@ public class CliMain {
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "info");
         System.out.println("Starting Anahata AI Standalone...");
 
-        AsiContainer appConfig = new StandaloneAsiContainer(args);
+        AbstractAsiContainer appConfig = new StandaloneAsiContainer(args);
         GeminiCliAgiConfig agiConfig = new GeminiCliAgiConfig(appConfig);
         
         // The AgiConfig now needs the provider to be explicitly added.

@@ -1,7 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb;
 
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.gemini.GeminiAgiProvider;
 import uno.anahata.asi.nb.mine.NetBeansIconProvider;
 import uno.anahata.asi.nb.tools.ide.Refactor;
@@ -56,7 +56,7 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
      * Constructs a new NetBeansAgiConfig.
      * @param asiConfig The global AI configuration.
      */
-    public NetBeansAgiConfig(AsiContainer asiConfig) {
+    public NetBeansAgiConfig(AbstractAsiContainer asiConfig) {
         super(asiConfig);
     }
 
@@ -65,7 +65,7 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
      * @param asiConfig The global AI configuration.
      * @param sessionId The unique session ID.
      */
-    public NetBeansAgiConfig(AsiContainer asiConfig, String sessionId) {
+    public NetBeansAgiConfig(AbstractAsiContainer asiConfig, String sessionId) {
         super(asiConfig, sessionId);
     }
 

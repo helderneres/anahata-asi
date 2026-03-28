@@ -20,7 +20,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import uno.anahata.asi.AiExecutors;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.context.ContextManager;
 import uno.anahata.asi.agi.message.AbstractMessage;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
@@ -232,7 +232,7 @@ public class Agi extends BasicPropertyChangeSource {
      *
      * @param container The AsiContainer to bind to.
      */
-    public void bindToContainer(@NonNull AsiContainer container) {
+    public void bindToContainer(@NonNull AbstractAsiContainer container) {
         log.info("Rebinding agi session {} to container {}", config.getSessionId(), container.getHostApplicationId());
         // Re-initialize transient fields that require external context (like the container)
         this.config.rebind(container);

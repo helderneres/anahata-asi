@@ -5,7 +5,7 @@ import java.beans.PropertyChangeListener;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.nb.annotation.AnahataAnnotationProvider;
@@ -32,7 +32,7 @@ import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
  * @author anahata
  */
 @Slf4j
-public class NetBeansAsiContainer extends AsiContainer {
+public class NetBeansAsiContainer extends AbstractAsiContainer {
 
     static {
         log.info("Performing global NetBeans environment configuration...");

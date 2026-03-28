@@ -7,7 +7,7 @@ import java.awt.Color;
 import java.awt.Font;
 import lombok.Getter;
 import lombok.Setter;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.agi.message.Role;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
@@ -69,7 +69,7 @@ public class SwingAgiConfig extends AgiConfig {
      * 
      * @param aiConfig The global AI configuration.
      */
-    public SwingAgiConfig(AsiContainer aiConfig) {
+    public SwingAgiConfig(AbstractAsiContainer aiConfig) {
         super(aiConfig);
     }
 
@@ -79,7 +79,7 @@ public class SwingAgiConfig extends AgiConfig {
      * @param aiConfig The global AI configuration.
      * @param sessionId The unique session ID.
      */
-    public SwingAgiConfig(AsiContainer aiConfig, String sessionId) {
+    public SwingAgiConfig(AbstractAsiContainer aiConfig, String sessionId) {
         super(aiConfig, sessionId);
     }
 

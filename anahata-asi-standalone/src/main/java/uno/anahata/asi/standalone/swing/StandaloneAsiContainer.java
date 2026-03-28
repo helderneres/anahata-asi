@@ -3,7 +3,7 @@
  */
 package uno.anahata.asi.standalone.swing;
 
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.cli.CommandLineArgs;
@@ -12,14 +12,14 @@ import uno.anahata.asi.swing.agi.resources.DefaultResourceUI;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 
 /**
- * A specialized {@link AsiContainer} for the standalone Swing application.
+ * A specialized {@link AbstractAsiContainer} for the standalone Swing application.
  * It handles the storage and parsing of command-line arguments to configure
  * initial agi sessions.
  * 
  * @author anahata
  */
 @Slf4j
-public class StandaloneAsiContainer extends AsiContainer {
+public class StandaloneAsiContainer extends AbstractAsiContainer {
     
     static {
         log.info("Performing global Standalone environment configuration...");

@@ -7,7 +7,7 @@ import java.util.logging.Logger;
 import org.openide.modules.ModuleInstall;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.swing.internal.SwingUtils;
 
 /**
@@ -25,13 +25,13 @@ public class AnahataInstaller extends ModuleInstall {
     private static final Logger log = Logger.getLogger(AnahataInstaller.class.getName());
     
     /** The singleton container instance. */
-    private static AsiContainer container;
+    private static AbstractAsiContainer container;
 
     /**
      * Gets the global ASI container for NetBeans.
      * @return The container instance.
      */
-    public static synchronized AsiContainer getContainer() {
+    public static synchronized AbstractAsiContainer getContainer() {
         if (container == null) {
             container = new NetBeansAsiContainer();
         }

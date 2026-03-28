@@ -18,7 +18,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableRowSorter;
 import lombok.NonNull;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.status.AgiStatus;
 import uno.anahata.asi.swing.agi.SwingAgiConfig;
@@ -40,7 +40,7 @@ public class AsiTableContainerPanel extends AbstractAsiContainerPanel {
      * 
      * @param container The ASI container.
      */
-    public AsiTableContainerPanel(@NonNull AsiContainer container) {
+    public AsiTableContainerPanel(@NonNull AbstractAsiContainer container) {
         super(container);
         
         this.model = new AgisTableModel(container);

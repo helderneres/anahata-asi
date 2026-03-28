@@ -1,7 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.gemini;
 
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.AgiConfig;
 
 /**
@@ -12,7 +12,7 @@ import uno.anahata.asi.agi.AgiConfig;
  * @author anahata-gemini-pro-2.5
  */
 public class GeminiCliAgiConfig extends AgiConfig {
-    public GeminiCliAgiConfig(AsiContainer aiConfig) {
+    public GeminiCliAgiConfig(AbstractAsiContainer aiConfig) {
         super(aiConfig, "gemini-cli-session");
         // Register the provider that this module implements
         getProviderClasses().add(GeminiAgiProvider.class);

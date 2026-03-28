@@ -11,7 +11,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.agi.tool.spi.java.JavaMethodTool;
@@ -30,7 +30,7 @@ public class JavaMethodToolTest {
 
     @BeforeAll
     public static void setUp() {
-        AsiContainer container = new MockAsiContainer("test-app");
+        AbstractAsiContainer container = new MockAsiContainer("test-app");
         AgiConfig config = new AgiConfig(container, "test-session");
         config.getToolClasses().add(MockToolkit.class);
         agi = new Agi(config);

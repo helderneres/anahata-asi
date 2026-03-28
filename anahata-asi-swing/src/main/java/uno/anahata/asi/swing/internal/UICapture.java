@@ -18,7 +18,7 @@ import java.util.List;
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.AsiContainer;
+import uno.anahata.asi.AbstractAsiContainer;
 
 /**
  * A native-aware utility for capturing visual snapshots of the host's desktop 
@@ -39,7 +39,7 @@ public class UICapture {
     public static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyyMMdd-HHmmss");
     
     /** The dedicated subdirectory within the ASI working folder for visual artifacts. */
-    public static final Path SCREENSHOTS_DIR = AsiContainer.getWorkDirSubDir("screenshots");
+    public static final Path SCREENSHOTS_DIR = AbstractAsiContainer.getWorkDirSubDir("screenshots");
     
     /**
      * Captures an image of every physical display device connected to the host system.

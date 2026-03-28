@@ -37,7 +37,7 @@ import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
  */
 @Getter
 @Slf4j
-public abstract class AsiContainer extends BasicPropertyChangeSource {
+public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     
     /** The unique identifier for the host application (e.g., "netbeans"). */
     private final String hostApplicationId;
@@ -73,7 +73,7 @@ public abstract class AsiContainer extends BasicPropertyChangeSource {
      *
      * @param hostApplicationId A unique identifier for the host application (e.g., "netbeans").
      */
-    public AsiContainer(String hostApplicationId) {
+    public AbstractAsiContainer(String hostApplicationId) {
         this.hostApplicationId = hostApplicationId;
         this.preferences = AsiContainerPreferences.load(this);
         this.executor = AiExecutors.newCachedThreadPoolExecutor(hostApplicationId);
