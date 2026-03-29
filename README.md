@@ -15,11 +15,13 @@ Anahata is to AGI what **Tomcat** is to Web Apps or **Kubernetes** is to Contain
 #### 🧠 The Agi Container (The Engine)
 A high-fidelity execution environment for individual AGI sessions providing:
 - **Enterprise Context Management**: Revolutionary **CWGC** (Context Window Garbage Collection).
+- **History Metadata & Soft Pruning**: User and model can 'Prune' (soft delete), 'Unprune' (undelete) or permanently Pin any part of the conversation history.
 - **State Persistence**: Binary serialization (Kryo) with auto-backups and **Flight Recorder**.
 - **Multimodal Pipeline**: Unified URI-centric resource management (Local, Remote, any Protocol).
 - **Security & Lifecycle**: Stateful toolkits with granular permissions and automated birth/shutdown hooks.
 - **Autonomous JVM Agent**: JIT Compiler for model-generated Java code with child-first classloading and unlimited classpath extension.
-- **Event Orchestration**: A real-time Context Window Event Bus and cross-platform Shell execution.
+- **Context Window Event Bus**: Observable, reactive events of any item of the context window: Messages, Parts, Context Providers, Resources, Toolkits.
+- **Cross-platform Shell Execution**: Shell execution in any OpenJDK compatible platform.
 
 #### 🛰️ The Asi Container (The Dashboard)
 A "Container of Containers" that provides a centralized dashboard to manage the fleet of AGI sessions:
