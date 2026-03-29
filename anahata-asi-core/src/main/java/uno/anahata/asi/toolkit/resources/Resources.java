@@ -106,7 +106,7 @@ public class Resources extends AnahataToolkit {
      * @return The list of unique resource identifiers.
      * @throws Exception if loading fails.
      */
-    @AiTool(value = "Loads multiple resources into the context by their URIs.", maxDepth = 12)
+    @AiTool(value = "Loads multiple resources into the context by their URIs.", requiresApproval = false)
     public List<String> loadResources(
             @AiToolParam("The full URIs of the resources.") List<String> uriStrings,
             @AiToolParam(value = "Initial viewport settings for text resources. If not provided, it uses the system default viewport (65K chars 1024 col width)", required = false) TextViewportSettings initialSettings) throws Exception {
