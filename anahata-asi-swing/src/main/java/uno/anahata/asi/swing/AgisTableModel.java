@@ -25,7 +25,7 @@ public class AgisTableModel extends AbstractTableModel {
     /** The list of active agi sessions being tracked. */
     private final List<Agi> sessions = new ArrayList<>();
     /** The localized column names for the table. */
-    private final String[] columnNames = {"Nickname", "ID", "Status", "Msgs", "Context %"};
+    private final String[] columnNames = {"Nickname", "ID", "Status", "Msgs", "Res", "Context %", "Summary"};
     /** The container configuration providing session data. */
     private final AbstractAsiContainer asiConfig;
     /** The listener for changes in the container's session list. */
@@ -39,8 +39,12 @@ public class AgisTableModel extends AbstractTableModel {
     public static final int STATUS_COL = 2;
     /** The column index for the message count. */
     public static final int MESSAGES_COL = 3;
+    /** The column index for the resource count. */
+    public static final int RESOURCES_COL = 4;
     /** The column index for context window usage. */
-    public static final int CONTEXT_COL = 4;
+    public static final int CONTEXT_COL = 5;
+    /** The column index for the conversation summary. */
+    public static final int SUMMARY_COL = 6;
 
     /** 
      * Constructs a new model and registers a listener on the provided container.
@@ -88,6 +92,7 @@ public class AgisTableModel extends AbstractTableModel {
     public Class<?> getColumnClass(int columnIndex) {
         switch (columnIndex) {
             case MESSAGES_COL:
+            case RESOURCES_COL:
                 return Integer.class;
             case CONTEXT_COL:
                 return Double.class;
@@ -113,13 +118,17 @@ public class AgisTableModel extends AbstractTableModel {
             case SESSION_COL:
                 return agi.getDisplayName();
             case ID_COL:
-                return agi.getShortId();
+                return agi.getConfig().getSessionId();
             case STATUS_COL:
                 return agi.getStatusManager().getCurrentStatus();
             case MESSAGES_COL:
                 return agi.getContextManager().getHistory().size();
+            case RESOURCES_COL:
+                return agi.getResourceManager().getResources().size();
             case CONTEXT_COL:
                 return agi.getContextWindowUsage();
+            case SUMMARY_COL:
+                return agi.getConversationSummary();
             default:
                 return null;
         }
