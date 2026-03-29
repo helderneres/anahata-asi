@@ -104,6 +104,32 @@ public class Refactor extends AnahataToolkit{
     }
 
     /**
+     * Renames a class member (method or field) across all open projects.
+     *
+     * @param filePath   The absolute path of the Java file.
+     * @param memberName The current name of the member.
+     * @param newName    The new name for the member.
+     * @return A detailed log of the refactoring process.
+     * @throws Exception if there is an error invoking the operation.
+     */
+    @AiTool("Renames a class member (method or field) across all open projects.")
+    public String renameMember(
+            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AiToolParam("The current name of the member.") String memberName,
+            @AiToolParam("The new name for the member.") String newName) throws Exception {
+        FileObject fo = getFileObject(filePath);
+        TreePathHandle handle = getTreePathHandleForMember(fo, memberName);
+        if (handle == null) {
+            return "Member '" + memberName + "' not found in " + filePath;
+        }
+
+        RenameRefactoring refactoring = new RenameRefactoring(Lookups.fixed(handle, fo));
+        refactoring.setNewName(newName);
+
+        return executeRefactoring(refactoring, "Rename Member " + memberName + " to " + newName);
+    }
+
+    /**
      * Performs a programmatic move refactoring of a file or class to a new destination folder.
      *
      * @param filePath       The absolute path of the file to move.
