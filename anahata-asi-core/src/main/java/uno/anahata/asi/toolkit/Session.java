@@ -14,6 +14,7 @@ import uno.anahata.asi.agi.message.AbstractMessage;
 import uno.anahata.asi.agi.message.AbstractPart;
 import uno.anahata.asi.agi.message.PruningState;
 import uno.anahata.asi.agi.message.RagMessage;
+import uno.anahata.asi.agi.tool.ToolPermission;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
@@ -75,7 +76,7 @@ public class Session extends AnahataToolkit {
      */
     @AgiTool(value = "Updates the current AGI session's summary. This shows the ASI container's dashboard, update it with a brief summary of what you are doing or what you have just accomplished. "
             + "Usage: Call this if you are calling other real-task tools in the same batch, once per turn max, never as the only toll call in the turn.",
-            requiresApproval = false)
+            permission = ToolPermission.APPROVE_ALWAYS)
     public String updateSessionSummary(@AgiToolParam("A concise summary of the conversation's current state.") String summary) {
         uno.anahata.asi.agi.Agi domainAgi = getAgi();
         if (summary != null && !summary.isBlank()) {
@@ -142,7 +143,7 @@ public class Session extends AnahataToolkit {
      * @param toolCallIds The unique IDs of the tool calls to stop.
      * @return A detailed report of the stopping operations.
      */
-    @AgiTool(value = "Stops one or more currently executing tools by their IDs.", requiresApproval = false)
+    @AgiTool(value = "Stops one or more currently executing tools by their IDs.", permission = ToolPermission.APPROVE_ALWAYS)
     public String stopRunningTools(@AgiToolParam("The unique IDs of the tool calls to stop.") List<String> toolCallIds) {
         List<AbstractToolCall<?, ?>> executing = getAgi().getToolManager().getExecutingCalls();
         int stoppedCount = 0;
@@ -186,8 +187,7 @@ public class Session extends AnahataToolkit {
      */
     @AgiTool(value = "Disables local Java tools and enables hosted server tools (e.g., Google Search, Maps). "
             + "CRITICAL: After calling this, you will lose access to all local tools until the user manually reenables them "
-            + "by clicking the Java icon in the toolbar. Use this only if you specifically need a server-side capability.",
-            requiresApproval = true)
+            + "by clicking the Java icon in the toolbar. Use this only if you specifically need a server-side capability.")
     public String enableHostedTools() {
         getAgi().getConfig().setHostedToolsEnabled(true);
         return "Server tools have been enabled. Local tools are now disabled. "

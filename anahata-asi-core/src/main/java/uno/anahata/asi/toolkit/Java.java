@@ -34,6 +34,7 @@ import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.internal.ClasspathPrinter;
 import uno.anahata.asi.internal.TextUtils;
 import uno.anahata.asi.agi.message.RagMessage;
+import uno.anahata.asi.agi.tool.ToolPermission;
 import uno.anahata.asi.agi.tool.spi.java.JavaMethodTool;
 import uno.anahata.asi.agi.tool.spi.java.JavaMethodToolResponse;
 import uno.anahata.asi.agi.tool.AgiToolException;
@@ -428,8 +429,7 @@ public class Java extends AnahataToolkit {
             + "- be public, \n"
             + "- have no package declaration, \n"
             + "- extend AgiTool (or any subtype) and \n"
-            + "- implement the call method of java.util.concurrent.Callable<Object>.\n",
-            requiresApproval = true
+            + "- implement the call method of java.util.concurrent.Callable<Object>.\n"
     )
     public Object compileAndExecute(
             @AgiToolParam(value = "Source code of the 'Anahata' class.", rendererId = "java") String sourceCode,

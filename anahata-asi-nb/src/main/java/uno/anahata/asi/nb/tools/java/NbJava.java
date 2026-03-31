@@ -1,4 +1,4 @@
-/* Licensed under the Apache License, Version 2.0 */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.tools.java;
 
 import java.io.File;
@@ -31,6 +31,7 @@ import uno.anahata.asi.swing.toolkit.SwingJava;
 import uno.anahata.asi.agi.tool.AgiToolkit;
 import uno.anahata.asi.agi.tool.AgiToolParam;
 import uno.anahata.asi.agi.tool.AgiTool;
+import uno.anahata.asi.agi.tool.ToolPermission;
 
 /**
  * A NetBeans-aware extension of the core {@link Java} toolkit.
@@ -83,8 +84,7 @@ public class NbJava extends SwingJava {
     @AgiTool(
             value = "Compiles and executes Java source code within the context of a specific NetBeans project. "
             + "This tool enables a powerful 'hot-reload' workflow by creating a dynamic classpath that prioritizes the project's own build directories (e.g., 'target/classes') over the plugins classpath. "
-                    + "Use the normal compileAndExecute for general netbeans things or if you are not importing any types from any of the open projects",
-            requiresApproval = true
+                    + "Use the normal compileAndExecute for general netbeans things or if you are not importing any types from any of the open projects"
     )
     public Object compileAndExecuteInProject(            
             @AgiToolParam(value = "Source code of a public class named **Anahata** that has **no package declaration** and **extends AnahataTool**.", rendererId = "java") String sourceCode,

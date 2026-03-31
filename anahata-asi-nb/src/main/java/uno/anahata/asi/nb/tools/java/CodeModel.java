@@ -1,4 +1,4 @@
-/* Licensed under the Apache License, Version 2.0 */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.tools.java;
 
 import java.net.URL;
@@ -24,6 +24,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.tool.AgiToolkit;
 import uno.anahata.asi.agi.tool.AgiToolParam;
 import uno.anahata.asi.agi.tool.AgiTool;
+import uno.anahata.asi.agi.tool.ToolPermission;
 
 /**
  * Provides tools for interacting with the Java code model in NetBeans.
@@ -101,7 +102,7 @@ public class CodeModel extends AnahataToolkit {
      * @return a confirmation message.
      * @throws Exception if the type is not found or ambiguous.
      */
-    @AgiTool(value = "Loads the source file for of a java type as a managed resource by its fully qualified name (fqn). Fails if the FQN is ambiguous.", requiresApproval = false)
+    @AgiTool(value = "Loads the source file for of a java type as a managed resource by its fully qualified name (fqn). Fails if the FQN is ambiguous.", permission = ToolPermission.APPROVE_ALWAYS)
     public String loadTypeSourcesByFqn(
             @AgiToolParam("The fully qualified name of the type.") String fqn) throws Exception {
         return loadTypeSources(resolveUniqueType(fqn));

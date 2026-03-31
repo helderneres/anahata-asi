@@ -13,6 +13,7 @@ import uno.anahata.asi.agi.message.AbstractMessage;
 import uno.anahata.asi.agi.message.AbstractPart;
 import uno.anahata.asi.agi.message.PruningState;
 import uno.anahata.asi.agi.message.RagMessage;
+import uno.anahata.asi.agi.tool.ToolPermission;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.tool.AgiToolkit;
 import uno.anahata.asi.agi.tool.AgiToolParam;
@@ -250,7 +251,7 @@ public class History extends AnahataToolkit {
      * @return Confirmation message.
      */
     @AgiTool(value = "Toggles the injection of in-band metadata headers for history pruning.",
-            requiresApproval = false)
+            permission = ToolPermission.APPROVE_ALWAYS)
     public String setInjectInbandMetadata(boolean enabled) {
         getAgi().getRequestConfig().setInjectInbandMetadata(enabled);
         if (enabled) {

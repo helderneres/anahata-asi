@@ -9,6 +9,7 @@ import uno.anahata.asi.agi.tool.spi.java.JavaMethodToolResponse;
 import uno.anahata.asi.agi.tool.AgiToolkit;
 import uno.anahata.asi.agi.tool.AgiToolParam;
 import uno.anahata.asi.agi.tool.AgiTool;
+import uno.anahata.asi.agi.tool.ToolPermission;
 
 @AgiToolkit(value = "A mock toolkit for testing schema generation and context injection.", maxDepth = 10)
 public class MockToolkit extends AnahataToolkit {
@@ -39,13 +40,13 @@ public class MockToolkit extends AnahataToolkit {
         return new MockComplexObject();
     }
     
-    @AgiTool(value = "A tool specifically for testing the JavaTool context.", requiresApproval = false)
+    @AgiTool(value = "A tool specifically for testing the JavaTool context.", permission = ToolPermission.APPROVE_ALWAYS)
     public String testContext(@AgiToolParam("A message to add to the logs.") String logMessage) {
         log("This is a log message from inside the tool: " + logMessage);
         return "Context test completed successfully.";
     }
 
-    @AgiTool(value = "A tool for testing context access.", requiresApproval = false)
+    @AgiTool(value = "A tool for testing context access.", permission = ToolPermission.APPROVE_ALWAYS)
     public String testContextAccess() {
         if (JavaMethodToolResponse.getCurrent() != null) {
             return "Success";
