@@ -82,7 +82,6 @@
         <module>anahata-asi-core</module>
         <module>anahata-asi-gemini</module>
         <module>anahata-asi-swing</module>
-        <module>anahata-asi-cli</module>
         <module>anahata-asi-standalone</module>
         <module>anahata-asi-web</module>
         <module>anahata-asi-nb</module>

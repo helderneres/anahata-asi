@@ -20,6 +20,9 @@ public class StandaloneAgiConfig extends SwingAgiConfig {
     {
         // Automatically register the Gemini provider for standalone use.
         getProviderClasses().add(GeminiAgiProvider.class);
+        
+        setSelectedProviderClass(GeminiAgiProvider.class);
+        setSelectedModelId("models/gemini-3-flash-preview");
     }
     
     /**

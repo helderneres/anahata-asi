@@ -8,7 +8,6 @@ import java.util.Map;
 import lombok.Setter;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
-import uno.anahata.asi.cli.CommandLineArgs;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.swing.AbstractSwingAsiContainer;
 import uno.anahata.asi.swing.agi.AgiPanel;
@@ -17,8 +16,7 @@ import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 
 /**
  * A specialized {@link uno.anahata.asi.AbstractAsiContainer} for the standalone Swing application.
- * It handles the storage and parsing of command-line arguments to configure
- * initial agi sessions.
+ * It manages the lifecycle of sessions within a standalone UI environment.
  * 
  * @author anahata
  */
@@ -31,9 +29,6 @@ public class StandaloneAsiContainer extends AbstractSwingAsiContainer {
         ResourceUiRegistry.getInstance().setResourceUI(new DefaultResourceUI());
     }
 
-    /** The raw command-line arguments passed to the application. */
-    private final String[] cmdLineArgs;
-    
     /** Cache of UI panels for active sessions. */
     private final Map<String, AgiPanel> agiPanels = new HashMap<>();
     
@@ -43,27 +38,9 @@ public class StandaloneAsiContainer extends AbstractSwingAsiContainer {
     
     /**
      * Constructs a new StandaloneAsiContainer.
-     * 
-     * @param cmdLineArgs The command-line arguments from the main entry point.
      */
-    public StandaloneAsiContainer(String[] cmdLineArgs) {
+    public StandaloneAsiContainer() {
         super("swing-standalone");
-        this.cmdLineArgs = cmdLineArgs;
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * In the standalone container, this hook is used to parse command-line 
-     * arguments and apply them to the newly created agi session.
-     * </p>
-     * 
-     * @param agi The newly created agi session.
-     */
-    @Override
-    protected void configureNewAgi(Agi agi) {
-        log.info("Parsing command-line arguments for new standalone agi.");
-        CommandLineArgs.parse(agi, cmdLineArgs);
     }
 
     @Override

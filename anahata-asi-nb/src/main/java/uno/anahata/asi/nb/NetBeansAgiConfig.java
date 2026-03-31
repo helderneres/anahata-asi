@@ -50,6 +50,9 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
         
         setIconProvider(new NetBeansIconProvider());
         getProviderClasses().add(GeminiAgiProvider.class);
+        
+        setSelectedProviderClass(GeminiAgiProvider.class);
+        setSelectedModelId("models/gemini-3-flash-preview");
     }
     
     /**

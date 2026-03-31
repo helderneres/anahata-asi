@@ -20,12 +20,6 @@
             <version>${project.version}</version>
         </dependency>
         
-        <!-- Existing Dependencies -->
-        <dependency>
-            <groupId>uno.anahata</groupId>
-            <artifactId>anahata-asi-cli</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <dependency>
             <groupId>uno.anahata</groupId>
             <artifactId>anahata-asi-gemini</artifactId>

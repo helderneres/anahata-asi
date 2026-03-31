@@ -30,7 +30,7 @@ public class SwingMain {
         }
 
         // Core application setup
-        StandaloneAsiContainer container = new StandaloneAsiContainer(args);
+        StandaloneAsiContainer container = new StandaloneAsiContainer();
         
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Anahata ASI");
