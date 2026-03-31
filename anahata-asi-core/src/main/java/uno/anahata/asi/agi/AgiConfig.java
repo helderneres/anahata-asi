@@ -5,6 +5,7 @@ package uno.anahata.asi.agi;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -150,6 +151,118 @@ public class AgiConfig extends BasicPropertyChangeSource {
 
     /** The default response modalities for this agi session. */
     private List<String> defaultResponseModalities = new ArrayList<>(List.of("TEXT"));
+
+    public void setSelectedProviderClass(Class<? extends AbstractAgiProvider> selectedProviderClass) {
+        Class<? extends AbstractAgiProvider> old = this.selectedProviderClass;
+        if (!Objects.equals(old, selectedProviderClass)) {
+            this.selectedProviderClass = selectedProviderClass;
+            propertyChangeSupport.firePropertyChange("selectedProviderClass", old, selectedProviderClass);
+        }
+    }
+
+    public void setSelectedModelId(String selectedModelId) {
+        String old = this.selectedModelId;
+        if (!Objects.equals(old, selectedModelId)) {
+            this.selectedModelId = selectedModelId;
+            propertyChangeSupport.firePropertyChange("selectedModelId", old, selectedModelId);
+        }
+    }
+
+    public void setAutoReplyTools(boolean autoReplyTools) {
+        boolean old = this.autoReplyTools;
+        if (old != autoReplyTools) {
+            this.autoReplyTools = autoReplyTools;
+            propertyChangeSupport.firePropertyChange("autoReplyTools", old, autoReplyTools);
+        }
+    }
+
+    public void setStreaming(boolean streaming) {
+        boolean old = this.streaming;
+        if (old != streaming) {
+            this.streaming = streaming;
+            propertyChangeSupport.firePropertyChange("streaming", old, streaming);
+        }
+    }
+
+    public void setIncludeThoughts(boolean includeThoughts) {
+        boolean old = this.includeThoughts;
+        if (old != includeThoughts) {
+            this.includeThoughts = includeThoughts;
+            propertyChangeSupport.firePropertyChange("includeThoughts", old, includeThoughts);
+        }
+    }
+
+    public void setExpandThoughts(boolean expandThoughts) {
+        boolean old = this.expandThoughts;
+        if (old != expandThoughts) {
+            this.expandThoughts = expandThoughts;
+            propertyChangeSupport.firePropertyChange("expandThoughts", old, expandThoughts);
+        }
+    }
+
+    public void setApiMaxRetries(int apiMaxRetries) {
+        int old = this.apiMaxRetries;
+        if (old != apiMaxRetries) {
+            this.apiMaxRetries = apiMaxRetries;
+            propertyChangeSupport.firePropertyChange("apiMaxRetries", old, apiMaxRetries);
+        }
+    }
+
+    public void setApiInitialDelayMillis(long apiInitialDelayMillis) {
+        long old = this.apiInitialDelayMillis;
+        if (old != apiInitialDelayMillis) {
+            this.apiInitialDelayMillis = apiInitialDelayMillis;
+            propertyChangeSupport.firePropertyChange("apiInitialDelayMillis", old, apiInitialDelayMillis);
+        }
+    }
+
+    public void setApiMaxDelayMillis(long apiMaxDelayMillis) {
+        long old = this.apiMaxDelayMillis;
+        if (old != apiMaxDelayMillis) {
+            this.apiMaxDelayMillis = apiMaxDelayMillis;
+            propertyChangeSupport.firePropertyChange("apiMaxDelayMillis", old, apiMaxDelayMillis);
+        }
+    }
+
+    public void setTokenThreshold(int tokenThreshold) {
+        int old = this.tokenThreshold;
+        if (old != tokenThreshold) {
+            this.tokenThreshold = tokenThreshold;
+            propertyChangeSupport.firePropertyChange("tokenThreshold", old, tokenThreshold);
+        }
+    }
+
+    public void setDefaultTextPartMaxDepth(int defaultTextPartMaxDepth) {
+        int old = this.defaultTextPartMaxDepth;
+        if (old != defaultTextPartMaxDepth) {
+            this.defaultTextPartMaxDepth = defaultTextPartMaxDepth;
+            propertyChangeSupport.firePropertyChange("defaultTextPartMaxDepth", old, defaultTextPartMaxDepth);
+        }
+    }
+
+    public void setDefaultToolMaxDepth(int defaultToolMaxDepth) {
+        int old = this.defaultToolMaxDepth;
+        if (old != defaultToolMaxDepth) {
+            this.defaultToolMaxDepth = defaultToolMaxDepth;
+            propertyChangeSupport.firePropertyChange("defaultToolMaxDepth", old, defaultToolMaxDepth);
+        }
+    }
+
+    public void setDefaultBlobPartMaxDepth(int defaultBlobPartMaxDepth) {
+        int old = this.defaultBlobPartMaxDepth;
+        if (old != defaultBlobPartMaxDepth) {
+            this.defaultBlobPartMaxDepth = defaultBlobPartMaxDepth;
+            propertyChangeSupport.firePropertyChange("defaultBlobPartMaxDepth", old, defaultBlobPartMaxDepth);
+        }
+    }
+
+    public void setDefaultThoughtPartMaxDepth(int defaultThoughtPartMaxDepth) {
+        int old = this.defaultThoughtPartMaxDepth;
+        if (old != defaultThoughtPartMaxDepth) {
+            this.defaultThoughtPartMaxDepth = defaultThoughtPartMaxDepth;
+            propertyChangeSupport.firePropertyChange("defaultThoughtPartMaxDepth", old, defaultThoughtPartMaxDepth);
+        }
+    }
     
     /**
      * Configures the session to utilize local Java-based toolkits.

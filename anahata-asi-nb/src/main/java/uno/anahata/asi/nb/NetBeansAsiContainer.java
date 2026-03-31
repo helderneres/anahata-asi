@@ -75,24 +75,6 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
         return new NetBeansAgiConfig(this);
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Implementation details: Applies global defaults from preferences and 
-     * provides a safe fallback to Gemini Flash if no preference is set.
-     * </p>
-     */
-    @Override
-    protected void configureNewAgi(Agi agi) {
-        super.configureNewAgi(agi);
-        
-        // Fallback for fresh installs:
-        if (agi.getSelectedModel() == null) {
-             log.info("No global default model set, falling back to Gemini Flash for NetBeans.");
-             agi.setSelectedModelById("models/gemini-3-flash-preview");
-        }
-    }
-
     @Override
     protected void focusUI(Agi agi) {
         AgiTopComponent atc = findTopComponent(agi);

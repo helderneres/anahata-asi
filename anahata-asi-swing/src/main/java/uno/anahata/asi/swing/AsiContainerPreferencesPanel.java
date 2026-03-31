@@ -161,6 +161,11 @@ public class AsiContainerPreferencesPanel extends JPanel {
                         modelDropdown.setSelectedItem(template.getSelectedModelId());
                     }
                     
+                    // Fallback: If previous selection is invalid for the new provider, pick the first one.
+                    if (modelDropdown.getSelectedIndex() == -1 && model.getSize() > 0) {
+                        modelDropdown.setSelectedIndex(0);
+                    }
+                    
                     modelDropdown.setEnabled(true);
                     modelDropdown.setToolTipText(null);
                 } catch (Exception e) {
