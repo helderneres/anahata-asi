@@ -4,7 +4,7 @@ package uno.anahata.asi.toolkit.resources.text.lines;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -27,9 +27,9 @@ public class LineInsertion extends AbstractLineEdit {
     private String content;
 
     @Override
-    public void apply(List<String> lines) throws AiToolException {
+    public void apply(List<String> lines) throws AgiToolException {
         if (atLine < 1 || atLine > lines.size() + 1) {
-            throw new AiToolException("Insertion line " + atLine + " is out of bounds (1-" + (lines.size() + 1) + ")");
+            throw new AgiToolException("Insertion line " + atLine + " is out of bounds (1-" + (lines.size() + 1) + ")");
         }
         
         if (content == null || content.isEmpty()) {

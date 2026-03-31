@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import uno.anahata.asi.agi.tool.spi.AbstractToolParameter;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
-import uno.anahata.asi.agi.tool.AiToolParam;
+import uno.anahata.asi.agi.tool.AgiToolParam;
 
 /**
  * A subclass of AbstractToolParameter that holds Java-specific reflection
@@ -65,7 +65,7 @@ public class JavaMethodToolParameter extends AbstractToolParameter<JavaMethodToo
      * @throws Exception if schema generation fails.
      */
     public static JavaMethodToolParameter of(JavaMethodTool tool, Parameter p, int index) throws Exception {
-        AiToolParam paramAnnotation = p.getAnnotation(AiToolParam.class);
+        AgiToolParam paramAnnotation = p.getAnnotation(AgiToolParam.class);
 
         String description;
         boolean required;

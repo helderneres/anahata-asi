@@ -11,11 +11,11 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.toolkit.audio.AudioDevice;
 import uno.anahata.asi.agi.message.RagMessage;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolException;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * The definitive core toolkit for audio operations.
@@ -25,7 +25,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * </p>
  */
 @Slf4j
-@AiToolkit("Tools for managing audio recording and playback across local devices.")
+@AgiToolkit("Tools for managing audio recording and playback across local devices.")
 public class Audio extends AnahataToolkit {
 
     /** The selected audio input device for this session. */
@@ -154,11 +154,11 @@ public class Audio extends AnahataToolkit {
      * @param deviceId The unique ID of the input device to select.
      * @return a status message.
      */
-    @AiTool("Selects a specific device for recording for the current session.")
-    public String selectRecordingDevice(@AiToolParam("The unique ID of the input device to select.") String deviceId) {
+    @AgiTool("Selects a specific device for recording for the current session.")
+    public String selectRecordingDevice(@AgiToolParam("The unique ID of the input device to select.") String deviceId) {
         AudioDevice device = AudioDevice.findDevice(AudioDevice.Type.INPUT, deviceId);
         if (device == null) {
-            throw new AiToolException("Recording device not found: " + deviceId);
+            throw new AgiToolException("Recording device not found: " + deviceId);
         }
         setSelectedInputDevice(device);
         return "Input device selected: " + device.toMarkdown();
@@ -169,11 +169,11 @@ public class Audio extends AnahataToolkit {
      * @param deviceId The unique ID of the output device to select.
      * @return a status message.
      */
-    @AiTool("Selects a specific device for playback for the current session.")
-    public String selectOutputDevice(@AiToolParam("The unique ID of the output device to select.") String deviceId) {
+    @AgiTool("Selects a specific device for playback for the current session.")
+    public String selectOutputDevice(@AgiToolParam("The unique ID of the output device to select.") String deviceId) {
         AudioDevice device = AudioDevice.findDevice(AudioDevice.Type.OUTPUT, deviceId);
         if (device == null) {
-            throw new AiToolException("Playback device not found: " + deviceId);
+            throw new AgiToolException("Playback device not found: " + deviceId);
         }
         setSelectedOutputDevice(device);
         return "Output device selected: " + device.toMarkdown();
@@ -187,9 +187,9 @@ public class Audio extends AnahataToolkit {
      * @return A status message.
      * @throws Exception if hardware access fails.
      */
-    @AiTool("Records audio from the selected input device for a specified duration.")
-    public String record(@AiToolParam("Duration in seconds.") int durationSeconds,
-                         @AiToolParam(value = "Optional specific device ID to use.", required = false) String deviceId) throws Exception {
+    @AgiTool("Records audio from the selected input device for a specified duration.")
+    public String record(@AgiToolParam("Duration in seconds.") int durationSeconds,
+                         @AgiToolParam(value = "Optional specific device ID to use.", required = false) String deviceId) throws Exception {
         
         AudioDevice targetDevice = (deviceId != null) 
                 ? AudioDevice.findDevice(AudioDevice.Type.INPUT, deviceId)
@@ -230,9 +230,9 @@ public class Audio extends AnahataToolkit {
      * @return a status message.
      * @throws Exception if playback fails.
      */
-    @AiTool("Plays an audio file on the selected output device. Supports both local paths and remote URLs.")
-    public String play(@AiToolParam("The URI to the audio file.") String uri,
-                       @AiToolParam(value = "Optional specific device ID to use.", required = false) String deviceId) throws Exception {
+    @AgiTool("Plays an audio file on the selected output device. Supports both local paths and remote URLs.")
+    public String play(@AgiToolParam("The URI to the audio file.") String uri,
+                       @AgiToolParam(value = "Optional specific device ID to use.", required = false) String deviceId) throws Exception {
         
         URL url = URI.create(uri).toURL();
         AudioDevice targetDevice = (deviceId != null)

@@ -17,11 +17,11 @@ import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolException;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * The definitive toolkit for managing the current agi session's metadata, tool
@@ -35,7 +35,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * @author anahata-ai
  */
 @Slf4j
-@AiToolkit("Toolkit for managing the current agi session's metadata and context policies.")
+@AgiToolkit("Toolkit for managing the current agi session's metadata and context policies.")
 public class Session extends AnahataToolkit {
 
     /**
@@ -73,10 +73,10 @@ public class Session extends AnahataToolkit {
      * topic.
      * @return A confirmation message.
      */
-    @AiTool(value = "Updates the current AGI session's summary. This shows the ASI container's dashboard, update it with a brief summary of what you are doing or what you have just accomplished. "
+    @AgiTool(value = "Updates the current AGI session's summary. This shows the ASI container's dashboard, update it with a brief summary of what you are doing or what you have just accomplished. "
             + "Usage: Call this if you are calling other real-task tools in the same batch, once per turn max, never as the only toll call in the turn.",
             requiresApproval = false)
-    public String updateSessionSummary(@AiToolParam("A concise summary of the conversation's current state.") String summary) {
+    public String updateSessionSummary(@AgiToolParam("A concise summary of the conversation's current state.") String summary) {
         uno.anahata.asi.agi.Agi domainAgi = getAgi();
         if (summary != null && !summary.isBlank()) {
             domainAgi.setSummary(summary);
@@ -98,10 +98,10 @@ public class Session extends AnahataToolkit {
      * @param providerIds The fully qualified IDs of the context providers to
      * update.
      */
-    @AiTool(value = "Sets the 'providing' flag of various context providers. Use this to enable/disable context providers. Disabl")
+    @AgiTool(value = "Sets the 'providing' flag of various context providers. Use this to enable/disable context providers. Disabl")
     public void setContextProviderProviding(
-            @AiToolParam("Whether to enable or disable the providers.") boolean providing,
-            @AiToolParam("The IDs of the context providers to update.") List<String> providerIds) {
+            @AgiToolParam("Whether to enable or disable the providers.") boolean providing,
+            @AgiToolParam("The IDs of the context providers to update.") List<String> providerIds) {
         ContextManager cm = getAgi().getContextManager();
         for (ContextProvider root : cm.getProviders()) {
             for (ContextProvider cp : root.getFlattenedHierarchy(false)) {
@@ -124,10 +124,10 @@ public class Session extends AnahataToolkit {
      * @param toolkitNames The names (IDs) of the toolkits to update (e.g.,
      * 'Audio', 'Chrome').
      */
-    @AiTool("Enables or disables multiple toolkits by their names (IDs).")
+    @AgiTool("Enables or disables multiple toolkits by their names (IDs).")
     public void setToolkitEnabled(
-            @AiToolParam("Whether to enable or disable.") boolean enabled,
-            @AiToolParam("The names of the toolkits to update (e.g., 'Audio', 'Browser').") List<String> toolkitNames) {
+            @AgiToolParam("Whether to enable or disable.") boolean enabled,
+            @AgiToolParam("The names of the toolkits to update (e.g., 'Audio', 'Browser').") List<String> toolkitNames) {
         getAgi().getToolManager().updateToolkits(enabled, toolkitNames);
         log((enabled ? "Enabled" : "Disabled") + " toolkits: " + toolkitNames);
     }
@@ -142,8 +142,8 @@ public class Session extends AnahataToolkit {
      * @param toolCallIds The unique IDs of the tool calls to stop.
      * @return A detailed report of the stopping operations.
      */
-    @AiTool(value = "Stops one or more currently executing tools by their IDs.", requiresApproval = false)
-    public String stopRunningTools(@AiToolParam("The unique IDs of the tool calls to stop.") List<String> toolCallIds) {
+    @AgiTool(value = "Stops one or more currently executing tools by their IDs.", requiresApproval = false)
+    public String stopRunningTools(@AgiToolParam("The unique IDs of the tool calls to stop.") List<String> toolCallIds) {
         List<AbstractToolCall<?, ?>> executing = getAgi().getToolManager().getExecutingCalls();
         int stoppedCount = 0;
         StringBuilder logBuilder = new StringBuilder();
@@ -184,7 +184,7 @@ public class Session extends AnahataToolkit {
      *
      * @return Confirmation message describing the impact.
      */
-    @AiTool(value = "Disables local Java tools and enables hosted server tools (e.g., Google Search, Maps). "
+    @AgiTool(value = "Disables local Java tools and enables hosted server tools (e.g., Google Search, Maps). "
             + "CRITICAL: After calling this, you will lose access to all local tools until the user manually reenables them "
             + "by clicking the Java icon in the toolbar. Use this only if you specifically need a server-side capability.",
             requiresApproval = true)

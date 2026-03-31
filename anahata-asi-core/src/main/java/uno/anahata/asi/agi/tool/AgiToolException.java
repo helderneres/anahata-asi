@@ -11,13 +11,13 @@ package uno.anahata.asi.agi.tool;
  *
  * @author anahata
  */
-public class AiToolException extends RuntimeException {
+public class AgiToolException extends RuntimeException {
 
-    public AiToolException(String message) {
+    public AgiToolException(String message) {
         super(message);
     }
 
-    public AiToolException(String message, Throwable cause) {
+    public AgiToolException(String message, Throwable cause) {
         super(message, cause);
     }
 }

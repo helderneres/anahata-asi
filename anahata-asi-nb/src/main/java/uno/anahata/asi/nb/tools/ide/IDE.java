@@ -17,10 +17,10 @@ import uno.anahata.asi.toolkit.resources.Resources;
 import uno.anahata.asi.agi.resource.view.TextViewportSettings;
 import uno.anahata.asi.nb.tools.ide.context.OpenTopComponentsContextProvider;
 import uno.anahata.asi.nb.tools.ide.context.OutputTabsContextProvider;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * Provides tools for interacting with the NetBeans IDE.
@@ -30,7 +30,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A toolkit for interacting with the NetBeans IDE.")
+@AgiToolkit("A toolkit for interacting with the NetBeans IDE.")
 public class IDE extends AnahataToolkit {
 
     /**
@@ -70,10 +70,10 @@ public class IDE extends AnahataToolkit {
      * @param tailLines Number of recent lines to include (defaults to 100).
      * @throws Exception if the log file cannot be found or loaded.
      */
-    @AiTool(value = "Monitors the IDE log file (messages.log) by loading it into the context with 'tail' enabled and optional grepping.", maxDepth = 12)
+    @AgiTool(value = "Monitors the IDE log file (messages.log) by loading it into the context with 'tail' enabled and optional grepping.", maxDepth = 12)
     public void monitorLogs(
-            @AiToolParam("Optional regex pattern to filter log lines (e.g. 'ERROR' or a specific logger name).") String grepPattern,
-            @AiToolParam("Number of lines to tail from the end of the file or matching results.") Integer tailLines) throws Exception {
+            @AgiToolParam("Optional regex pattern to filter log lines (e.g. 'ERROR' or a specific logger name).") String grepPattern,
+            @AgiToolParam("Number of lines to tail from the end of the file or matching results.") Integer tailLines) throws Exception {
         String userDir = System.getProperty("netbeans.user");
         if (userDir == null) {
             throw new Exception("System property 'netbeans.user' is not set.");
@@ -102,10 +102,10 @@ public class IDE extends AnahataToolkit {
      * @param target The target view (PROJECTS, FILES, or FAVORITES).
      * @throws Exception if selection fails.
      */
-    @AiTool("Selects and highlights the specified file or folder in the selected IDE view.")
+    @AgiTool("Selects and highlights the specified file or folder in the selected IDE view.")
     public void selectIn(
-            @AiToolParam(value = "The absolute path to the file or folder.", rendererId = "path") String path,
-            @AiToolParam("The target view to select in.") SelectInTarget target) throws Exception {
+            @AgiToolParam(value = "The absolute path to the file or folder.", rendererId = "path") String path,
+            @AgiToolParam("The target view to select in.") SelectInTarget target) throws Exception {
         selectInStatic(path, target);
     }
     
@@ -115,7 +115,7 @@ public class IDE extends AnahataToolkit {
      * @return a Markdown table string.
      * @throws Exception if an error occurs.
      */
-    @AiTool("Gets a Markdown table of all open IDE windows.")
+    @AgiTool("Gets a Markdown table of all open IDE windows.")
     public String getTopComponentsMarkdown() throws Exception {
         return NetBeansTopComponents.getMarkdownReport();
     }
@@ -126,7 +126,7 @@ public class IDE extends AnahataToolkit {
      * @return a Markdown string.
      * @throws Exception if an error occurs.
      */
-    @AiTool("Gets a Markdown report of all open output tabs, including tails.")
+    @AgiTool("Gets a Markdown report of all open output tabs, including tails.")
     public String getOutputTabsMarkdown() throws Exception {
         return NetBeansOutput.getMarkdownReport();
     }

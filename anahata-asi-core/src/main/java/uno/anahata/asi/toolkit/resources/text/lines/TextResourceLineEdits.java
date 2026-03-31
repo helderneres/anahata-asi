@@ -9,7 +9,7 @@ import uno.anahata.asi.toolkit.resources.text.AbstractTextResourceWrite;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 
 /**
  * The next-generation surgical line editor for AGI.
@@ -41,7 +41,7 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
     @Override
     public String calculateResultingContent() throws Exception {
         if (originalContent == null) {
-            throw new AiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
+            throw new AgiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
         }
         String separator = originalContent.contains("\r\n") ? "\r\n" : "\n";
         List<String> lines = new ArrayList<>(Arrays.asList(originalContent.split("\\R", -1)));
@@ -127,16 +127,16 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
 
             if (edit instanceof LineInsertion) {
                 if (start <= lastEnd) {
-                    throw new uno.anahata.asi.agi.tool.AiToolException("Overlapping surgical edits: insertion at line " + start + " is inside a previous range ending at " + lastEnd);
+                    throw new uno.anahata.asi.agi.tool.AgiToolException("Overlapping surgical edits: insertion at line " + start + " is inside a previous range ending at " + lastEnd);
                 }
                 if (start == lastInsertionPoint) {
-                    throw new uno.anahata.asi.agi.tool.AiToolException("Overlapping surgical edits: multiple insertions at the exact same line " + start);
+                    throw new uno.anahata.asi.agi.tool.AgiToolException("Overlapping surgical edits: multiple insertions at the exact same line " + start);
                 }
                 lastInsertionPoint = start;
             } else {
                 // For range edits (replacement/deletion)
                 if (start <= lastEnd) {
-                    throw new uno.anahata.asi.agi.tool.AiToolException("Overlapping surgical edits: range starting at line " + start + " overlaps with a previous range ending at " + lastEnd);
+                    throw new uno.anahata.asi.agi.tool.AgiToolException("Overlapping surgical edits: range starting at line " + start + " overlaps with a previous range ending at " + lastEnd);
                 }
                 // Note: start == lastInsertionPoint is ALLOWED. The insertion is logically "above" the range.
                 lastEnd = (edit instanceof LineReplacement rep) ? rep.getEndLine() : ((LineDeletion) edit).getEndLine();

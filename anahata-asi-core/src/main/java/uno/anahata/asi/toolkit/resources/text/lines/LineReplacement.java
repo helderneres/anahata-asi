@@ -4,7 +4,7 @@ package uno.anahata.asi.toolkit.resources.text.lines;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -33,9 +33,9 @@ public class LineReplacement extends AbstractLineEdit {
     private String content;
 
     @Override
-    public void apply(List<String> lines) throws AiToolException {
+    public void apply(List<String> lines) throws AgiToolException {
         if (startLine < 1 || endLine < startLine || endLine > lines.size()) {
-            throw new AiToolException("Replacement range [" + startLine + ", " + endLine + "] is invalid or out of bounds (1-" + lines.size() + ")");
+            throw new AgiToolException("Replacement range [" + startLine + ", " + endLine + "] is invalid or out of bounds (1-" + lines.size() + ")");
         }
 
         // 1. Remove the old lines

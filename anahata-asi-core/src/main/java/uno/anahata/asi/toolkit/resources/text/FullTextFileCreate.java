@@ -9,7 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 
 /**
  * A rich DTO for creating a new text file. It encapsulates the path 
@@ -40,11 +40,11 @@ public class FullTextFileCreate {
      * Performs pre-flight validation of the creation operation.
      * 
      * @param agi The parent agi session.
-     * @throws AiToolException if validation fails.
+     * @throws AgiToolException if validation fails.
      */
-    public void validate(Agi agi) throws AiToolException {
+    public void validate(Agi agi) throws AgiToolException {
         if (Files.exists(Paths.get(path))) {
-            throw new AiToolException("File already exists and cannot be created: " + path);
+            throw new AgiToolException("File already exists and cannot be created: " + path);
         }
     }
 

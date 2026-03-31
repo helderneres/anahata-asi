@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import uno.anahata.asi.agi.tool.spi.AbstractToolResponse;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 
 /**
  * A rich POJO that captures the complete and final outcome of a single tool
@@ -123,7 +123,7 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
             } else {
                 log.error("Tool execution failed for: {}", getCall().getToolName(), cause);
 
-                if (cause instanceof AiToolException) {
+                if (cause instanceof AgiToolException) {
                     addError(cause.getMessage());
                 } else {
                     addError(ExceptionUtils.getStackTrace(cause));

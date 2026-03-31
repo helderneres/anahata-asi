@@ -31,10 +31,10 @@ import uno.anahata.asi.nb.AgiTopComponent;
 import uno.anahata.asi.nb.AsiCardsTopComponent;
 import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.swing.internal.SwingUtils;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * Provides tools for interacting with the NetBeans editor, such as opening files,
@@ -43,7 +43,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A toolkit for interacting with the NetBeans editor.")
+@AgiToolkit("A toolkit for interacting with the NetBeans editor.")
 public class Editor extends AnahataToolkit {
 
     /**
@@ -152,10 +152,10 @@ public class Editor extends AnahataToolkit {
      * @return a message indicating the result of the operation.
      * @throws Exception if an error occurs.
      */
-    @AiTool("Opens a specified file in the NetBeans editor and optionally scrolls to a specific line.")
+    @AgiTool("Opens a specified file in the NetBeans editor and optionally scrolls to a specific line.")
     public String openFile(
-            @AiToolParam("The absolute path of the file to open.") String filePath,
-            @AiToolParam("The line number to scroll to (1-based).") Integer scrollToLine) throws Exception {
+            @AgiToolParam("The absolute path of the file to open.") String filePath,
+            @AgiToolParam("The line number to scroll to (1-based).") Integer scrollToLine) throws Exception {
         
         if (filePath == null || filePath.trim().isEmpty()) {
             return "Error: The 'filePath' parameter was not set.";
@@ -204,7 +204,7 @@ public class Editor extends AnahataToolkit {
      * Gets a list of all files open in the editor, including their path and unsaved changes status.
      * @return a string listing the open files.
      */
-    @AiTool("Gets a list of all files open in the editor")
+    @AgiTool("Gets a list of all files open in the editor")
     public String getOpenFiles() {
         final List<TopComponent> editors = getOpenEditors();
         if (editors.isEmpty()) {
@@ -229,7 +229,7 @@ public class Editor extends AnahataToolkit {
      * Closes all files currently open in the IDE.
      * @return a summary of the operation.
      */
-    @AiTool("Closes all files currently open in the IDE.")
+    @AgiTool("Closes all files currently open in the IDE.")
     public String closeAllFiles() {
         final List<String> closedFiles = new ArrayList<>();
         try {

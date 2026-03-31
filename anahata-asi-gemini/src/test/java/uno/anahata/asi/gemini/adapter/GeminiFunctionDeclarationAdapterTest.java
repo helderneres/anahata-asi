@@ -12,20 +12,20 @@ import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
 import uno.anahata.asi.agi.tool.spi.java.JavaObjectToolkit;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.ToolManager;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 public class GeminiFunctionDeclarationAdapterTest {
 
-    @AiToolkit("TestToolkit description")
+    @AgiToolkit("TestToolkit description")
     public static class TestToolkit {
-        @AiTool("A test method")
+        @AgiTool("A test method")
         public String testMethod(String param1, int param2) {
             return param1 + param2;
         }
 
-        @AiTool("A void method")
+        @AgiTool("A void method")
         public void voidMethod() {
         }
     }

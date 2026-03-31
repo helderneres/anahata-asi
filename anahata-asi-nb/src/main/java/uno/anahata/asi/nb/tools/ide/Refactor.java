@@ -46,10 +46,10 @@ import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.Lookups;
 import uno.anahata.asi.agi.resource.Resource;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A toolkit for performing programmatic refactoring operations within the NetBeans IDE.
@@ -63,7 +63,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("Programmatic refactoring tools for NetBeans. Use these tools to safely rename, move, copy, or delete code elements while maintaining integrity across all open projects.")
+@AgiToolkit("Programmatic refactoring tools for NetBeans. Use these tools to safely rename, move, copy, or delete code elements while maintaining integrity across all open projects.")
 public class Refactor extends AnahataToolkit{
 
     /**
@@ -91,10 +91,10 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if there is an error invoking the operation.
      */
-    @AiTool("Renames a file or class. This is a 'safe' rename that updates all references in all open projects and the most efficient way of renaming a type as it updates the file's content, all its references and the file name on the file system in a single shot.")
+    @AgiTool("Renames a file or class. This is a 'safe' rename that updates all references in all open projects and the most efficient way of renaming a type as it updates the file's content, all its references and the file name on the file system in a single shot.")
     public String rename(
-            @AiToolParam(value = "The absolute path of the file to rename.", rendererId = "path") String filePath, 
-            @AiToolParam("The new name (without extension).") String newName) throws Exception {
+            @AgiToolParam(value = "The absolute path of the file to rename.", rendererId = "path") String filePath, 
+            @AgiToolParam("The new name (without extension).") String newName) throws Exception {
         FileObject fo = getFileObject(filePath);
         RenameRefactoring refactoring = new RenameRefactoring(getLookupForFile(fo));
         refactoring.setNewName(newName);
@@ -112,11 +112,11 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if there is an error invoking the operation.
      */
-    @AiTool("Renames a class member (method or field) across all open projects.")
+    @AgiTool("Renames a class member (method or field) across all open projects.")
     public String renameMember(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The current name of the member.") String memberName,
-            @AiToolParam("The new name for the member.") String newName) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The current name of the member.") String memberName,
+            @AgiToolParam("The new name for the member.") String newName) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle handle = getTreePathHandleForMember(fo, memberName);
         if (handle == null) {
@@ -137,10 +137,10 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if there is an error invoking the operation.
      */
-    @AiTool("Moves a file or class to a different package or folder, updating all references.")
+    @AgiTool("Moves a file or class to a different package or folder, updating all references.")
     public String move(
-            @AiToolParam(value = "The absolute path of the file to move.", rendererId = "path") String filePath, 
-            @AiToolParam(value = "The absolute path of the target folder.", rendererId = "path") String targetFolderPath) throws Exception {
+            @AgiToolParam(value = "The absolute path of the file to move.", rendererId = "path") String filePath, 
+            @AgiToolParam(value = "The absolute path of the target folder.", rendererId = "path") String targetFolderPath) throws Exception {
         FileObject sourceFo = getFileObject(filePath);
         FileObject targetFo = getFileObject(targetFolderPath);
         
@@ -164,10 +164,10 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if there is an error invoking the operation.
      */
-    @AiTool("Copies a file or class to a different package or folder.")
+    @AgiTool("Copies a file or class to a different package or folder.")
     public String copy(
-            @AiToolParam(value = "The absolute path of the file to copy.", rendererId = "path") String filePath, 
-            @AiToolParam(value = "The absolute path of the target folder.", rendererId = "path") String targetFolderPath) throws Exception {
+            @AgiToolParam(value = "The absolute path of the file to copy.", rendererId = "path") String filePath, 
+            @AgiToolParam(value = "The absolute path of the target folder.", rendererId = "path") String targetFolderPath) throws Exception {
         FileObject sourceFo = getFileObject(filePath);
         FileObject targetFo = getFileObject(targetFolderPath);
         
@@ -190,10 +190,10 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if there is an error invoking the operation.
      */
-    @AiTool("Deletes a file or class only if it is safe to do so (i.e., no active usages).")
+    @AgiTool("Deletes a file or class only if it is safe to do so (i.e., no active usages).")
     public String safeDelete(
-            @AiToolParam(value = "The absolute path of the file to delete.", rendererId = "path") String filePath,
-            @AiToolParam("Whether to check for usages in comments.") boolean checkInComments) throws Exception {
+            @AgiToolParam(value = "The absolute path of the file to delete.", rendererId = "path") String filePath,
+            @AgiToolParam("Whether to check for usages in comments.") boolean checkInComments) throws Exception {
         FileObject fo = getFileObject(filePath);
         SafeDeleteRefactoring refactoring = new SafeDeleteRefactoring(getLookupForFile(fo));
         refactoring.setCheckInComments(checkInComments);
@@ -243,11 +243,11 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Inlines a method, constant, or variable, replacing all usages with its body/value.")
+    @AgiTool("Inlines a method, constant, or variable, replacing all usages with its body/value.")
     public String inline(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The name of the member to inline.") String memberName,
-            @AiToolParam("The type of inlining (METHOD, TEMP, CONSTANT).") InlineRefactoring.Type type) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The name of the member to inline.") String memberName,
+            @AgiToolParam("The type of inlining (METHOD, TEMP, CONSTANT).") InlineRefactoring.Type type) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle handle = getTreePathHandleForMember(fo, memberName);
         if (handle == null) {
@@ -268,12 +268,12 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Encapsulates a field by creating a getter and setter and updating all references to use them.")
+    @AgiTool("Encapsulates a field by creating a getter and setter and updating all references to use them.")
     public String encapsulateField(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The name of the field to encapsulate.") String fieldName,
-            @AiToolParam("The name for the getter method.") String getterName,
-            @AiToolParam("The name for the setter method.") String setterName) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The name of the field to encapsulate.") String fieldName,
+            @AgiToolParam("The name for the getter method.") String getterName,
+            @AgiToolParam("The name for the setter method.") String setterName) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle handle = getTreePathHandleForMember(fo, fieldName);
         if (handle == null) {
@@ -300,11 +300,11 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Inverts the logic of a boolean method or variable and updates all call sites accordingly.")
+    @AgiTool("Inverts the logic of a boolean method or variable and updates all call sites accordingly.")
     public String invertBoolean(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The name of the boolean member to invert.") String memberName,
-            @AiToolParam("The new name for the inverted member.") String newName) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The name of the boolean member to invert.") String memberName,
+            @AgiToolParam("The new name for the inverted member.") String newName) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle handle = getTreePathHandleForMember(fo, memberName);
         if (handle == null) {
@@ -325,11 +325,11 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Extracts an interface from a class, moving selected members to the new interface.")
+    @AgiTool("Extracts an interface from a class, moving selected members to the new interface.")
     public String extractInterface(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The name of the new interface.") String interfaceName,
-            @AiToolParam("The names of the members to extract.") List<String> memberNames) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The name of the new interface.") String interfaceName,
+            @AgiToolParam("The names of the members to extract.") List<String> memberNames) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle classHandle = getTreePathHandleForClass(fo);
         if (classHandle == null) {
@@ -359,11 +359,11 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Pulls up selected members from a class to one of its superclasses.")
+    @AgiTool("Pulls up selected members from a class to one of its superclasses.")
     public String pullUp(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The FQN of the target superclass.") String targetClassFqn,
-            @AiToolParam("The names of the members to pull up.") List<String> memberNames) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The FQN of the target superclass.") String targetClassFqn,
+            @AgiToolParam("The names of the members to pull up.") List<String> memberNames) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle classHandle = getTreePathHandleForClass(fo);
         if (classHandle == null) {
@@ -393,10 +393,10 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Pushes down selected members from a class to its subclasses.")
+    @AgiTool("Pushes down selected members from a class to its subclasses.")
     public String pushDown(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The names of the members to push down.") List<String> memberNames) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The names of the members to push down.") List<String> memberNames) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle classHandle = getTreePathHandleForClass(fo);
         if (classHandle == null) {
@@ -425,13 +425,13 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Changes a method's signature (name, return type, parameters) and updates all call sites in all open projects.")
+    @AgiTool("Changes a method's signature (name, return type, parameters) and updates all call sites in all open projects.")
     public String changeMethodSignature(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The current name of the method.") String methodName,
-            @AiToolParam("The new name for the method.") String newName,
-            @AiToolParam("The new return type.") String newReturnType,
-            @AiToolParam("The new parameter list.") List<ParameterChange> parameterChanges) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The current name of the method.") String methodName,
+            @AgiToolParam("The new name for the method.") String newName,
+            @AgiToolParam("The new return type.") String newReturnType,
+            @AgiToolParam("The new parameter list.") List<ParameterChange> parameterChanges) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle handle = getTreePathHandleForMember(fo, methodName);
         if (handle == null) {
@@ -461,11 +461,11 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Extracts a new superclass from a class, moving selected members to it.")
+    @AgiTool("Extracts a new superclass from a class, moving selected members to it.")
     public String extractSuperclass(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The name for the new superclass.") String superclassName,
-            @AiToolParam("The names of the members to extract.") List<String> memberNames) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The name for the new superclass.") String superclassName,
+            @AgiToolParam("The names of the members to extract.") List<String> memberNames) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle classHandle = getTreePathHandleForClass(fo);
         if (classHandle == null) {
@@ -490,10 +490,10 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Replaces usages of a class with a supertype (interface or superclass) throughout all open projects where possible.")
+    @AgiTool("Replaces usages of a class with a supertype (interface or superclass) throughout all open projects where possible.")
     public String useSupertype(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The FQN of the supertype to use.") String supertypeFqn) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The FQN of the supertype to use.") String supertypeFqn) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle classHandle = getTreePathHandleForClass(fo);
         if (classHandle == null) {
@@ -515,10 +515,10 @@ public class Refactor extends AnahataToolkit{
      * @return A detailed log of the refactoring process.
      * @throws Exception if the operation fails.
      */
-    @AiTool("Moves a nested (inner) class to its own top-level file, updating all references.")
+    @AgiTool("Moves a nested (inner) class to its own top-level file, updating all references.")
     public String moveInnerToTopLevel(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The name of the inner class to move.") String innerClassName) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The name of the inner class to move.") String innerClassName) throws Exception {
         FileObject fo = getFileObject(filePath);
         TreePathHandle handle = getTreePathHandleForMember(fo, innerClassName);
         if (handle == null) {
@@ -538,10 +538,10 @@ public class Refactor extends AnahataToolkit{
      * @return A formatted list of all found usages.
      * @throws Exception if there is an error invoking the query.
      */
-    @AiTool("Finds all references/usages of a file or type in all open projects.")
+    @AgiTool("Finds all references/usages of a file or type in all open projects.")
     public String whereUsed(
-            @AiToolParam(value = "The absolute path of the file to search for.", rendererId = "path") String filePath,
-            @AiToolParam("Whether to search in comments.") boolean searchInComments) throws Exception {
+            @AgiToolParam(value = "The absolute path of the file to search for.", rendererId = "path") String filePath,
+            @AgiToolParam("Whether to search in comments.") boolean searchInComments) throws Exception {
         FileObject fo = getFileObject(filePath);
         Lookup lookup = getLookupForFile(fo);
 
@@ -576,11 +576,11 @@ public class Refactor extends AnahataToolkit{
      * @return A formatted list of all found usages.
      * @throws Exception if there is an error invoking the query.
      */
-    @AiTool("Finds all references/usages of a specific class member (method or field) in all open projects.")
+    @AgiTool("Finds all references/usages of a specific class member (method or field) in all open projects.")
     public String whereUsedMember(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The name of the member (method or field).") String memberName,
-            @AiToolParam("Whether to search in comments.") boolean searchInComments) throws Exception {
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The name of the member (method or field).") String memberName,
+            @AgiToolParam("Whether to search in comments.") boolean searchInComments) throws Exception {
         FileObject fo = getFileObject(filePath);
         if (!"java".equals(fo.getExt())) {
             throw new IllegalArgumentException("Member search is only supported for Java files.");

@@ -30,10 +30,10 @@ import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import uno.anahata.asi.agi.tool.Page;
 import uno.anahata.asi.nb.tools.project.Projects;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A toolkit for managing and applying Java hints and code fixes within the NetBeans IDE.
@@ -45,7 +45,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A toolkit for managing and applying Java hints and code fixes.")
+@AgiToolkit("A toolkit for managing and applying Java hints and code fixes.")
 public class Hints extends AnahataToolkit {
 
     /**
@@ -82,9 +82,9 @@ public class Hints extends AnahataToolkit {
      * @return A message indicating the result of the operation.
      * @throws Exception if the operation fails or the file is not a valid Java source.
      */
-    @AiTool("Surgically removes all unused imports from a Java source file.")
+    @AgiTool("Surgically removes all unused imports from a Java source file.")
     public String removeUnusedImports(
-            @AiToolParam(value = "The absolute path of the Java file to clean.", rendererId = "path") String filePath
+            @AgiToolParam(value = "The absolute path of the Java file to clean.", rendererId = "path") String filePath
     ) throws Exception {
         File file = new File(filePath);
         if (!file.exists()) {
@@ -162,10 +162,10 @@ public class Hints extends AnahataToolkit {
      * @return A descriptive message indicating whether the fix was successfully applied or if the hint/fix was not found.
      * @throws Exception if the Java source cannot be resolved or the modification task fails.
      */
-    @AiTool("Applies a specific netbeans hint fix to a file.")
+    @AgiTool("Applies a specific netbeans hint fix to a file.")
     public String applyHintFix(
-            @AiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
-            @AiToolParam("The ID of the hint to fix.") String hintId
+            @AgiToolParam(value = "The absolute path of the Java file.", rendererId = "path") String filePath,
+            @AgiToolParam("The ID of the hint to fix.") String hintId
     ) throws Exception {
         File file = new File(filePath);
         if (!file.exists()) {
@@ -227,11 +227,11 @@ public class Hints extends AnahataToolkit {
      * @return A paginated list of all found hints.
      * @throws Exception if the project cannot be found or the scan fails.
      */
-    @AiTool("Gets all Java hints (warnings, suggestions) for a specific project, with pagination.")
+    @AgiTool("Gets all Java hints (warnings, suggestions) for a specific project, with pagination.")
     public Page<HintInfo> getAllHints(
-            @AiToolParam(value = "The absolute path of the project.", rendererId = "path") String projectPath,
-            @AiToolParam(value = "The starting index for pagination. Defaults to 0 if not provided", required = false) Integer startIndex,
-            @AiToolParam("The maximum number of hints to return. Defaults to 108 if not provided") Integer pageSize
+            @AgiToolParam(value = "The absolute path of the project.", rendererId = "path") String projectPath,
+            @AgiToolParam(value = "The starting index for pagination. Defaults to 0 if not provided", required = false) Integer startIndex,
+            @AgiToolParam("The maximum number of hints to return. Defaults to 108 if not provided") Integer pageSize
     ) throws Exception {
         if (startIndex == null) {
             log("defaulting startIndex to 0");

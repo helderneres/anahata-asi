@@ -13,10 +13,10 @@ import uno.anahata.asi.agi.message.AbstractMessage;
 import uno.anahata.asi.agi.message.AbstractPart;
 import uno.anahata.asi.agi.message.PruningState;
 import uno.anahata.asi.agi.message.RagMessage;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A specialized toolkit for managing the conversation history, including
@@ -30,7 +30,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A toolkit for managing the 'pruningState' flag of any items in the conversation history.")
+@AgiToolkit("A toolkit for managing the 'pruningState' flag of any items in the conversation history.")
 public class History extends AnahataToolkit {
 
     @Override
@@ -162,7 +162,7 @@ public class History extends AnahataToolkit {
         return sb.toString();
     }
 
-    @AiTool(value = "Deletes the garbage collector logs")
+    @AgiTool(value = "Deletes the garbage collector logs")
     public String clearGarbageCollectorLogs() {
         List<GarbageCollectorRecord> lr = getAgi().getContextManager().getGarbageCollector().getLogRecords();
         getAgi().getContextManager().getGarbageCollector().clearLog();
@@ -186,10 +186,10 @@ public class History extends AnahataToolkit {
      * @param newState The new pruning state to apply.
      * @return Confirmation message.
      */
-    @AiTool(value = "Bulk sets the pruningState of all parts for one or more messages. Requires in-band metadata to be enabled.")
+    @AgiTool(value = "Bulk sets the pruningState of all parts for one or more messages. Requires in-band metadata to be enabled.")
     public String setMessagePruningState(
-            @AiToolParam("The x-anahata-message-id of the messages to update.") List<Long> messageIds,
-            @AiToolParam("The new pruning state.") PruningState newState) {
+            @AgiToolParam("The x-anahata-message-id of the messages to update.") List<Long> messageIds,
+            @AgiToolParam("The new pruning state.") PruningState newState) {
 
         List<AbstractMessage> history = getAgi().getContextManager().getHistory();
         int count = 0;
@@ -221,10 +221,10 @@ public class History extends AnahataToolkit {
      * @param newState The new pruning state.
      * @return Confirmation message.
      */
-    @AiTool(value = "Sets the pruningState state of one or more message parts. Requires in-band metadata to be enabled.")
+    @AgiTool(value = "Sets the pruningState state of one or more message parts. Requires in-band metadata to be enabled.")
     public String setPartPruningState(
-            @AiToolParam("The x-anahata-part-id of the parts to update.") List<Long> partIds,
-            @AiToolParam("The new pruning state.") PruningState newState) {
+            @AgiToolParam("The x-anahata-part-id of the parts to update.") List<Long> partIds,
+            @AgiToolParam("The new pruning state.") PruningState newState) {
 
         List<AbstractMessage> history = getAgi().getContextManager().getHistory();
         int count = 0;
@@ -249,7 +249,7 @@ public class History extends AnahataToolkit {
      * @param enabled If true, metadata headers are included in the prompt.
      * @return Confirmation message.
      */
-    @AiTool(value = "Toggles the injection of in-band metadata headers for history pruning.",
+    @AgiTool(value = "Toggles the injection of in-band metadata headers for history pruning.",
             requiresApproval = false)
     public String setInjectInbandMetadata(boolean enabled) {
         getAgi().getRequestConfig().setInjectInbandMetadata(enabled);

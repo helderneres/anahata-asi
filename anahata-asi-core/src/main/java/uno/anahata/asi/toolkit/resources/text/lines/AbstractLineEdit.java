@@ -3,7 +3,7 @@ package uno.anahata.asi.toolkit.resources.text.lines;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import java.util.List;
 
 /**
@@ -21,9 +21,9 @@ public abstract class AbstractLineEdit {
      * Applies this edit to a mutable list of lines.
      * 
      * @param lines The current lines of the file.
-     * @throws AiToolException if indices are out of bounds or validation fails.
+     * @throws AgiToolException if indices are out of bounds or validation fails.
      */
-    public abstract void apply(List<String> lines) throws AiToolException;
+    public abstract void apply(List<String> lines) throws AgiToolException;
 
     /**
      * Returns the 1-based line number where this operation starts.

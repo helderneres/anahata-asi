@@ -50,15 +50,15 @@ import uno.anahata.asi.agi.context.ContextProvider;
 import uno.anahata.asi.nb.tools.project.context.ProjectContextProvider;
 import uno.anahata.asi.nb.tools.maven.Maven;
 import uno.anahata.asi.nb.tools.maven.DependencyScope;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.nb.tools.project.alerts.JavacAlert;
 import uno.anahata.asi.nb.tools.project.alerts.ProjectAlert;
 import uno.anahata.asi.nb.tools.project.alerts.ProjectDiagnostics;
 import uno.anahata.asi.nb.annotation.FilesContextActionLogic;
 import uno.anahata.asi.nb.tools.project.context.ProjectStructureContextProvider;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A toolkit for interacting with the NetBeans Project APIs.
@@ -72,7 +72,7 @@ import uno.anahata.asi.nb.tools.project.context.ProjectStructureContextProvider;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A toolkit for using netbeans project apis.")
+@AgiToolkit("A toolkit for using netbeans project apis.")
 public class Projects extends AnahataToolkit implements PropertyChangeListener {
 
     /** Flag indicating if the toolkit is currently listening for global IDE project changes. */
@@ -295,8 +295,8 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @param projectPath The absolute path of the project to set as main.
      * @throws Exception if the project is not open.
      */
-    @AiTool("Sets a specific open project as the 'Main Project'.")
-    public void setMainProject(@AiToolParam("The absolute path of the project to set as main.") String projectPath) throws Exception {
+    @AgiTool("Sets a specific open project as the 'Main Project'.")
+    public void setMainProject(@AgiToolParam("The absolute path of the project to set as main.") String projectPath) throws Exception {
         Project p = findOpenProject(projectPath);
         OpenProjects.getDefault().setMainProject(p);
     }
@@ -311,8 +311,8 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @param projectPaths A list of absolute paths of the projects to close.
      * @throws Exception if any path does not resolve to an open project.
      */
-    @AiTool("Closes one or more open projects.")
-    public void closeProjects(@AiToolParam("A list of absolute paths of the projects to close.") List<String> projectPaths) throws Exception {
+    @AgiTool("Closes one or more open projects.")
+    public void closeProjects(@AgiToolParam("A list of absolute paths of the projects to close.") List<String> projectPaths) throws Exception {
         List<Project> toClose = new ArrayList<>();
         for (String path : projectPaths) {
             toClose.add(findOpenProject(path));
@@ -334,10 +334,10 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @return A status message indicating success or timeout.
      * @throws Exception on internal error or directory failure.
      */
-    @AiTool("Opens a project in the IDE, waiting for the asynchronous open operation to complete. This tool prefers the full absolute path as the project path.")
+    @AgiTool("Opens a project in the IDE, waiting for the asynchronous open operation to complete. This tool prefers the full absolute path as the project path.")
     public String openProject(
-            @AiToolParam("The absolute path to the project (recommended) or the folder name relative to NetBeansProjects.") String projectPath,
-            @AiToolParam("Whether to automatically open all subprojects (e.g. child modules in a Maven parent).") boolean openSubprojects) throws Exception {
+            @AgiToolParam("The absolute path to the project (recommended) or the folder name relative to NetBeansProjects.") String projectPath,
+            @AgiToolParam("Whether to automatically open all subprojects (e.g. child modules in a Maven parent).") boolean openSubprojects) throws Exception {
         File projectDir;
         if (new File(projectPath).isAbsolute()) {
             projectDir = new File(projectPath);
@@ -411,8 +411,8 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @param projectPath The absolute path of the parent project.
      * @throws Exception if the parent project is not open.
      */
-    @AiTool("Opens all subprojects of a given project.")
-    public void openSubprojects(@AiToolParam("The absolute path of the parent project.") String projectPath) throws Exception {
+    @AgiTool("Opens all subprojects of a given project.")
+    public void openSubprojects(@AgiToolParam("The absolute path of the parent project.") String projectPath) throws Exception {
         Project parent = findOpenProject(projectPath);
         SubprojectProvider spp = parent.getLookup().lookup(SubprojectProvider.class);
         if (spp != null) {
@@ -435,7 +435,7 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @return A {@link ProjectOverview} DTO.
      * @throws Exception if the project is not found or is closed.
      */
-    public ProjectOverview getOverview(@AiToolParam("The absolute path of the project.") String projectPath) throws Exception {
+    public ProjectOverview getOverview(@AgiToolParam("The absolute path of the project.") String projectPath) throws Exception {
         Project target = findOpenProject(projectPath);
 
         ProjectInformation info = ProjectUtils.getInformation(target);
@@ -547,10 +547,10 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @param enabled Whether to enable ('all') or disable ('none') Compile on Save.
      * @throws Exception on internal write error.
      */
-    @AiTool("Sets the 'Compile on Save' override in nb-configuration.xml. This 'shared' configuration is what the IDE's Properties dialog manages and it overrides values in the pom.xml.")
+    @AgiTool("Sets the 'Compile on Save' override in nb-configuration.xml. This 'shared' configuration is what the IDE's Properties dialog manages and it overrides values in the pom.xml.")
     public void setCompileOnSaveOverride(
-            @AiToolParam("The absolute path of the project.") String projectPath,
-            @AiToolParam("Whether to enable ('all') or disable ('none') Compile on Save.") boolean enabled) throws Exception {
+            @AgiToolParam("The absolute path of the project.") String projectPath,
+            @AgiToolParam("Whether to enable ('all') or disable ('none') Compile on Save.") boolean enabled) throws Exception {
         Project project = findOpenProject(projectPath);
         String value = enabled ? "all" : "none";
 
@@ -589,7 +589,7 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @return A {@link ProjectFiles} DTO.
      * @throws Exception if project not open.
      */
-    public ProjectFiles getProjectFiles(@AiToolParam("The absolute path of the project.") String projectPath) throws Exception {
+    public ProjectFiles getProjectFiles(@AgiToolParam("The absolute path of the project.") String projectPath) throws Exception {
         Project target = findOpenProject(projectPath);
         FileObject root = target.getProjectDirectory();
 
@@ -630,7 +630,7 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @return A {@link ProjectDiagnostics} report.
      * @throws Exception if project not open.
      */
-    public ProjectDiagnostics getProjectAlerts(@AiToolParam("The absolute path of the project to scan.") String projectPath) throws Exception {
+    public ProjectDiagnostics getProjectAlerts(@AgiToolParam("The absolute path of the project to scan.") String projectPath) throws Exception {
         Project targetProject = findOpenProject(projectPath);
         ProjectDiagnostics projectDiags = new ProjectDiagnostics(ProjectUtils.getInformation(targetProject).getDisplayName());
 
@@ -727,10 +727,10 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @param projectPath The absolute path of the project.
      * @param enabled Whether to enable the context provider.
      */
-    @AiTool("Enables or disables the project context provider (overview and anahata.md) for a specific project.")
+    @AgiTool("Enables or disables the project context provider (overview and anahata.md) for a specific project.")
     public void setProjectProviderEnabled(
-            @AiToolParam("The absolute path of the project.") String projectPath,
-            @AiToolParam("Whether to enable the context provider.") boolean enabled) {
+            @AgiToolParam("The absolute path of the project.") String projectPath,
+            @AgiToolParam("Whether to enable the context provider.") boolean enabled) {
         getProjectProvider(projectPath).ifPresent(pcp -> {
             pcp.setProviding(enabled);
             log.info("Project context for {} set to: {}", projectPath, enabled);
@@ -754,13 +754,13 @@ public class Projects extends AnahataToolkit implements PropertyChangeListener {
      * @param action The action to invoke.
      * @throws Exception if the project is not open or the action is unsupported.
      */
-    @AiTool("Invokes ('Fires and forgets') a NetBeans Project supported Action (like 'run' or 'build')  on a given open Project (via ActionProvider).\n"
+    @AgiTool("Invokes ('Fires and forgets') a NetBeans Project supported Action (like 'run' or 'build')  on a given open Project (via ActionProvider).\n"
             + "\n\nThis method is always asynchronous by design. (regardless of whether you specify the asynchronous parameter or not)"
             + "as this tool does not return any values nor you can ensure that the action finished when this tool returns."
             + "\nUse Maven.runGoals or JVM tools or any other synchronous tools if you need to ensure the action succeeded or the action you require produces an output you need")
     public void invokeAction(
-            @AiToolParam("The absolute path of the project.") String projectPath,
-            @AiToolParam("The action to invoke") String action) throws Exception {
+            @AgiToolParam("The absolute path of the project.") String projectPath,
+            @AgiToolParam("The action to invoke") String action) throws Exception {
         Project project = findOpenProject(projectPath);
         ActionProvider ap = project.getLookup().lookup(ActionProvider.class);
         if (ap == null) {

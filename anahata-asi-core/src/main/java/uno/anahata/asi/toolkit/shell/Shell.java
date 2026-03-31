@@ -13,11 +13,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import lombok.AllArgsConstructor;
 import uno.anahata.asi.agi.tool.spi.java.JavaMethodToolResponse;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.toolkit.shell.ShellExecutionResult;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A tool provider that allows the AI model to execute commands in the local
@@ -29,7 +29,7 @@ import uno.anahata.asi.toolkit.shell.ShellExecutionResult;
  * 
  * @author anahata
  */
-@AiToolkit("A toolkit for running shell commands")
+@AgiToolkit("A toolkit for running shell commands")
 public class Shell extends AnahataToolkit {
 
     /**
@@ -64,10 +64,10 @@ public class Shell extends AnahataToolkit {
      * @return A {@link ShellExecutionResult} containing the exit code and output.
      * @throws Exception if the command fails to start or execution is interrupted.
      */
-    @AiTool("Runs a shell command using the specified or auto-detected shell and forwards the stdout to the tool's output and the stderr to the tool's error log")
+    @AgiTool("Runs a shell command using the specified or auto-detected shell and forwards the stdout to the tool's output and the stderr to the tool's error log")
     public ShellExecutionResult runAndWait(
-            @AiToolParam("The command to run") String command,
-            @AiToolParam("The type of shell to use (BASH, CMD, POWERSHELL, SH). If null, it defaults to POWERSHELL on Windows and BASH on Unix.") ShellType type) throws Exception {
+            @AgiToolParam("The command to run") String command,
+            @AgiToolParam("The type of shell to use (BASH, CMD, POWERSHELL, SH). If null, it defaults to POWERSHELL on Windows and BASH on Unix.") ShellType type) throws Exception {
         
         Thread currentThread = Thread.currentThread();
         log(String.format("[Shell] runAndWait started on thread: %s (ID: %d)", currentThread.getName(), currentThread.getId()));

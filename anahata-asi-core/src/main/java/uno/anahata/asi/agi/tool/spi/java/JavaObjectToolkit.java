@@ -14,11 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.context.ContextProvider;
 import uno.anahata.asi.persistence.Rebindable;
 import uno.anahata.asi.agi.tool.spi.AbstractToolkit;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.tool.ToolContext;
 import uno.anahata.asi.agi.tool.ToolManager;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A domain object that parses a Java class via reflection to build a complete,
@@ -62,7 +62,7 @@ public class JavaObjectToolkit extends AbstractToolkit<JavaMethodTool> implement
         super(toolManager);
         this.toolkitClassName = toolClass.getName();
         
-        AiToolkit toolkitAnnotation = toolClass.getAnnotation(AiToolkit.class);
+        AgiToolkit toolkitAnnotation = toolClass.getAnnotation(AgiToolkit.class);
         if (toolkitAnnotation == null) {
             throw new IllegalArgumentException("Class " + toolClass.getName() + " is not annotated with @AiToolkit.");
         }
@@ -89,7 +89,7 @@ public class JavaObjectToolkit extends AbstractToolkit<JavaMethodTool> implement
 
         this.tools = new ArrayList<>();
         for (Method method : getAllAnnotatedMethods(toolClass)) {
-            AiTool toolAnnotation = method.getAnnotation(AiTool.class);
+            AgiTool toolAnnotation = method.getAnnotation(AgiTool.class);
             if (toolAnnotation != null) {
                 tools.add(new JavaMethodTool(this, method, toolAnnotation));
             }
@@ -161,7 +161,7 @@ public class JavaObjectToolkit extends AbstractToolkit<JavaMethodTool> implement
         if (toolkitInstance != null) {
             Map<String, Method> currentMethods = new HashMap<>();
             for (Method m : getAllAnnotatedMethods(toolkitInstance.getClass())) {
-                AiTool toolAnnotation = m.getAnnotation(AiTool.class);
+                AgiTool toolAnnotation = m.getAnnotation(AgiTool.class);
                 if (toolAnnotation != null) {
                     currentMethods.put(JavaMethodTool.buildMethodSignature(m), m);
                 }
@@ -185,7 +185,7 @@ public class JavaObjectToolkit extends AbstractToolkit<JavaMethodTool> implement
             // Add new tools
             for (Map.Entry<String, Method> entry : currentMethods.entrySet()) {
                 Method m = entry.getValue();
-                AiTool toolAnnotation = m.getAnnotation(AiTool.class);
+                AgiTool toolAnnotation = m.getAnnotation(AgiTool.class);
                 try {
                     log.info("Adding new tool discovered during rebind: {}", entry.getKey());
                     tools.add(new JavaMethodTool(this, m, toolAnnotation));
@@ -197,7 +197,7 @@ public class JavaObjectToolkit extends AbstractToolkit<JavaMethodTool> implement
     }
 
     /**
-     * Recursively finds all methods annotated with {@link AiTool} in the class hierarchy.
+     * Recursively finds all methods annotated with {@link AgiTool} in the class hierarchy.
      * 
      * @param clazz The class to start the search from.
      * @return A list of annotated methods, with child methods taking precedence over parent methods.
@@ -208,7 +208,7 @@ public class JavaObjectToolkit extends AbstractToolkit<JavaMethodTool> implement
         Class<?> currentClass = clazz;
         while (currentClass != null && currentClass != Object.class) {
             for (Method method : currentClass.getDeclaredMethods()) {
-                AiTool toolAnnotation = method.getAnnotation(AiTool.class);
+                AgiTool toolAnnotation = method.getAnnotation(AgiTool.class);
                 if (toolAnnotation != null) {
                     String signature = JavaMethodTool.buildMethodSignature(method);
                     if (signatures.add(signature)) {

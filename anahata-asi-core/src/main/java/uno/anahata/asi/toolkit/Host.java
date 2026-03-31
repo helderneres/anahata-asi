@@ -7,10 +7,10 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.SystemUtils;
 import uno.anahata.asi.agi.message.RagMessage;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A toolkit for interacting with the host operating system and JVM.
@@ -22,7 +22,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A toolkit for host-level operations and system information.")
+@AgiToolkit("A toolkit for host-level operations and system information.")
 public class Host extends AnahataToolkit {
 
     /** {@inheritDoc} */
@@ -52,7 +52,7 @@ public class Host extends AnahataToolkit {
      * 
      * @return A list of process information strings.
      */
-    @AiTool("Lists all active processes on the host system.")
+    @AgiTool("Lists all active processes on the host system.")
     public List<String> listProcesses() {
         List<String> results = new ArrayList<>();
         ProcessHandle.allProcesses().forEach(p -> {
@@ -72,10 +72,10 @@ public class Host extends AnahataToolkit {
      * @param force Whether to use a forced shutdown (kill -9).
      * @return A status message.
      */
-    @AiTool("Terminates a specific process by its PID.")
+    @AgiTool("Terminates a specific process by its PID.")
     public String killProcess(
-            @AiToolParam("The process ID to terminate.") long pid,
-            @AiToolParam("Whether to use a forced shutdown.") boolean force
+            @AgiToolParam("The process ID to terminate.") long pid,
+            @AgiToolParam("Whether to use a forced shutdown.") boolean force
     ) {
         long myPid = ProcessHandle.current().pid();
         if (pid == myPid) {

@@ -36,11 +36,8 @@ import uno.anahata.asi.internal.TextUtils;
 import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.agi.tool.spi.java.JavaMethodTool;
 import uno.anahata.asi.agi.tool.spi.java.JavaMethodToolResponse;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolException;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
-import uno.anahata.asi.agi.tool.AgiTool;
+import uno.anahata.asi.agi.tool.AgiToolException;
+import uno.anahata.asi.agi.tool.OnTheFlyAgiTool;
 import uno.anahata.asi.agi.tool.ToolContext;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.tool.ToolManager;
@@ -48,17 +45,20 @@ import uno.anahata.asi.agi.tool.ToolResponseAttachment;
 import uno.anahata.asi.agi.tool.spi.AbstractToolkit;
 import uno.anahata.asi.agi.tool.spi.java.JavaMethodToolCall;
 import uno.anahata.asi.agi.tool.spi.java.JavaObjectToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A powerful toolkit for compiling and executing Java code dynamically within
  * the application's JVM. It provides a "hot-reload" capability by using a
  * child-first classloader and supports context-aware execution through the
- * {@link AgiTool} base class.
+ * {@link OnTheFlyAgiTool} base class.
  *
  * @author anahata
  */
 @Slf4j
-@AiToolkit("Toolkit for compiling and executing java code, has a 'temp' HashMap for storing java objects across turns / tool calls and uses a child first classloader if additional classpath entries are provided")
+@AgiToolkit("Toolkit for compiling and executing java code, has a 'temp' HashMap for storing java objects across turns / tool calls and uses a child first classloader if additional classpath entries are provided")
 public class Java extends AnahataToolkit {
 
     /**
@@ -67,8 +67,7 @@ public class Java extends AnahataToolkit {
      * context. This prevents "Identity Crisis" issues where a child-loaded
      * script cannot access the engine's context.
      */
-    protected static final Set<String> PARENT_FIRST_CLASSES = Set.of(
-            AgiTool.class.getName(),
+    protected static final Set<String> PARENT_FIRST_CLASSES = Set.of(OnTheFlyAgiTool.class.getName(),
             Java.class.getName(),
             ToolContext.class.getName(),
             Agi.class.getName(),
@@ -79,7 +78,7 @@ public class Java extends AnahataToolkit {
             JavaMethodToolCall.class.getName(),
             JavaMethodToolResponse.class.getName(),
             ToolResponseAttachment.class.getName(),
-            AiToolException.class.getName()
+            AgiToolException.class.getName()
     );
 
     /**
@@ -150,7 +149,7 @@ public class Java extends AnahataToolkit {
      * @return the base AgiTool class.
      */
     protected Class<? extends ToolContext> getConcreteClassModelShouldExtend() {
-        return AgiTool.class;
+        return OnTheFlyAgiTool.class;
     }
 
     /**
@@ -168,7 +167,7 @@ public class Java extends AnahataToolkit {
      *
      * @return The full default classpath string.
      */
-    @AiTool("The full default classpath for compiling java code and for class loading")
+    @AgiTool("The full default classpath for compiling java code and for class loading")
     public String getDefaultClasspath() {
         return defaultCompilerClasspath;
     }
@@ -178,8 +177,8 @@ public class Java extends AnahataToolkit {
      *
      * @param defaultCompilerClasspath The new default classpath string.
      */
-    @AiTool("Sets the default classpath for the compiler and classloader")
-    public void setDefaultClasspath(@AiToolParam("The default classpath for all code compiled by the Java toolkit") String defaultCompilerClasspath) {
+    @AgiTool("Sets the default classpath for the compiler and classloader")
+    public void setDefaultClasspath(@AgiToolParam("The default classpath for all code compiled by the Java toolkit") String defaultCompilerClasspath) {
         this.defaultCompilerClasspath = defaultCompilerClasspath;
     }
 
@@ -241,10 +240,10 @@ public class Java extends AnahataToolkit {
      */
     //@AiTool("Compiles the source code of a java class with the default compiler classpath")
     public Class compile(
-            @AiToolParam(value = "The source code", rendererId = "java") String sourceCode,
-            @AiToolParam("The class name") String className,
-            @AiToolParam(value = "Additional classpath entries", required = false) String extraClassPath,
-            @AiToolParam(value = "Additional compiler options", required = false) String[] compilerOptions)
+            @AgiToolParam(value = "The source code", rendererId = "java") String sourceCode,
+            @AgiToolParam("The class name") String className,
+            @AgiToolParam(value = "Additional classpath entries", required = false) String extraClassPath,
+            @AgiToolParam(value = "Additional compiler options", required = false) String[] compilerOptions)
             throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
 
         final ToolContext ctx = getToolContext();
@@ -414,7 +413,7 @@ public class Java extends AnahataToolkit {
 
     /**
      * Compiles and executes a Java class named 'Anahata' on the application's
-     * JVM. The class must extend {@link AgiTool} and implement
+     * JVM. The class must extend {@link OnTheFlyAgiTool} and implement
      * {@link Callable}.
      *
      * @param sourceCode The Java source code to compile and execute.
@@ -423,7 +422,7 @@ public class Java extends AnahataToolkit {
      * @return The result of the execution.
      * @throws Exception if compilation or execution fails.
      */
-    @AiTool(
+    @AgiTool(
             value = "Compiles and executes the 'Anahata' class on the application's JVM.\n"
             + "The class should:\n"
             + "- be public, \n"
@@ -433,9 +432,9 @@ public class Java extends AnahataToolkit {
             requiresApproval = true
     )
     public Object compileAndExecute(
-            @AiToolParam(value = "Source code of the 'Anahata' class.", rendererId = "java") String sourceCode,
-            @AiToolParam(value = "Compiler's additional classpath entries separated with File.pathSeparator. These will be first in the final compiler's and ClassLoader's classpath", required = false) String extraClassPath,
-            @AiToolParam(value = "Compiler's options.", required = false) String[] compilerOptions) throws Exception {
+            @AgiToolParam(value = "Source code of the 'Anahata' class.", rendererId = "java") String sourceCode,
+            @AgiToolParam(value = "Compiler's additional classpath entries separated with File.pathSeparator. These will be first in the final compiler's and ClassLoader's classpath", required = false) String extraClassPath,
+            @AgiToolParam(value = "Compiler's options.", required = false) String[] compilerOptions) throws Exception {
 
         log.info("executeJavaCode: \nsource={}", sourceCode);
         log.info("executeJavaCode: \nextraCompilerClassPath={}", extraClassPath);
@@ -459,7 +458,7 @@ public class Java extends AnahataToolkit {
             log.info("Calling call() method on Callable (or AnahataTool)");
             return callable.call();
         } else {
-            throw new AiToolException("Source file should extend AnahataTool or implement java.util.Callable");
+            throw new AgiToolException("Source file should extend AnahataTool or implement java.util.Callable");
         }
     }
 

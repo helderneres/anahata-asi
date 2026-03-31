@@ -11,7 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 
 /**
  * Represents a set of text replacement operations for a specific file. Extends
@@ -43,7 +43,7 @@ public class TextResourceReplacements extends AbstractTextResourceWrite {
     @Override
     public String calculateResultingContent() throws Exception {
         if (originalContent == null) {
-            throw new AiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
+            throw new AgiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
         }
         String newContent = originalContent;
         for (TextReplacement replacement : replacements) {
@@ -58,23 +58,23 @@ public class TextResourceReplacements extends AbstractTextResourceWrite {
         super.validate(agi);
 
         if (replacements == null || replacements.isEmpty()) {
-             throw new AiToolException("No replacements provided.");
+             throw new AgiToolException("No replacements provided.");
         }
 
         for (TextReplacement replacement : replacements) {
             String target = replacement.getTarget();
             if (target == null || target.isEmpty()) {
-                throw new AiToolException("Replacement target cannot be null or empty.");
+                throw new AgiToolException("Replacement target cannot be null or empty.");
             }
             
             int count = StringUtils.countMatches(originalContent, target);
             
             if (replacement.getExpectedCount() > 0 && count != replacement.getExpectedCount()) {
-                throw new AiToolException("Replacement failed for '" + target + "'. Expected " + replacement.getExpectedCount() + " occurrences, but found " + count);
+                throw new AgiToolException("Replacement failed for '" + target + "'. Expected " + replacement.getExpectedCount() + " occurrences, but found " + count);
             }
             
             if (count == 0 && replacement.getExpectedCount() != 0) {
-                 throw new AiToolException("Target string not found in file: " + target);
+                 throw new AgiToolException("Target string not found in file: " + target);
             }
         }
         // Identical content check is now in parent validate()

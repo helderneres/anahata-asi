@@ -9,7 +9,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 
 /**
  * A rich DTO for updating a text file with its full new content. It encapsulates the new content, 
@@ -48,7 +48,7 @@ public class FullTextResourceUpdate extends AbstractTextResourceWrite {
     @Override
     public String calculateResultingContent() throws Exception {
         if (originalContent == null) {
-            throw new AiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
+            throw new AgiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
         }
         return newContent;
     }

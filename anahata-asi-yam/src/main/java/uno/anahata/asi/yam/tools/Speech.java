@@ -5,10 +5,10 @@ import com.sun.speech.freetts.Voice;
 import com.sun.speech.freetts.VoiceManager;
 import com.sun.speech.freetts.audio.AudioPlayer;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A toolkit for speech synthesis (TTS) and audio alerts.
@@ -18,7 +18,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A toolkit for speech synthesis (TTS) and audio alerts.")
+@AgiToolkit("A toolkit for speech synthesis (TTS) and audio alerts.")
 public class Speech extends AnahataToolkit {
 
     /** The default voice to use for synthesis. */
@@ -32,8 +32,8 @@ public class Speech extends AnahataToolkit {
      * @return A status message.
      * @throws Exception If the speech engine fails or the voice is not found.
      */
-    @AiTool("Speaks the given text using the internal pure-Java TTS engine.")
-    public String speak(@AiToolParam("The text to speak.") String text) throws Exception {
+    @AgiTool("Speaks the given text using the internal pure-Java TTS engine.")
+    public String speak(@AgiToolParam("The text to speak.") String text) throws Exception {
         log.info("Singularity attempting to speak: {}", text);
         
         System.setProperty("freetts.voices", "com.sun.speech.freetts.en.us.cmu_us_kal.KevinVoiceDirectory");

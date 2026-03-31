@@ -17,8 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
 import uno.anahata.asi.agi.tool.ToolPermission;
-import uno.anahata.asi.agi.tool.AiTool;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A model-agnostic, stateful representation of a single Java method tool. This
@@ -61,17 +61,15 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
      *
      * @param toolkit The parent toolkit.
      * @param method The reflection Method to parse.
-     * @param toolAnnotation The pre-fetched @AiTool annotation.
+     * @param toolAnnotation The pre-fetched @AgiTool annotation.
      * @throws Exception if schema generation fails.
      */
-    public JavaMethodTool(JavaObjectToolkit toolkit, Method method, AiTool toolAnnotation) throws Exception {
+    public JavaMethodTool(JavaObjectToolkit toolkit, Method method, AgiTool toolAnnotation) throws Exception {
         super(toolkit.getName() + "." + method.getName());
 
         // Set parent fields
         this.toolkit = toolkit;
-        this.permission = toolAnnotation.requiresApproval()
-                ? ToolPermission.PROMPT
-                : ToolPermission.APPROVE_ALWAYS;
+        this.permission = toolAnnotation.permission();
 
         // Cache both schema versions
         this.wrappedResponseJsonSchema = SchemaProvider.generateInlinedSchemaString(getResponseType(), "result", method.getGenericReturnType());
@@ -257,7 +255,7 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
         } catch (IllegalArgumentException e) {
             log.error("Failed to convert arguments", e);
             String reason = "Tool call rejected: Failed to convert arguments. Error: " + e.getMessage();
-            JavaMethodToolCall call = new JavaMethodToolCall(modelMessage, id, this, jsonArgs, jsonArgs);
+            JavaMethodToolCall call = new JavaMethodToolCall(modelMessage, id, this, jsonArgs, convertedArgs);
             call.getResponse().fail(reason);
             return call;
         }

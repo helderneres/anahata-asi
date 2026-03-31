@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.PARAMETER)
-public @interface AiToolParam {
+public @interface AgiToolParam {
     /**
      * A clear and concise description of the parameter's purpose and expected format.
      * This is injected into the tool's JSON schema as the property description.

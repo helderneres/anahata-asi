@@ -26,11 +26,11 @@ import org.openide.filesystems.FileUtil;
 import org.netbeans.api.java.source.SourceUtils;
 import uno.anahata.asi.nb.module.NetBeansModuleUtils;
 import uno.anahata.asi.nb.tools.project.Projects;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.toolkit.Java;
 import uno.anahata.asi.swing.toolkit.SwingJava;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A NetBeans-aware extension of the core {@link Java} toolkit.
@@ -40,7 +40,7 @@ import uno.anahata.asi.swing.toolkit.SwingJava;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A NetBeans-aware toolkit for compiling and executing Java code.")
+@AgiToolkit("A NetBeans-aware toolkit for compiling and executing Java code.")
 public class NbJava extends SwingJava {
 
     /** 
@@ -80,18 +80,18 @@ public class NbJava extends SwingJava {
      * @return The result of the execution.
      * @throws Exception on error.
      */
-    @AiTool(
+    @AgiTool(
             value = "Compiles and executes Java source code within the context of a specific NetBeans project. "
             + "This tool enables a powerful 'hot-reload' workflow by creating a dynamic classpath that prioritizes the project's own build directories (e.g., 'target/classes') over the plugins classpath. "
                     + "Use the normal compileAndExecute for general netbeans things or if you are not importing any types from any of the open projects",
             requiresApproval = true
     )
     public Object compileAndExecuteInProject(            
-            @AiToolParam(value = "Source code of a public class named **Anahata** that has **no package declaration** and **extends AnahataTool**.", rendererId = "java") String sourceCode,
-            @AiToolParam("The absolute path of the NetBeans project to run in.") String projectPath,
-            @AiToolParam("Whether to include the project's COMPILE and EXECUTE **dependencies**.") boolean includeDependencies,
-            @AiToolParam("Whether to include the project's test source folders and test dependencies.") boolean includeTestDependencies,
-            @AiToolParam(value="Optional additional compiler options.",required = false) String[] compilerOptions) throws Exception {
+            @AgiToolParam(value = "Source code of a public class named **Anahata** that has **no package declaration** and **extends AnahataTool**.", rendererId = "java") String sourceCode,
+            @AgiToolParam("The absolute path of the NetBeans project to run in.") String projectPath,
+            @AgiToolParam("Whether to include the project's COMPILE and EXECUTE **dependencies**.") boolean includeDependencies,
+            @AgiToolParam("Whether to include the project's test source folders and test dependencies.") boolean includeTestDependencies,
+            @AgiToolParam(value="Optional additional compiler options.",required = false) String[] compilerOptions) throws Exception {
 
         Project project = Projects.findOpenProject(projectPath);
         Projects projectsToolkit = getToolManager().getToolkitInstance(Projects.class).orElseThrow(() -> new IllegalStateException("Projects toolkit not found"));

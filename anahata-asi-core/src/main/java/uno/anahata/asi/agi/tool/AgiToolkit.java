@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface AiToolkit {
+public @interface AgiToolkit {
 
     /**
      * A detailed description of what the tools in this toolkit do, including its purpose,

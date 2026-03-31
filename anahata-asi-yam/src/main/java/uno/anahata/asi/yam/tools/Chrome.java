@@ -36,12 +36,12 @@ import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.internal.OsUtils;
 import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.persistence.Rebindable;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.toolkit.shell.Shell;
 import uno.anahata.asi.toolkit.shell.ShellExecutionResult;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A toolkit for web automation and form filling using Selenium.
@@ -60,7 +60,7 @@ import uno.anahata.asi.toolkit.shell.ShellExecutionResult;
  */
 @Slf4j
 @Getter
-@AiToolkit("A toolkit for web automation and form filling using Chrome and Selenium.")
+@AgiToolkit("A toolkit for web automation and form filling using Chrome and Selenium.")
 public class Chrome extends AnahataToolkit implements Rebindable {
 
     /** The active WebDriver instance. */
@@ -162,9 +162,9 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * @param profile An optional profile name to force (e.g., 'Profile 5'). If null, it will be auto-detected.
      * @return A status message.
      */
-    @AiTool("Automatically connects to the user's browser, restarting it in debug mode if necessary.")
+    @AgiTool("Automatically connects to the user's browser, restarting it in debug mode if necessary.")
     public String connect(
-            @AiToolParam("An optional profile name to force. If null, it will be auto-detected.") String profile
+            @AgiToolParam("An optional profile name to force. If null, it will be auto-detected.") String profile
     ) {
         if (getDriver() != null) {
             try {
@@ -241,7 +241,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return A status report.
      */
-    @AiTool("Gets the current status of the browser driver.")
+    @AgiTool("Gets the current status of the browser driver.")
     public String getStatus() {
         if (initializing) {
             return "Browser is currently initializing...";
@@ -266,7 +266,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return A status message.
      */
-    @AiTool("Terminates all running Chrome and ChromeDriver processes on the host system.")
+    @AgiTool("Terminates all running Chrome and ChromeDriver processes on the host system.")
     public String killAll() {
         return killAllInternal();
     }
@@ -277,8 +277,8 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * @param url The URL to navigate to.
      * @return A status message.
      */
-    @AiTool("Navigates the current browser session to a new URL.")
-    public String navigate(@AiToolParam("The URL to navigate to.") String url) {
+    @AgiTool("Navigates the current browser session to a new URL.")
+    public String navigate(@AgiToolParam("The URL to navigate to.") String url) {
         if (getDriver() == null) {
             return "No active session.";
         }
@@ -292,8 +292,8 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * @param name The name of the screenshot file (without extension).
      * @return A status message.
      */
-    @AiTool("Takes a screenshot of the current page and attaches it to the session.")
-    public String getScreenshot(@AiToolParam("The name of the screenshot file.") String name) throws Exception {
+    @AgiTool("Takes a screenshot of the current page and attaches it to the session.")
+    public String getScreenshot(@AgiToolParam("The name of the screenshot file.") String name) throws Exception {
         if (getDriver() == null) {
             return "No active session.";
         }
@@ -318,7 +318,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return A list of tab titles, URLs, and indices.
      */
-    @AiTool("Lists all open tabs/windows in the current browser session.")
+    @AgiTool("Lists all open tabs/windows in the current browser session.")
     public List<String> listTabs() {
         if (getDriver() == null) {
             return Collections.singletonList("No active session.");
@@ -392,8 +392,8 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * @param index The index of the tab (from listTabs).
      * @return A status message.
      */
-    @AiTool("Switches the active tab/window by its index.")
-    public String switchToTab(@AiToolParam("The index of the tab.") int index) {
+    @AgiTool("Switches the active tab/window by its index.")
+    public String switchToTab(@AgiToolParam("The index of the tab.") int index) {
         if (getDriver() == null) {
             return "No active session.";
         }
@@ -416,7 +416,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return A status message.
      */
-    @AiTool("Navigates back in the browser history.")
+    @AgiTool("Navigates back in the browser history.")
     public String goBack() {
         if (getDriver() == null) {
             return "No active session.";
@@ -430,7 +430,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return A status message.
      */
-    @AiTool("Navigates forward in the browser history.")
+    @AgiTool("Navigates forward in the browser history.")
     public String goForward() {
         if (getDriver() == null) {
             return "No active session.";
@@ -444,7 +444,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return A status message.
      */
-    @AiTool("Refreshes the current page.")
+    @AgiTool("Refreshes the current page.")
     public String refresh() {
         if (getDriver() == null) {
             return "No active session.";
@@ -458,7 +458,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return The page source.
      */
-    @AiTool("Gets the full HTML source of the current page.")
+    @AgiTool("Gets the full HTML source of the current page.")
     public String getPageSource() {
         if (getDriver() == null) {
             return "No active session.";
@@ -471,7 +471,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return The page text.
      */
-    @AiTool("Gets the visible text content of the current page.")
+    @AgiTool("Gets the visible text content of the current page.")
     public String getPageText() {
         if (getDriver() == null) {
             return "No active session.";
@@ -484,7 +484,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return A summary of found elements.
      */
-    @AiTool("Inspects the current page for input fields and buttons.")
+    @AgiTool("Inspects the current page for input fields and buttons.")
     public String inspectForm() {
         if (getDriver() == null) {
             return "No active browser session.";
@@ -518,9 +518,9 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * @param identifier The ID, Name, or visible text of the element.
      * @return A status message.
      */
-    @AiTool("Clicks an element on the page.")
+    @AgiTool("Clicks an element on the page.")
     public String clickElement(
-            @AiToolParam("The ID, Name, or visible text of the element.") String identifier
+            @AgiToolParam("The ID, Name, or visible text of the element.") String identifier
     ) {
         if (getDriver() == null) {
             return "No active session.";
@@ -568,8 +568,8 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * @param identifier The ID, Name, or visible text of the element.
      * @return A status message.
      */
-    @AiTool("Scrolls the specified element into view.")
-    public String scrollToElement(@AiToolParam("The ID, Name, or visible text of the element.") String identifier) {
+    @AgiTool("Scrolls the specified element into view.")
+    public String scrollToElement(@AgiToolParam("The ID, Name, or visible text of the element.") String identifier) {
         if (getDriver() == null) {
             return "No active session.";
         }
@@ -609,10 +609,10 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * @param timeoutSeconds The maximum time to wait in seconds.
      * @return A status message.
      */
-    @AiTool("Waits for an element to be visible on the page.")
+    @AgiTool("Waits for an element to be visible on the page.")
     public String waitForElement(
-            @AiToolParam("The CSS selector of the element.") String cssSelector,
-            @AiToolParam("The maximum time to wait in seconds.") int timeoutSeconds
+            @AgiToolParam("The CSS selector of the element.") String cssSelector,
+            @AgiToolParam("The maximum time to wait in seconds.") int timeoutSeconds
     ) {
         if (getDriver() == null) {
             return "No active session.";
@@ -628,9 +628,9 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * @param script The JavaScript code to execute.
      * @return The result of the script execution.
      */
-    @AiTool("Executes arbitrary JavaScript in the current browser session.")
+    @AgiTool("Executes arbitrary JavaScript in the current browser session.")
     public Object executeScript(
-            @AiToolParam("The JavaScript code to execute.") String script
+            @AgiToolParam("The JavaScript code to execute.") String script
     ) {
         if (getDriver() == null) {
             return "No active session.";
@@ -645,9 +645,9 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * @param data A map of field identifiers (ID or Name) to values.
      * @return A status message.
      */
-    @AiTool("Fills a web form with the provided data.")
+    @AgiTool("Fills a web form with the provided data.")
     public String fillForm(
-            @AiToolParam("A map of field IDs or Names to values.") Map<String, String> data
+            @AgiToolParam("A map of field IDs or Names to values.") Map<String, String> data
     ) {
         if (getDriver() == null) {
             return "No active session.";
@@ -689,7 +689,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
      * 
      * @return A confirmation message.
      */
-    @AiTool("Closes the browser session.")
+    @AgiTool("Closes the browser session.")
     public String close() {
         if (driver != null) {
             driver.quit(); 

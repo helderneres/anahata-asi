@@ -14,11 +14,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolException;
-import uno.anahata.asi.agi.tool.AiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
-import uno.anahata.asi.agi.tool.AiToolParam;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.agi.tool.ToolPermission;
@@ -28,6 +25,9 @@ import uno.anahata.asi.toolkit.resources.text.FullTextFileCreate;
 import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
 import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * The definitive V2 URI-centric toolkit for managed multimodal resources.
@@ -41,7 +41,7 @@ import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A URI-centric toolkit for managing resources.")
+@AgiToolkit("A URI-centric toolkit for managing resources.")
 public class Resources extends AnahataToolkit {
 
     /**
@@ -106,10 +106,10 @@ public class Resources extends AnahataToolkit {
      * @return The list of unique resource identifiers.
      * @throws Exception if loading fails.
      */
-    @AiTool(value = "Loads multiple resources into the context by their URIs.", requiresApproval = false)
+    @AgiTool(value = "Loads multiple resources into the context by their URIs.", requiresApproval = false)
     public List<String> loadResources(
-            @AiToolParam("The full URIs of the resources.") List<String> uriStrings,
-            @AiToolParam(value = "Initial viewport settings for text resources. If not provided, it uses the system default viewport (65K chars 1024 col width)", required = false) TextViewportSettings initialSettings) throws Exception {
+            @AgiToolParam("The full URIs of the resources.") List<String> uriStrings,
+            @AgiToolParam(value = "Initial viewport settings for text resources. If not provided, it uses the system default viewport (65K chars 1024 col width)", required = false) TextViewportSettings initialSettings) throws Exception {
 
         List<Resource> toRegister = new ArrayList<>();
         List<String> ids = new ArrayList<>();
@@ -148,17 +148,17 @@ public class Resources extends AnahataToolkit {
      * @param settings The new settings.
      * @throws Exception if the resource is not found.
      */
-    @AiTool("Updates the viewport configuration for a text resource.")
+    @AgiTool("Updates the viewport configuration for a text resource.")
     public void updateViewport(
-            @AiToolParam("The unique resource identifier.") String resourceId,
-            @AiToolParam("The new viewport settings.") TextViewportSettings settings) throws Exception {
+            @AgiToolParam("The unique resource identifier.") String resourceId,
+            @AgiToolParam("The new viewport settings.") TextViewportSettings settings) throws Exception {
         Resource res = getAgi().getResourceManager().getResources().get(resourceId);
         if (res != null && res.getView() instanceof TextView tv) {
             tv.getViewport().setSettings(settings);
             tv.markDirty(); // Explicitly trigger re-interpretation
             log("Updated viewport for: " + res.getName());
         } else {
-            throw new AiToolException("Resource not found or not textual: " + resourceId);
+            throw new AgiToolException("Resource not found or not textual: " + resourceId);
         }
     }
 
@@ -167,8 +167,8 @@ public class Resources extends AnahataToolkit {
      *
      * @param resourceIds The UUIDs to unregister.
      */
-    @AiTool("Unloads multiple resources from the context (from the RAG Message).")
-    public void unloadResources(@AiToolParam("The list of resource identifiers.") List<String> resourceIds) {
+    @AgiTool("Unloads multiple resources from the context (from the RAG Message).")
+    public void unloadResources(@AgiToolParam("The list of resource identifiers.") List<String> resourceIds) {
         List<Resource> unregistered = getAgi().getResourceManager().unregisterAll(resourceIds);
         for (Resource r : unregistered) {
             log("Unregistered resource: " + r.getName());
@@ -192,8 +192,8 @@ public class Resources extends AnahataToolkit {
      * @return The new resource UUID.
      * @throws Exception if creation fails.
      */
-    @AiTool("Creates a new text file and registers it as a resource (Will appear on the RAG message).")
-    public String createTextFile(@AiToolParam("The file creation details.") FullTextFileCreate create) throws Exception {
+    @AgiTool("Creates a new text file and registers it as a resource (Will appear on the RAG message).")
+    public String createTextFile(@AgiToolParam("The file creation details.") FullTextFileCreate create) throws Exception {
         create.validate(getAgi());
 
         Path path = Paths.get(create.getPath());
@@ -217,8 +217,8 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if the update fails.
      */
-    @AiTool("Updates an existing text resource in the RAG message using full content replacement. Returns a standard unified diff of the changes applied.")
-    public String updateTextResource(@AiToolParam("The update details.") FullTextResourceUpdate update) throws Exception {
+    @AgiTool("Updates an existing text resource in the RAG message using full content replacement. Returns a standard unified diff of the changes applied.")
+    public String updateTextResource(@AgiToolParam("The update details.") FullTextResourceUpdate update) throws Exception {
         update.validate(getAgi());
         Resource res = getAgi().getResourceManager().getResources().get(update.getResourceUuid());
         String revised = update.calculateResultingContent();
@@ -234,11 +234,11 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if replacements fail.
      */
-    @AiTool("Performs multiple text replacements in a text resource in the RAG message. "
+    @AgiTool("Performs multiple text replacements in a text resource in the RAG message. "
             + "Returns a standard unified diff of the changes applied.\n"
             + "**Call this tool once per resource only**: If you need to do two replacements in one file, use two TextReplacement in the same tool call. "
             + "This tool will fail if the refered resource is not in context.")
-    public String findAndReplaceInTextResource(@AiToolParam("The set of replacements.") TextResourceReplacements replacements) throws Exception {
+    public String findAndReplaceInTextResource(@AgiToolParam("The set of replacements.") TextResourceReplacements replacements) throws Exception {
         replacements.validate(getAgi());
         Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
         String revised = replacements.calculateResultingContent();
@@ -259,7 +259,7 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if application fails.
      */
-    @AiTool("An ultra-precise, surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled.\n\n "
+    @AgiTool("An ultra-precise, surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled.\n\n "
             + "Targets absolute 1-based line numbers from the RAG message using semantic intent (Insert, Replace, Delete). "
             + "You must target the static line numbers of the RAG message, **don't calculate line shifts manually** for a batch of edits, the tool does this."
             + "\n**Vertification**: is based on **otpimistic locking** with the **lastModified** timestamp in the RAG message and  "
@@ -274,7 +274,7 @@ public class Resources extends AnahataToolkit {
             + "\nWhen adding Javadoc or comments, always use LineInsertion unless you are explicitly correcting an existing (and poorly formatted) comment. Replacing a line with 'itself plus more' is a common source of coordinate errors."
             + "\n\n**Tip**: Before submitting, always check the content of startLine - 1 and endLine + 1 in the RAG message to ensure you are not creating redundant syntax (e.g., double brackets, double javadoc markers, or broken indentation).")
     public String editTextResource(
-            @AiToolParam("Contains the resource uuid, the lastModified timestamp and a set of line modifications targeting the absolute 1 based line numbers of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
+            @AgiToolParam("Contains the resource uuid, the lastModified timestamp and a set of line modifications targeting the absolute 1 based line numbers of a text resource in the RAG message.") TextResourceLineEdits edits) throws Exception {
         edits.validate(getAgi());
         Resource res = getAgi().getResourceManager().getResources().get(edits.getResourceUuid());
         String revised = edits.calculateResultingContent();

@@ -23,11 +23,11 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.toolkit.audio.AudioDevice.Type;
 import uno.anahata.asi.agi.message.RagMessage;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolException;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * A stateful toolkit for playing internet radio streams.
@@ -40,7 +40,7 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  * @author anahata
  */
 @Slf4j
-@AiToolkit("A toolkit for playing internet radio streams.")
+@AgiToolkit("A toolkit for playing internet radio streams.")
 public class Radio extends AnahataToolkit {
 
     /** The curated list of radio stations. */
@@ -173,8 +173,8 @@ public class Radio extends AnahataToolkit {
      * @param url The station URL.
      * @return Status message.
      */
-    @AiTool("Starts playing a specific internet radio station by its URL.")
-    public String start(@AiToolParam("The URL of the radio station to play.") String url) {
+    @AgiTool("Starts playing a specific internet radio station by its URL.")
+    public String start(@AgiToolParam("The URL of the radio station to play.") String url) {
         stop();
 
         this.currentStationUrl = url;
@@ -213,7 +213,7 @@ public class Radio extends AnahataToolkit {
      * Stops the radio.
      * @return Status message.
      */
-    @AiTool("Stops the currently playing radio stream.")
+    @AgiTool("Stops the currently playing radio stream.")
     public String stop() {
         if (player != null) {
             player.close();
@@ -234,11 +234,11 @@ public class Radio extends AnahataToolkit {
      * @param deviceId The unique ID of the output device.
      * @return Status message.
      */
-    @AiTool("Selects a specific device for radio playback.")
-    public String selectOutputDevice(@AiToolParam("The unique ID of the output device.") String deviceId) {
+    @AgiTool("Selects a specific device for radio playback.")
+    public String selectOutputDevice(@AgiToolParam("The unique ID of the output device.") String deviceId) {
         uno.anahata.asi.toolkit.audio.AudioDevice device = uno.anahata.asi.toolkit.audio.AudioDevice.findDevice(Type.OUTPUT, deviceId);
         if (device == null) {
-            throw new AiToolException("Device not found: " + deviceId);
+            throw new AgiToolException("Device not found: " + deviceId);
         }
         setSelectedOutputDevice(device);
         return "Radio output device selected: " + device.getName();

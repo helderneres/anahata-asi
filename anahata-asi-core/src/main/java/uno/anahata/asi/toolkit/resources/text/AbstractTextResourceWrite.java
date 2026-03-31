@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.resource.Resource;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.internal.AnahataDiffUtils;
 
 /**
@@ -76,10 +76,10 @@ public abstract class AbstractTextResourceWrite {
     public void captureOriginalContent(Agi agi) throws Exception {
         Resource res = agi.getResourceManager().getResources().get(resourceUuid);
         if (res == null) {
-            throw new AiToolException("Resource not found in context: " + resourceUuid);
+            throw new AgiToolException("Resource not found in context: " + resourceUuid);
         }
         if (!res.getHandle().isTextual()) {
-             throw new AiToolException("Resource is not a text resource: " + res.getName());
+             throw new AgiToolException("Resource is not a text resource: " + res.getName());
         }
         this.originalContent = res.asText();
         this.originalResourceName = res.getName();
@@ -101,7 +101,7 @@ public abstract class AbstractTextResourceWrite {
      */
     public String getUnifiedDiff() throws Exception {
         if (originalContent == null) {
-            throw new AiToolException("Logic Error: getUnifiedDiff called before captureOriginalContent");
+            throw new AgiToolException("Logic Error: getUnifiedDiff called before captureOriginalContent");
         }
         String proposed = calculateResultingContent();
         return AnahataDiffUtils.generateUnifiedDiff(originalResourceName, originalContent, proposed);
@@ -120,14 +120,14 @@ public abstract class AbstractTextResourceWrite {
 
         // 2. Identical Content Check
         if (Objects.equals(originalContent, calculateResultingContent())) {
-             throw new AiToolException("Update rejected: The resulting content is identical to the current file content on disk.");
+             throw new AgiToolException("Update rejected: The resulting content is identical to the current file content on disk.");
         }
 
         // 3. Optimistic Locking Check
         Resource res = agi.getResourceManager().getResources().get(resourceUuid);
         long actualLm = res.getHandle().getLastModified();
         if (lastModified > 0 && lastModified != actualLm) {
-            throw new AiToolException("Optimistic locking failure for " + res.getName() + ". The time stamp provided doesn't match the last modified timestamp on disk: " + actualLm + " (provided: " + lastModified + ").");
+            throw new AgiToolException("Optimistic locking failure for " + res.getName() + ". The time stamp provided doesn't match the last modified timestamp on disk: " + actualLm + " (provided: " + lastModified + ").");
         }
     }
 }

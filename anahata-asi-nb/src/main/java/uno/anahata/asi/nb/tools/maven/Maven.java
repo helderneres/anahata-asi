@@ -52,11 +52,11 @@ import org.openide.util.TaskListener;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.internal.TextUtils;
 import uno.anahata.asi.nb.tools.project.Projects;
-import uno.anahata.asi.agi.tool.AiTool;
-import uno.anahata.asi.agi.tool.AiToolParam;
-import uno.anahata.asi.agi.tool.AiToolkit;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.nb.util.TeeInputOutput;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.tool.AgiTool;
 
 /**
  * Consolidated "super-tool" class for all Maven-related AI operations.
@@ -65,7 +65,7 @@ import uno.anahata.asi.nb.util.TeeInputOutput;
  * 
  * @author anahata
  */
-@AiToolkit("A toolkit for using netbeans maven tools.")
+@AgiToolkit("A toolkit for using netbeans maven tools.")
 @Slf4j
 public class Maven extends AnahataToolkit {
     /** Logger instance for the Maven toolkit. */
@@ -128,11 +128,11 @@ public class Maven extends AnahataToolkit {
      * @return a MavenSearchResultPage containing the found artifacts.
      * @throws Exception if an error occurs during the index query or result processing.
      */
-    @AiTool("Searches the Maven index for artifacts matching a given query. The search is performed across all configured repositories (local, remote, and project-specific).")
+    @AgiTool("Searches the Maven index for artifacts matching a given query. The search is performed across all configured repositories (local, remote, and project-specific).")
     public MavenSearchResultPage searchMavenIndex(
-            @AiToolParam("The search query, with terms separated by spaces (e.g., 'junit platform').") String query,
-            @AiToolParam("The starting index (0-based) for pagination. Defaults to 0 if null.") Integer startIndex,
-            @AiToolParam("The maximum number of results to return. Defaults to 100 if null.") Integer pageSize) throws Exception {
+            @AgiToolParam("The search query, with terms separated by spaces (e.g., 'junit platform').") String query,
+            @AgiToolParam("The starting index (0-based) for pagination. Defaults to 0 if null.") Integer startIndex,
+            @AgiToolParam("The maximum number of results to return. Defaults to 100 if null.") Integer pageSize) throws Exception {
         
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("Search query cannot be null or blank.");
@@ -226,15 +226,15 @@ public class Maven extends AnahataToolkit {
      * @param type The type of the dependency (e.g., 'test-jar'). If null, defaults to 'jar'.
      * @return an AddDependencyResult object containing the outcome of each phase.
      */
-    @AiTool("The definitive 'super-tool' for adding a Maven dependency. It follows a safe, multi-phase process and returns a structured result object. The model is responsible for interpreting the result.")
+    @AgiTool("The definitive 'super-tool' for adding a Maven dependency. It follows a safe, multi-phase process and returns a structured result object. The model is responsible for interpreting the result.")
     public AddDependencyResult addDependency(
-            @AiToolParam("The absolute path of the project to modify.") String projectPath,
-            @AiToolParam("The groupId of the dependency.") String groupId,
-            @AiToolParam("The artifactId of the dependency.") String artifactId,
-            @AiToolParam("The version of the dependency.") String version,
-            @AiToolParam("The scope of the dependency (e.g., 'compile', 'test'). If null, defaults to 'compile'.") String scope,
-            @AiToolParam("The classifier of the dependency (e.g., 'jdk17'). Can be null.") String classifier,
-            @AiToolParam("The type of the dependency (e.g., 'test-jar'). If null, defaults to 'jar'.") String type) {
+            @AgiToolParam("The absolute path of the project to modify.") String projectPath,
+            @AgiToolParam("The groupId of the dependency.") String groupId,
+            @AgiToolParam("The artifactId of the dependency.") String artifactId,
+            @AgiToolParam("The version of the dependency.") String version,
+            @AgiToolParam("The scope of the dependency (e.g., 'compile', 'test'). If null, defaults to 'compile'.") String scope,
+            @AgiToolParam("The classifier of the dependency (e.g., 'jdk17'). Can be null.") String classifier,
+            @AgiToolParam("The type of the dependency (e.g., 'test-jar'). If null, defaults to 'jar'.") String type) {
         
         AddDependencyResult.AddDependencyResultBuilder resultBuilder = AddDependencyResult.builder();
         StringBuilder summary = new StringBuilder();
@@ -307,9 +307,9 @@ public class Maven extends AnahataToolkit {
      * @return a list of DependencyScope objects.
      * @throws Exception if an error occurs.
      */
-    @AiTool("Gets the list of dependencies directly declared in the pom.xml, grouped by scope and groupId for maximum token efficiency.")
+    @AgiTool("Gets the list of dependencies directly declared in the pom.xml, grouped by scope and groupId for maximum token efficiency.")
     public static List<DependencyScope> getDeclaredDependencies(
-            @AiToolParam("The absolute path of the project to analyze.") String projectPath) throws Exception {
+            @AgiToolParam("The absolute path of the project to analyze.") String projectPath) throws Exception {
         
         Project project = Projects.findOpenProject(projectPath);
         NbMavenProject nbMavenProject = project.getLookup().lookup(NbMavenProject.class);
@@ -323,9 +323,9 @@ public class Maven extends AnahataToolkit {
      * @return a list of ResolvedDependencyScope objects.
      * @throws Exception if an error occurs.
      */
-    @AiTool("Gets the final, fully resolved list of transitive dependencies for the project, representing the actual runtime classpath. The output is in an ultra-compact format (List<ResolvedDependencyScope>) for maximum token efficiency.")
+    @AgiTool("Gets the final, fully resolved list of transitive dependencies for the project, representing the actual runtime classpath. The output is in an ultra-compact format (List<ResolvedDependencyScope>) for maximum token efficiency.")
     public List<ResolvedDependencyScope> getResolvedDependencies(
-            @AiToolParam("The absolute path of the project to analyze.") String projectPath) throws Exception {
+            @AgiToolParam("The absolute path of the project to analyze.") String projectPath) throws Exception {
 
         Project project = Projects.findOpenProject(projectPath);
         NbMavenProject nbMavenProject = project.getLookup().lookup(NbMavenProject.class);
@@ -444,14 +444,14 @@ public class Maven extends AnahataToolkit {
      * @return a MavenBuildResult object.
      * @throws Exception if an error occurs.
      */
-    @AiTool(value = "Executes a list of Maven goals on a Project synchronously (waits for the build to finish), capturing the last " + MAX_OUTPUT_LINES + " lines of the output.")
+    @AgiTool(value = "Executes a list of Maven goals on a Project synchronously (waits for the build to finish), capturing the last " + MAX_OUTPUT_LINES + " lines of the output.")
     public MavenBuildResult runGoals(
-            @AiToolParam("The ID of the project to run the goals on.") String projectId,
-            @AiToolParam("A list of Maven goals to execute (e.g., ['clean', 'install']).") List<String> goals,
-            @AiToolParam("A list of profiles to activate.") List<String> profiles,
-            @AiToolParam("A map of properties to set.") Map<String, String> properties,
-            @AiToolParam("A list of additional Maven options.") List<String> options,
-            @AiToolParam("The maximum time to wait for the build to complete, in milliseconds.") Long timeout) throws Exception {
+            @AgiToolParam("The ID of the project to run the goals on.") String projectId,
+            @AgiToolParam("A list of Maven goals to execute (e.g., ['clean', 'install']).") List<String> goals,
+            @AgiToolParam("A list of profiles to activate.") List<String> profiles,
+            @AgiToolParam("A map of properties to set.") Map<String, String> properties,
+            @AgiToolParam("A list of additional Maven options.") List<String> options,
+            @AgiToolParam("The maximum time to wait for the build to complete, in milliseconds.") Long timeout) throws Exception {
 
         Project project = Projects.findOpenProject(projectId);
         
@@ -619,10 +619,10 @@ public class Maven extends AnahataToolkit {
      * @return a message indicating the result of the operation.
      * @throws Exception if an error occurs.
      */
-    @AiTool("Downloads all missing dependencies artifacts (e.g., 'sources', 'javadoc') for a given Maven project's dependencies.")
+    @AgiTool("Downloads all missing dependencies artifacts (e.g., 'sources', 'javadoc') for a given Maven project's dependencies.")
     public String downloadProjectDependencies(
-            @AiToolParam("The ID of the project to download dependencies for.") String projectId,
-            @AiToolParam("A list of classifiers to download (e.g., ['sources', 'javadoc']).") List<String> classifiers) throws Exception {
+            @AgiToolParam("The ID of the project to download dependencies for.") String projectId,
+            @AgiToolParam("A list of classifiers to download (e.g., ['sources', 'javadoc']).") List<String> classifiers) throws Exception {
         
         Project project = Projects.findOpenProject(projectId);
         NbMavenProject nbMavenProject = project.getLookup().lookup(NbMavenProject.class);
@@ -671,14 +671,14 @@ public class Maven extends AnahataToolkit {
      * @return true on success, false on failure.
      * @throws Exception if an error occurs.
      */
-    @AiTool("Downloads a specific classified artifact (e.g., 'sources', 'javadoc', or the main artifact if classifier is null) for a single dependency. This can be used to verify an artifact exists before adding it to a POM. Returns true on success, false on failure.")
+    @AgiTool("Downloads a specific classified artifact (e.g., 'sources', 'javadoc', or the main artifact if classifier is null) for a single dependency. This can be used to verify an artifact exists before adding it to a POM. Returns true on success, false on failure.")
     public boolean downloadDependencyArtifact(
-            @AiToolParam("The ID of the project to use for repository context.") String projectId,
-            @AiToolParam("The groupId of the dependency.") String groupId,
-            @AiToolParam("The artifactId of the dependency.") String artifactId,
-            @AiToolParam("The version of the dependency (e.g., 'LATEST', '1.0.0').") String version,
-            @AiToolParam("The classifier of the artifact to download (e.g., 'sources', 'javadoc'). Use null for the main artifact.") String classifier,
-            @AiToolParam("The type of the dependency (e.g., 'test-jar'). If null, defaults to 'jar'.") String type) throws Exception {
+            @AgiToolParam("The ID of the project to use for repository context.") String projectId,
+            @AgiToolParam("The groupId of the dependency.") String groupId,
+            @AgiToolParam("The artifactId of the dependency.") String artifactId,
+            @AgiToolParam("The version of the dependency (e.g., 'LATEST', '1.0.0').") String version,
+            @AgiToolParam("The classifier of the artifact to download (e.g., 'sources', 'javadoc'). Use null for the main artifact.") String classifier,
+            @AgiToolParam("The type of the dependency (e.g., 'test-jar'). If null, defaults to 'jar'.") String type) throws Exception {
         
         Project project = Projects.findOpenProject(projectId);
         NbMavenProject nbMavenProject = project.getLookup().lookup(NbMavenProject.class);

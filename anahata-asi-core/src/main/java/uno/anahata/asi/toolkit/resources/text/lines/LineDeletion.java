@@ -4,7 +4,7 @@ package uno.anahata.asi.toolkit.resources.text.lines;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import uno.anahata.asi.agi.tool.AiToolException;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import java.util.List;
 
 /**
@@ -25,14 +25,14 @@ public class LineDeletion extends AbstractLineEdit {
     private int expectedCount;
 
     @Override
-    public void apply(List<String> lines) throws AiToolException {
+    public void apply(List<String> lines) throws AgiToolException {
         int actualCount = (endLine - startLine) + 1;
         if (actualCount != expectedCount) {
-            throw new AiToolException("Checksum failed: range [" + startLine + ", " + endLine + "] is " + actualCount + " lines, but you expected to delete " + expectedCount + ".");
+            throw new AgiToolException("Checksum failed: range [" + startLine + ", " + endLine + "] is " + actualCount + " lines, but you expected to delete " + expectedCount + ".");
         }
 
         if (startLine < 1 || endLine > lines.size()) {
-            throw new AiToolException("Deletion range out of bounds: [" + startLine + ", " + endLine + "] for file with " + lines.size() + " lines.");
+            throw new AgiToolException("Deletion range out of bounds: [" + startLine + ", " + endLine + "] for file with " + lines.size() + " lines.");
         }
 
         int removeIndex = startLine - 1;
