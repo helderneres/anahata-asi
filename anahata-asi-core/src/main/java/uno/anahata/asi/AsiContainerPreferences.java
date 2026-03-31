@@ -14,9 +14,11 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
 import uno.anahata.asi.persistence.kryo.KryoUtils;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
+import uno.anahata.asi.agi.provider.AbstractAgiProvider;
 import uno.anahata.asi.agi.provider.RequestConfig;
 import uno.anahata.asi.agi.tool.ToolPermission;
 
@@ -29,7 +31,7 @@ import uno.anahata.asi.agi.tool.ToolPermission;
 @Getter
 @Setter
 @Slf4j
-public class AsiContainerPreferences {
+public class AsiContainerPreferences extends BasicPropertyChangeSource {
     private static final String PREFERENCES_FILE_NAME = "preferences.kryo";
 
     /**
@@ -41,6 +43,10 @@ public class AsiContainerPreferences {
     /**
      * A blueprint configuration for new Agi sessions. 
      * This allows users to set global defaults for models, toolkits, and retry policies.
+     * <p>
+     * <b>DNA Note:</b> The template's selectedProviderClass and selectedModelId fields 
+     * serve as the global defaults for the 'Starting XI'.
+     * </p>
      */
     private AgiConfig agiTemplate;
     
@@ -51,6 +57,32 @@ public class AsiContainerPreferences {
     private RequestConfig requestTemplate;
 
     /**
+     * Default constructor ensuring template initialization.
+     */
+    public AsiContainerPreferences() {
+        // Templates are initialized lazily by the container when first accessed
+    }
+
+    /**
+     * Ensures that the templates are initialized using the provided container 
+     * as a reference for defaults.
+     * 
+     * @param container The ASI container.
+     */
+    public void ensureTemplatesInitialized(AbstractAsiContainer container) {
+        if (agiTemplate == null) {
+            log.info("Initializing global AgiConfig template...");
+            agiTemplate = container.createNewAgiConfig();
+            // Templates don't need unique session IDs
+            agiTemplate.setSessionId("TEMPLATE");
+        }
+        if (requestTemplate == null) {
+            log.info("Initializing global RequestConfig template...");
+            requestTemplate = new RequestConfig(null); // No parent agi for template
+        }
+    }
+
+    /**
      * Creates a deep-cloned instance of the AgiConfig template, bound to the 
      * specified container and assigned a fresh session ID.
      * 
@@ -58,15 +90,11 @@ public class AsiContainerPreferences {
      * @return A fresh AgiConfig clone, or a new default config if no template exists.
      */
     public AgiConfig createAgiConfig(@NonNull AbstractAsiContainer container) {
-        AgiConfig clone;
-        if (agiTemplate != null) {
-            clone = KryoUtils.clone(agiTemplate);
-            clone.setAsiContainer(container);
-            // Ensure the new session gets its own unique identity
-            clone.setSessionId(java.util.UUID.randomUUID().toString());
-        } else {
-            clone = container.createNewAgiConfig();
-        }
+        ensureTemplatesInitialized(container);
+        AgiConfig clone = KryoUtils.clone(agiTemplate);
+        clone.setAsiContainer(container);
+        // Ensure the new session gets its own unique identity
+        clone.setSessionId(java.util.UUID.randomUUID().toString());
         return clone;
     }
 
@@ -78,13 +106,9 @@ public class AsiContainerPreferences {
      * @return A fresh RequestConfig clone, or a new default config if no template exists.
      */
     public RequestConfig createRequestConfig(@NonNull Agi agi) {
-        RequestConfig clone;
-        if (requestTemplate != null) {
-            clone = KryoUtils.clone(requestTemplate);
-            clone.setAgi(agi);
-        } else {
-            clone = new RequestConfig(agi);
-        }
+        ensureTemplatesInitialized(agi.getConfig().getAsiContainer());
+        RequestConfig clone = KryoUtils.clone(requestTemplate);
+        clone.setAgi(agi);
         return clone;
     }
 

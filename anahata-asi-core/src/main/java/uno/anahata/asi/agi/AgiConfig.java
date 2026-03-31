@@ -51,6 +51,16 @@ public class AgiConfig extends BasicPropertyChangeSource {
     private Agi agi;
 
     /**
+     * The class of the AI provider currently selected for this session.
+     */
+    private Class<? extends AbstractAgiProvider> selectedProviderClass;
+    
+    /**
+     * The ID of the AI model currently selected for this session.
+     */
+    private String selectedModelId;
+
+    /**
      * The list of AI provider classes available for this agi session.
      */
     private List<Class<? extends AbstractAgiProvider>> providerClasses = new ArrayList<>();

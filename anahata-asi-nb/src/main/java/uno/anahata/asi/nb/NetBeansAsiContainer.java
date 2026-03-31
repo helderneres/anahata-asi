@@ -78,16 +78,18 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
     /**
      * {@inheritDoc}
      * <p>
-     * Implementation details: Selects the default AI model and provider for 
-     * the NetBeans environment.
+     * Implementation details: Applies global defaults from preferences and 
+     * provides a safe fallback to Gemini Flash if no preference is set.
      * </p>
      */
     @Override
     protected void configureNewAgi(Agi agi) {
-        log.info("Initializing NetBeans defaults for new agi session: {}", agi.getShortId());
-        // Default model configuration for NetBeans
+        super.configureNewAgi(agi);
+        
+        // Fallback for fresh installs:
         if (agi.getSelectedModel() == null) {
-            agi.setProviderAndModel("Gemini", "models/gemini-3-flash-preview");
+             log.info("No global default model set, falling back to Gemini Flash for NetBeans.");
+             agi.setSelectedModelById("models/gemini-3-flash-preview");
         }
     }
 

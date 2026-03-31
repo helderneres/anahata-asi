@@ -51,6 +51,12 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     private final List<Agi> activeAgis = new ArrayList<>();
     
     /** 
+     * A master registry of AI provider instances. This follows the 'DataSource' pattern,
+     * ensuring that all sessions share the same provider logic and key pools.
+     */
+    private final Map<Class<? extends AbstractAgiProvider>, AbstractAgiProvider> providerRegistry = new ConcurrentHashMap<>();
+
+    /** 
      * A shared executor for container-level background tasks. 
      * @return the container executor service.
      */
@@ -78,7 +84,28 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     public AbstractAsiContainer(String hostApplicationId) {
         this.hostApplicationId = hostApplicationId;
         this.preferences = AsiContainerPreferences.load(this);
+        this.preferences.ensureTemplatesInitialized(this);
         this.executor = AiExecutors.newCachedThreadPoolExecutor(hostApplicationId);
+    }
+
+    /**
+     * Retrieves a shared provider instance from the master registry.
+     * If the provider has not been instantiated yet, it is created and cached.
+     * 
+     * @param <T> The type of the provider.
+     * @param providerClass The class of the provider to retrieve.
+     * @return The shared provider instance.
+     */
+    public <T extends AbstractAgiProvider> T getProvider(Class<T> providerClass) {
+        return (T) providerRegistry.computeIfAbsent(providerClass, clazz -> {
+            try {
+                log.info("Instantiating shared provider in master registry: {}", clazz.getName());
+                return clazz.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                log.error("Failed to instantiate provider class: {}", clazz.getName(), e);
+                return null;
+            }
+        });
     }
 
     /**
@@ -130,15 +157,11 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      * @return true if keys are configured, false otherwise.
      */
     public boolean hasAnyApiKeysConfigured() {
-        AgiConfig template = preferences.createAgiConfig(this);
+        AgiConfig template = preferences.getAgiTemplate();
         for (Class<? extends AbstractAgiProvider> providerClass : template.getProviderClasses()) {
-            try {
-                AbstractAgiProvider provider = providerClass.getDeclaredConstructor().newInstance();
-                if (provider.hasKeys()) {
-                    return true;
-                }
-            } catch (Exception e) {
-                log.error("Failed to check keys for provider: {}", providerClass.getName(), e);
+            AbstractAgiProvider provider = getProvider(providerClass);
+            if (provider != null && provider.hasKeys()) {
+                return true;
             }
         }
         return false;
@@ -173,7 +196,27 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     }
 
     /**
-     * Authoritatively requests that the specified agi session be opened and 
+     * Notifies all active sessions that the API keys for a specific provider 
+     * have been updated.
+     * <p>
+     * Implementation details: Since we now use a shared provider registry,
+     * this simply triggers a reload on the master instance. All sessions
+     * automatically benefit from the updated pool.
+     * </p>
+     * 
+     * @param providerId The ID of the provider whose keys changed.
+     */
+    public void onProviderKeysChanged(String providerId) {
+        log.info("Processing API key update for shared provider: {}", providerId);
+        for (AbstractAgiProvider provider : providerRegistry.values()) {
+            if (provider.getProviderId().equalsIgnoreCase(providerId)) {
+                provider.reloadKeyPool();
+            }
+        }
+    }
+
+    /**
+     * authoritatively requests that the specified agi session be opened and 
      * brought to the front in the host UI.
      * 
      * @param agi The agi session to open.
@@ -280,9 +323,29 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
 
     /**
      * Hook invoked to perform initial post-birth configuration of a new Agi.
+     * <p>
+     * Implementation details: Applies the global default provider and model 
+     * from preferences if they are configured.
+     * </p>
      * @param agi The new session.
      */
-    protected void configureNewAgi(Agi agi) {}
+    protected void configureNewAgi(Agi agi) {
+        AgiConfig template = preferences.getAgiTemplate();
+        
+        if (agi.getConfig().getSelectedProviderClass() == null) {
+            agi.getConfig().setSelectedProviderClass(template.getSelectedProviderClass());
+        }
+        
+        if (agi.getConfig().getSelectedModelId() == null) {
+            agi.getConfig().setSelectedModelId(template.getSelectedModelId());
+        }
+
+        // Apply selected model state to the orchestrator if IDs are present
+        if (agi.getConfig().getSelectedModelId() != null) {
+            log.info("Applying DNA-defined default model ({}) to new session", agi.getConfig().getSelectedModelId());
+            agi.setSelectedModelById(agi.getConfig().getSelectedModelId());
+        }
+    }
 
     /**
      * Hook invoked when a session has been logically opened.

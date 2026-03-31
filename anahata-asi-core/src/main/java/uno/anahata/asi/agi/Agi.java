@@ -99,15 +99,9 @@ public class Agi extends BasicPropertyChangeSource {
     private final StatusManager statusManager;
 
     /**
-     * The list of registered AI providers. Uses CopyOnWriteArrayList for
-     * thread-safe iteration during rebinds or saves.
-     */
-    private final List<AbstractAgiProvider> providers = new CopyOnWriteArrayList<>();
-
-    /**
      * The currently selected model for the agi session.
      */
-    private AbstractModel selectedModel;
+    private transient AbstractModel selectedModel;
 
     /**
      * The request configuration for this agi session.
@@ -194,21 +188,24 @@ public class Agi extends BasicPropertyChangeSource {
         this.requestConfig = new RequestConfig(this);
         this.requestConfig.setResponseModalities(new ArrayList<>(config.getDefaultResponseModalities()));
 
-        // Discover and instantiate providers
-        log.info("Attempting to instantiate AI providers: " + config.getProviderClasses());
-        for (Class<? extends AbstractAgiProvider> providerClass : config.getProviderClasses()) {
-            try {
-                // Instantiate the provider via reflection
-                AbstractAgiProvider provider = providerClass.getDeclaredConstructor().newInstance();
-                this.providers.add(provider);
-                log.info("Successfully instantiated and registered provider: {}", provider.getProviderId());
-            } catch (Exception e) {
-                log.error("Failed to instantiate provider class: {}", providerClass.getName(), e);
-            }
-        }
-
         // Final manager initialization cascade
         contextManager.init();
+    }
+
+    /**
+     * Gets a list of AI providers available for this session.
+     * <p>
+     * Implementation details: This method performs a dynamic lookup against 
+     * the container's master registry for each provider class defined in 
+     * the AgiConfig.
+     * </p>
+     * @return The list of shared provider instances.
+     */
+    public List<AbstractAgiProvider> getProviders() {
+        return config.getProviderClasses().stream()
+                .map(config.getAsiContainer()::getProvider)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -240,6 +237,13 @@ public class Agi extends BasicPropertyChangeSource {
         this.runningLock = new ReentrantLock();
         this.running = false;
         this.currentExecutionThread = null;
+        
+        // Late-Binding restoration of the selected model from the master registry
+        String savedId = config.getSelectedModelId();
+        if (savedId != null) {
+            log.info("Restoring transient selected model: {}", savedId);
+            setSelectedModelById(savedId);
+        }
 
         log.info("Triggering environmental bootstrapping for agi session {}", config.getSessionId());
 
@@ -293,6 +297,15 @@ public class Agi extends BasicPropertyChangeSource {
     public void setSelectedModel(AbstractModel selectedModel) {
         AbstractModel oldModel = this.selectedModel;
         this.selectedModel = selectedModel;
+        
+        // Mirror state to the DNA (AgiConfig)
+        if (selectedModel != null) {
+            this.config.setSelectedProviderClass(selectedModel.getProvider().getClass());
+            this.config.setSelectedModelId(selectedModel.getModelId());
+        } else {
+            this.config.setSelectedProviderClass(null);
+            this.config.setSelectedModelId(null);
+        }
 
         if (selectedModel != null) {
             // 1. Sync existing selected server tools with the new model's capabilities
@@ -766,7 +779,7 @@ public class Agi extends BasicPropertyChangeSource {
      * @return A list of all available models.
      */
     public List<AbstractModel> getAllModels() {
-        return providers.stream()
+        return getProviders().stream()
                 .flatMap(provider -> provider.getModels().stream())
                 .collect(Collectors.toList());
     }
@@ -879,19 +892,18 @@ public class Agi extends BasicPropertyChangeSource {
     }
 
     /**
-     * Sets the active provider and model for the session.
-     *
-     * @param providerId The ID of the provider.
-     * @param modelId The ID of the model.
+     * Finds and sets the active model by its unique ID, searching across all 
+     * registered providers.
+     * 
+     * @param modelId The ID of the model to select.
      */
-    public void setProviderAndModel(String providerId, String modelId) {
-        getProviders().stream()
-                .filter(p -> p.getProviderId().equals(providerId))
+    public void setSelectedModelById(String modelId) {
+        getAllModels().stream()
+                .filter(m -> m.getModelId().equals(modelId))
                 .findFirst()
-                .flatMap(provider -> provider.findModel(modelId))
                 .ifPresentOrElse(
                         this::setSelectedModel,
-                        () -> log.error("Model not for: " + providerId + " " + modelId)
+                        () -> log.error("Model not found: {}", modelId)
                 );
     }
 

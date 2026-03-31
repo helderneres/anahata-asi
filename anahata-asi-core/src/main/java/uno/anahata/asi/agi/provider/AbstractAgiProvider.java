@@ -28,7 +28,7 @@ import uno.anahata.asi.AbstractAsiContainer;
 @Getter
 @Slf4j
 public abstract class AbstractAgiProvider {
-    private List<String> keyPool;
+    private volatile List<String> keyPool;
     private final String providerId;
     private final AtomicInteger round = new AtomicInteger(0);
     

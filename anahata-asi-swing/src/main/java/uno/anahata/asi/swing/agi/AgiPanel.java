@@ -9,7 +9,7 @@ import uno.anahata.asi.swing.agi.status.StatusPanel;
 import uno.anahata.asi.swing.agi.chat.ConversationPanel;
 import uno.anahata.asi.swing.agi.input.InputPanel;
 import uno.anahata.asi.swing.agi.context.ContextPanel;
-import uno.anahata.asi.swing.agi.config.RequestConfigPanel;
+import uno.anahata.asi.swing.agi.config.SessionConfigPanel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import javax.swing.BorderFactory;
@@ -46,7 +46,7 @@ public class AgiPanel extends ScrollablePanel {
     /** The tabbed pane for switching between chat, configuration, and metabolic metrics. */
     private final JTabbedPane tabbedPane;
     /** The panel for editing request configuration such as temperature and thinking levels. */
-    private final RequestConfigPanel configPanel;
+    private final SessionConfigPanel configPanel;
     /** The panel for managing the AI context, including history pruning and resource browsing. */
     private final ContextPanel contextPanel;
     /** The panel providing support links, documentation, and community resources. */
@@ -84,7 +84,7 @@ public class AgiPanel extends ScrollablePanel {
         this.agi = agi;
         this.agiConfig = (SwingAgiConfig) agi.getConfig();
         this.tabbedPane = new JTabbedPane();
-        this.configPanel = new RequestConfigPanel(this);
+        this.configPanel = new SessionConfigPanel(this);
         this.contextPanel = new ContextPanel(this);
         this.supportPanel = new SupportPanel();
         this.cwGcPanel = new CwGcPanel(this);
