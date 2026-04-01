@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     <div class="dropdown">
                         <a href="#" class="dropdown-toggle ${(isActive('core.html') || isActive('swing.html') || isActive('yam.html') || isActive('gemini.html')) ? 'active-link' : ''}">
-                            Libraries <i class="fas fa-chevron-down"></i>
+                            Modules <i class="fas fa-chevron-down"></i>
                         </a>
                         <div class="dropdown-menu">
                             <a href="core.html" class="${isActive('core.html') ? 'active-item' : ''}"><i class="fas fa-brain"></i> Core API</a>
