@@ -166,6 +166,9 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
      */
     public void setExpanded(boolean expanded) {
         boolean old = this.expanded;
+        if (old == expanded) {
+            return;
+        }
         this.expanded = expanded;
         propertyChangeSupport.firePropertyChange("expanded", old, expanded);
     }
