@@ -44,8 +44,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p package-input
-          cp anahata-asi-standalone/target/anahata-asi-standalone-${{ env.VERSION }}.jar package-input/
-          mvn -f anahata-asi-standalone/pom.xml dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=package-input
+          cp anahata-asi-desktop/target/anahata-asi-desktop-${{ env.VERSION }}.jar package-input/
+          mvn -f anahata-asi-desktop/pom.xml dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=package-input
 
       - name: Package Native App (jpackage)
         shell: bash
