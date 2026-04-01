@@ -75,20 +75,24 @@ public class KryoUtils {
     }
 
     /**
-     * Creates a deep clone of the given object using Kryo's built-in copy mechanism.
+     * Creates a deep clone of the given object using a serialization-deserialization cycle.
+     * <p>
+     * <b>Technical Purity:</b> This approach is preferred over {@code kryo.copy()} because it 
+     * authoritatively respects the {@code transient} modifier, ensuring that environmental 
+     * references (like the AsiContainer or ThreadPools) are not accidentally cloned, which 
+     * prevents circular dependencies and access violations in JDK 17+.
+     * </p>
      * 
      * @param <T> The type of the object.
      * @param object The object to clone.
      * @return A deep clone of the object.
      */
     public static <T> T clone(T object) {
-        if (object == null) return null;
-        long start = System.currentTimeMillis();
-        Kryo kryo = getKryo();
-        T clone = kryo.copy(object);
-        long end = System.currentTimeMillis();
-        log.info("Kryo deep clone of {} took {} ms", object.getClass().getSimpleName(), (end - start));
-        return clone;
+        if (object == null) {
+            return null;
+        }
+        byte[] bytes = serialize(object);
+        return (T) deserialize(bytes, object.getClass());
     }
 
     /**
