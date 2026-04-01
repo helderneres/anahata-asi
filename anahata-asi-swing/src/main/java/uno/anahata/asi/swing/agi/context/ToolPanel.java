@@ -12,11 +12,14 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.util.List;
 import javax.swing.BorderFactory;
-import javax.swing.ButtonGroup;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JToggleButton;
+import net.miginfocom.swing.MigLayout;
+import uno.anahata.asi.swing.agi.SwingAgiConfig;
+import uno.anahata.asi.swing.agi.message.part.tool.ToolPermissionRenderer;
+import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.internal.JacksonUtils;
 import uno.anahata.asi.agi.resource.Resource;
@@ -55,6 +58,11 @@ public class ToolPanel extends ScrollablePanel {
     /** Panel for permission buttons in the header. */
     private final JPanel permissionPanel;
 
+    /** The control for tool permissions. */
+    private JComboBox<ToolPermission> permissionCombo;
+    /** The active tool listener. */
+    private EdtPropertyChangeListener permissionListener;
+
     /**
      * Constructs a new ToolPanel.
      * @param parentPanel The parent context panel.
@@ -68,31 +76,33 @@ public class ToolPanel extends ScrollablePanel {
         setMinimumSize(new Dimension(0, 0));
 
         // 1. Header Panel (Tool Details)
-        JPanel headerPanel = new JPanel(new GridBagLayout());
+        JPanel headerPanel = new JPanel(new MigLayout("fillx, insets 4 8 4 8", "[grow]", "[]2[]5[]"));
         headerPanel.setBorder(BorderFactory.createTitledBorder("Tool Details"));
         
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 1.0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(4, 8, 2, 8);
-
         nameLabel = new JLabel();
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD, 14f));
-        headerPanel.add(nameLabel, gbc);
+        headerPanel.add(nameLabel, "wrap");
         
-        // Permissions Group below the name
-        gbc.gridy++;
-        gbc.insets = new Insets(2, 8, 2, 8);
         permissionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         permissionPanel.setOpaque(false);
-        headerPanel.add(permissionPanel, gbc);
+        
+        permissionCombo = new JComboBox<>(ToolPermission.values());
+        permissionCombo.setRenderer(new ToolPermissionRenderer());
+        permissionCombo.addActionListener(e -> {
+            AbstractTool<?, ?> tool = (AbstractTool<?, ?>) permissionCombo.getClientProperty("tool");
+            if (tool != null) {
+                ToolPermission tp = (ToolPermission) permissionCombo.getSelectedItem();
+                tool.setPermission(tp);
+                permissionCombo.setForeground(SwingAgiConfig.getColor(tp));
+            }
+        });
+        
+        permissionPanel.add(new JLabel("Permission: "));
+        permissionPanel.add(permissionCombo);
+        headerPanel.add(permissionPanel, "wrap");
 
-        gbc.gridy++;
-        gbc.insets = new Insets(2, 8, 4, 8);
         descLabel = new JLabel();
-        headerPanel.add(descLabel, gbc);
+        headerPanel.add(descLabel, "growx");
 
         add(headerPanel, BorderLayout.NORTH);
 
@@ -110,8 +120,19 @@ public class ToolPanel extends ScrollablePanel {
         descLabel.setText("<html>" + tool.getDescription().replace("\n", "<br>") + "</html>");
 
         // Update Permissions
-        permissionPanel.removeAll();
-        permissionPanel.add(createPermissionButtonGroup(tool));
+        if (permissionListener != null) {
+            permissionListener.unbind();
+        }
+        permissionCombo.putClientProperty("tool", tool);
+        ToolPermission tp = tool.getPermission();
+        permissionCombo.setSelectedItem(tp);
+        permissionCombo.setForeground(SwingAgiConfig.getColor(tp));
+        
+        permissionListener = new EdtPropertyChangeListener(this, tool, "permission", evt -> {
+            ToolPermission newTp = (ToolPermission) evt.getNewValue();
+            permissionCombo.setSelectedItem(newTp);
+            permissionCombo.setForeground(SwingAgiConfig.getColor(newTp));
+        });
 
         // Rebuild Tabs
         tabbedPane.removeAll();
@@ -179,48 +200,4 @@ public class ToolPanel extends ScrollablePanel {
         return wrapper;
     }
 
-    /**
-     * Creates and returns a JPanel containing the permission toggle buttons for a tool.
-     * @param tool The tool whose permissions are to be managed.
-     * @return A configured JPanel with the button group.
-     */
-    private JPanel createPermissionButtonGroup(AbstractTool<?, ?> tool) {
-        JPanel groupPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        groupPanel.setOpaque(false);
-        
-        JLabel label = new JLabel("Permission: ");
-        label.setFont(label.getFont().deriveFont(Font.BOLD));
-        groupPanel.add(label);
-
-        ButtonGroup group = new ButtonGroup();
-        JToggleButton promptButton = new JToggleButton("Prompt");
-        JToggleButton alwaysButton = new JToggleButton("Always Allow");
-        JToggleButton neverButton = new JToggleButton("Never Allow");
-
-        // Small styling
-        Font btnFont = promptButton.getFont().deriveFont(11f);
-        promptButton.setFont(btnFont);
-        alwaysButton.setFont(btnFont);
-        neverButton.setFont(btnFont);
-
-        group.add(promptButton);
-        group.add(alwaysButton);
-        group.add(neverButton);
-
-        groupPanel.add(promptButton);
-        groupPanel.add(alwaysButton);
-        groupPanel.add(neverButton);
-
-        switch (tool.getPermission()) {
-            case APPROVE_ALWAYS -> alwaysButton.setSelected(true);
-            case DENY_NEVER -> neverButton.setSelected(true);
-            default -> promptButton.setSelected(true);
-        }
-
-        promptButton.addActionListener(e -> { tool.setPermission(ToolPermission.PROMPT); parentPanel.refresh(false); });
-        alwaysButton.addActionListener(e -> { tool.setPermission(ToolPermission.APPROVE_ALWAYS); parentPanel.refresh(false); });
-        neverButton.addActionListener(e -> { tool.setPermission(ToolPermission.DENY_NEVER); parentPanel.refresh(false); });
-
-        return groupPanel;
-    }
 }
