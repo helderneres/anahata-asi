@@ -19,8 +19,6 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.agi.tool.ToolPermission;
-import uno.anahata.asi.agi.tool.spi.AbstractTool;
-import uno.anahata.asi.agi.tool.spi.java.JavaMethodTool;
 import uno.anahata.asi.toolkit.resources.text.FullTextFileCreate;
 import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
