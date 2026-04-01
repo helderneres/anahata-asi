@@ -1,0 +1,101 @@
+name: Build Standalone Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Get Project Version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build Project
+        run: mvn clean install -DskipTests
+
+      - name: Prepare jpackage Input
+        shell: bash
+        run: |
+          mkdir -p package-input
+          cp anahata-asi-standalone/target/anahata-asi-standalone-${{ env.VERSION }}.jar package-input/
+          mvn -f anahata-asi-standalone/pom.xml dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=package-input
+
+      - name: Package Native App (jpackage)
+        shell: bash
+        run: |
+          jpackage --name "Anahata-ASI" \
+                   --app-version "${{ env.VERSION }}" \
+                   --input package-input \
+                   --main-jar "anahata-asi-standalone-${{ env.VERSION }}.jar" \
+                   --main-class uno.anahata.asi.standalone.SwingMain \
+                   --type app-image \
+                   --dest dist \
+                   --verbose
+          
+          # Zip/Tar the result for distribution
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            7z a "Anahata-ASI-${{ env.VERSION }}-windows.zip" "./dist/Anahata-ASI"
+          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+            cd dist && zip -r "../Anahata-ASI-${{ env.VERSION }}-macos.zip" "Anahata-ASI.app" && cd ..
+          else
+            tar -czf "Anahata-ASI-${{ env.VERSION }}-linux.tar.gz" -C dist "Anahata-ASI"
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.os }}
+          path: |
+            Anahata-ASI-*.zip
+            Anahata-ASI-*.tar.gz
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+          pattern: bin-*
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            all-artifacts/Anahata-ASI-*.zip
+            all-artifacts/Anahata-ASI-*.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
