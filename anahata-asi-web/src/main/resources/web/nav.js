@@ -105,6 +105,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // Carousel Logic for desktop.html
+    if (isActive('desktop.html')) {
+        let slideIndex = 1;
+        
+        window.plusSlides = (n) => {
+            showSlides(slideIndex += n);
+        };
+
+        window.currentSlide = (n) => {
+            showSlides(slideIndex = n);
+        };
+
+        function showSlides(n) {
+            let i;
+            let slides = document.getElementsByClassName("carousel-slide");
+            if (slides.length === 0) return;
+            if (n > slides.length) {slideIndex = 1}    
+            if (n < 1) {slideIndex = slides.length}
+            for (i = 0; i < slides.length; i++) {
+                slides[i].style.display = "none";  
+            }
+            slides[slideIndex-1].style.display = "block";  
+        }
+        
+        showSlides(slideIndex);
+        // Auto play
+        setInterval(() => {
+            plusSlides(1);
+        }, 5000);
+    }
+
 
     // Media Lightbox Logic
     const modalHtml = `

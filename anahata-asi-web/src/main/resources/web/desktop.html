@@ -13,15 +13,26 @@
         .toolkit-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem; }
         .toolkit-header i { font-size: 2rem; color: var(--barca-gold); }
         
-        .tool-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; transition: var(--transition); }
+        .tool-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; transition: var(--transition); }
         .tool-card:hover { border-color: rgba(79, 170, 255, 0.3); background: rgba(255,255,255,0.04); }
-        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 0.85rem; margin-bottom: 0.8rem; display: block; }
-        .tool-desc { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; }
+        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 0.8rem; margin-bottom: 0.5rem; display: block; }
+        .tool-desc { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; }
         
         .badge-perm { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; margin-left: 10px; vertical-align: middle; }
-        .perm-prompt { background: rgba(80, 200, 120, 0.1); color: #50c878; border: 1px solid rgba(80, 200, 120, 0.2); }
-        .perm-always { background: rgba(255, 92, 92, 0.1); color: #ff5c5c; border: 1px solid rgba(255, 92, 92, 0.2); }
-        .perm-never { background: rgba(255, 255, 255, 0.05); color: #a0aec0; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .perm-prompt { background: rgba(0, 123, 255, 0.1); color: #007bff; border: 1px solid rgba(0, 123, 255, 0.2); }
+        .perm-always { background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2); }
+        .perm-never { background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); }
+
+        /* Carousel Styles */
+        .carousel-container { position: relative; max-width: 1000px; margin: 2rem 0 4rem; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .carousel-slide { display: none; }
+        .carousel-slide img { width: 100%; height: auto; display: block; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .carousel-caption { padding: 1rem; background: rgba(0,0,0,0.8); color: var(--barca-gold); text-align: center; font-size: 0.9rem; font-weight: 600; }
+        .prev, .next { cursor: pointer; position: absolute; top: 50%; width: auto; padding: 16px; margin-top: -22px; color: white; font-weight: bold; font-size: 18px; transition: 0.6s ease; border-radius: 0 3px 3px 0; user-select: none; background: rgba(0,0,0,0.3); }
+        .next { right: 0; border-radius: 3px 0 0 3px; }
+        .prev:hover, .next:hover { background-color: rgba(0,0,0,0.8); color: var(--barca-gold); }
+        .fade { animation-name: fade; animation-duration: 1.5s; }
+        @keyframes fade { from {opacity: .4} to {opacity: 1} }
     </style>
 </head>
 <body>
@@ -33,7 +44,7 @@
                 <h4>Application</h4>
                 <ul>
                     <li><a href="#overview">Overview</a></li>
-                    <li><a href="#installation">Installation</a></li>
+                    <li><a href="#installation">Continuous Delivery</a></li>
                 </ul>
                 
                 <h4>Core Toolkits</h4>
@@ -56,11 +67,46 @@
         <main class="main-content">
             <section id="overview" class="toolkit-section">
                 <h1>Anahata <span style="color: var(--barca-gold)">ASI Desktop</span></h1>
+                
+                <!-- Screenshot Carousel -->
+                <div class="carousel-container">
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/visca-el-barca.png" alt="Anahata Dashboard">
+                        <div class="carousel-caption">The Blaugrana Dashboard - Multi-session monitoring and metrics.</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/surgical-diff-viewer.png" alt="Surgical Diff Viewer">
+                        <div class="carousel-caption">Surgical Precision - High-fidelity diff visualization for model edits.</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/context-explorer-tree.png" alt="Context Explorer">
+                        <div class="carousel-caption">The Nervous System - Visualizing the Agi's mental context tree.</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/metabolic-donut-gc.png" alt="Metabolic GC">
+                        <div class="carousel-caption">Metabolic Intelligence - Real-time token usage and garbage collection.</div>
+                    </div>
+                    <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+                    <a class="next" onclick="plusSlides(1)">&#10095;</a>
+                </div>
+
                 <p class="tagline" style="text-align: left;">The authoritative cross-platform ASI launcher.</p>
                 <p>Anahata ASI Desktop provides a standalone, high-performance environment for running agentic workflows outside of any IDE. Built on the <b>Blaugrana DNA</b> architecture, it offers total portability and absolute stability across Linux, Windows, and macOS.</p>
                 
                 <div class="nb-card" style="border-top-color: var(--barca-gold);">
                     <p><b>Write Once, Run Singularity:</b> Anahata ASI Desktop requires only a JDK 25 compatible runtime. It bundles its own multimodal rendering engine and stateful persistence metabolism.</p>
+                </div>
+            </section>
+
+            <section id="installation" class="toolkit-section">
+                <h2>Continuous Delivery</h2>
+                <p>Anahata ASI Desktop is built and packaged automatically on every push to the main branch.</p>
+                <div class="feature-grid">
+                    <div class="tool-card">
+                        <h3><i class="fab fa-github"></i> Cutting Edge Binaries</h3>
+                        <p class="tool-desc">Get the latest builds immediately. Navigate to the <b>Actions</b> tab on GitHub, select the latest "Build Standalone Binaries" run, and download the artifacts for your platform (Linux, Windows, or macOS) at the bottom of the page.</p>
+                        <a href="https://github.com/anahata-os/anahata-asi/actions" target="_blank" class="btn-secondary" style="display: inline-block; margin-top: 1rem; font-size: 0.8rem;">View GitHub Actions</a>
+                    </div>
                 </div>
             </section>
 
@@ -73,12 +119,12 @@
                 <p>Unified URI-centric management for all project files, remote data, and ephemeral content.</p>
                 
                 <div class="tool-card">
-                    <span class="tool-sig">loadResources(List&lt;String&gt; uriStrings, TextViewportSettings settings) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Loads multiple resources (files or URLs) into the context. Automatically handles MIME detection and viewport sizing.</p>
+                    <span class="tool-sig">loadResources(List&lt;String&gt; uriStrings) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Loads multiple resources (files or URLs) into the context. Automatically handles MIME detection.</p>
                 </div>
                 <div class="tool-card">
                     <span class="tool-sig">editTextResource(TextResourceLineEdits edits) <span class="badge-perm perm-never">Never</span></span>
-                    <p class="tool-desc"><b>Direct Supervised Access:</b> This ultra-precise surgical editor is reserved for manual human intervention. It targets absolute 1-based line coordinates with high-fidelity diff visualization.</p>
+                    <p class="tool-desc"><b>Direct Supervised Access:</b> This ultra-precise surgical editor is reserved for manual human intervention.</p>
                 </div>
                 <div class="tool-card">
                     <span class="tool-sig">createTextFile(FullTextFileCreate create) <span class="badge-perm perm-always">Always</span></span>
@@ -87,6 +133,14 @@
                 <div class="tool-card">
                     <span class="tool-sig">updateTextResource(FullTextResourceUpdate update) <span class="badge-perm perm-prompt">Prompt</span></span>
                     <p class="tool-desc">Updates an existing text file using full content replacement, generating a standard unified diff.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">unloadResources(List&lt;String&gt; uuids) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Surgically removes multiple resources from the context to optimize memory and tokens.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">updateViewport(String uuid, TextViewportSettings settings) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Adjusts the visible range and filtering for a text resource in the RAG message.</p>
                 </div>
             </section>
 
@@ -100,7 +154,7 @@
                 
                 <div class="tool-card">
                     <span class="tool-sig">runAndWait(String command, ShellType type) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Runs a shell command synchronously (BASH, CMD, or PowerShell) and captures stdout/stderr for analysis.</p>
+                    <p class="tool-desc">Runs a shell command synchronously (BASH, CMD, or PowerShell) and captures stdout/stderr.</p>
                 </div>
             </section>
 
@@ -121,12 +175,24 @@
                     <p class="tool-desc">Directs the browser to the specified URL.</p>
                 </div>
                 <div class="tool-card">
+                    <span class="tool-sig">clickElement(String identifier) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Interacts with a specific element on the page using its ID, name, or visible text.</p>
+                </div>
+                <div class="tool-card">
                     <span class="tool-sig">fillForm(Map&lt;String, String&gt; data) <span class="badge-perm perm-prompt">Prompt</span></span>
                     <p class="tool-desc">Intelligently identifies and populates web forms based on field IDs or labels.</p>
                 </div>
                 <div class="tool-card">
+                    <span class="tool-sig">inspectForm() <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Analyzes the current page for input fields and submission buttons.</p>
+                </div>
+                <div class="tool-card">
                     <span class="tool-sig">getScreenshot(String name) <span class="badge-perm perm-always">Always</span></span>
                     <p class="tool-desc">Captures the current browser viewport as a high-fidelity image resource.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">goBack() / goForward() <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Navigates through the browser's session history.</p>
                 </div>
                 <div class="tool-card">
                     <span class="tool-sig">executeScript(String script) <span class="badge-perm perm-prompt">Prompt</span></span>
@@ -154,6 +220,10 @@
                     <span class="tool-sig">selectRecordingDevice(String id) <span class="badge-perm perm-always">Always</span></span>
                     <p class="tool-desc">Selects the authoritative input device for audio capture.</p>
                 </div>
+                <div class="tool-card">
+                    <span class="tool-sig">selectOutputDevice(String id) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Selects the authoritative hardware device for audio output.</p>
+                </div>
             </section>
 
             <!-- Radio Toolkit -->
@@ -171,6 +241,10 @@
                 <div class="tool-card">
                     <span class="tool-sig">stop() <span class="badge-perm perm-always">Always</span></span>
                     <p class="tool-desc">Gracefully terminates the active radio stream.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">selectOutputDevice(String id) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Selects the authoritative hardware device for radio playback.</p>
                 </div>
             </section>
 
@@ -206,6 +280,24 @@
                 </div>
             </section>
 
+            <!-- Host Toolkit -->
+            <section id="host" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fas fa-server"></i>
+                    <h2>Host Toolkit</h2>
+                </div>
+                <p>Operating system orchestration and process management.</p>
+                
+                <div class="tool-card">
+                    <span class="tool-sig">listProcesses() <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Retrieves a list of all active processes running on the host system.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">killProcess(long pid, boolean force) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Terminates a specific process by its PID.</p>
+                </div>
+            </section>
+
             <!-- History Toolkit -->
             <section id="history" class="toolkit-section">
                 <div class="toolkit-header">
@@ -238,7 +330,7 @@
                 </div>
                 <div class="tool-card">
                     <span class="tool-sig">enableHostedTools() <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Switches the session to server-side tool mode (e.g., Google Search), disabling local Java execution.</p>
+                    <p class="tool-desc">Switches the session to server-side tool mode (e.g., Google Search).</p>
                 </div>
             </section>
 
