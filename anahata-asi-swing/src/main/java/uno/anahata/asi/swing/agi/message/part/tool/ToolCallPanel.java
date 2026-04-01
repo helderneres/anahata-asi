@@ -328,9 +328,9 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
             if (renderer == null) {
                 String rendererId = param.getRendererId();
                 renderer = ParameterRendererFactory.create(agiPanel, call, paramName, value, rendererId);
+                argRenderers.put(paramName, renderer);
                 renderer.render();
                 
-                argRenderers.put(paramName, renderer);
                 // Trigger initial height adjustment
                 SwingUtilities.invokeLater(() -> adjustTabbedPaneHeight(argsTabbedPane));
             } else {
