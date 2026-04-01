@@ -53,7 +53,7 @@ jobs:
           jpackage --name "Anahata-ASI-Desktop" \
                    --app-version "${{ env.VERSION }}" \
                    --input package-input \
-                   --main-jar "anahata-asi-standalone-${{ env.VERSION }}.jar" \
+                   --main-jar "anahata-asi-desktop-${{ env.VERSION }}.jar" \
                    --main-class uno.anahata.asi.standalone.SwingMain \
                    --type app-image \
                    --dest dist \
