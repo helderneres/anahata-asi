@@ -73,16 +73,6 @@ public class Resources extends AnahataToolkit {
         );
     }
 
-    @Override
-    public void initialize() {
-        Optional<JavaMethodTool> o = getToolkit().getTools().stream().filter(t-> t.getName().equals("editTextResource")).findFirst();
-        if (!o.isEmpty()) {
-            log.warn("Setting permission of Resources.editTextResource tool to DENY_NEVER as at the time of this release gemini-3-flash is just not getting it right. If you have a better model and you are keen to try it, then just enable it manually in the Context tab");
-            o.get().setPermission(ToolPermission.DENY_NEVER);
-        }
-    }
-    
-    
 
     /**
      * Intelligently resolves the actor string for registration heritage.
