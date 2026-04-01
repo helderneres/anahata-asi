@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.internal.TokenizerUtils;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
 
+import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
+
 /**
  * The abstract base class for a tool, now generic on its Parameter and Call types.
  * 
@@ -22,7 +24,7 @@ import uno.anahata.asi.agi.message.AbstractModelMessage;
  */
 @Getter
 @Slf4j
-public abstract class AbstractTool<P extends AbstractToolParameter, C extends AbstractToolCall> {
+public abstract class AbstractTool<P extends AbstractToolParameter, C extends AbstractToolCall> extends BasicPropertyChangeSource {
     
     /** The fully qualified name of the tool, e.g., "LocalFiles.readFile". This is immutable. */
     @NonNull
@@ -35,8 +37,16 @@ public abstract class AbstractTool<P extends AbstractToolParameter, C extends Ab
     protected AbstractToolkit toolkit;
 
     /** The user's configured preference for this tool, determining its execution behavior. */
-    @Setter
     protected ToolPermission permission;
+    
+    public void setPermission(ToolPermission permission) {
+        ToolPermission old = this.permission;
+        if (java.util.Objects.equals(old, permission)) {
+            return;
+        }
+        this.permission = permission;
+        propertyChangeSupport.firePropertyChange("permission", old, permission);
+    }
 
     /** The maximum depth this tool call should be retained in the context. */
     @Setter
