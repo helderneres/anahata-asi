@@ -36,6 +36,10 @@ public class AsiCardsContainerPanel extends AbstractAsiContainerPanel {
     public AsiCardsContainerPanel(@NonNull AbstractSwingAsiContainer container) {
         super(container);
         
+        // Cards view is a stable dashboard; hide lifecycle management from the toolbar
+        closeButton.setVisible(false);
+        disposeButton.setVisible(false);
+        
         this.cardContainer = new JPanel(new WrapLayout(WrapLayout.LEFT, 10, 10));
         cardContainer.setOpaque(false);
         
