@@ -12,24 +12,40 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NetBeans ASI Studio | Anahata ASI Platform</title>
+    <title>Anahata ASI Studio - NetBeans | Anahata ASI Platform</title>
     <link rel="icon" type="image/png" href="https://www.anahata.uno/icons/anahata_16.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script>
-        mermaid.initialize({
-            startOnLoad: true,
-            theme: 'dark',
-            securityLevel: 'loose',
-            fontFamily: 'Inter',
-            themeVariables: {
-                primaryColor: '#2c7a7b',
-                lineColor: '#edbb00'
-            }
-        });
-    </script>
+    <style>
+        /* Documentation-specific layout adjustments */
+        .toolkit-section { margin-bottom: 5rem; scroll-margin-top: 140px; }
+        .toolkit-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.8rem; }
+        .toolkit-header i { font-size: 1.8rem; color: var(--barca-gold); }
+        
+        .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem; }
+        .tool-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 0.8rem 1rem; transition: var(--transition); display: flex; flex-direction: column; justify-content: center; }
+        .tool-card:hover { border-color: rgba(79, 170, 255, 0.3); background: rgba(255,255,255,0.04); }
+        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 0.7rem; margin-bottom: 0.3rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tool-desc { color: var(--text-muted); font-size: 0.8rem; line-height: 1.4; margin: 0; }
+        
+        .badge-perm { font-size: 0.6rem; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; font-weight: bold; margin-left: 6px; vertical-align: middle; }
+        .perm-prompt { background: rgba(0, 123, 255, 0.1); color: #007bff; border: 1px solid rgba(0, 123, 255, 0.2); }
+        .perm-always { background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2); }
+        .perm-never { background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); }
+ 
+        /* Carousel Styles (Fixed aspect-ratio and centering) */
+        .carousel-container { position: relative; max-width: 1000px; height: 550px; margin: 2rem auto 4rem; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.4); background: #000; }
+        .carousel-slide { display: none; height: 100%; width: 100%; position: relative; }
+        .carousel-slide img { width: 100%; height: calc(100% - 40px); object-fit: contain; display: block; background: #000; }
+        .carousel-caption { height: 40px; line-height: 40px; background: rgba(0,0,0,0.9); color: var(--barca-gold); text-align: center; font-size: 0.85rem; font-weight: 600; border-top: 1px solid rgba(255,255,255,0.05); }
+        .prev, .next { cursor: pointer; position: absolute; top: 50%; width: auto; padding: 16px; margin-top: -42px; color: white; font-weight: bold; font-size: 18px; transition: 0.6s ease; border-radius: 0 3px 3px 0; user-select: none; background: rgba(0,0,0,0.3); z-index: 10; }
+        .next { right: 0; border-radius: 3px 0 0 3px; }
+        .prev:hover, .next:hover { background-color: rgba(0,0,0,0.8); color: var(--barca-gold); }
+        .fade { animation-name: fade; animation-duration: 1s; }
+        @keyframes fade { from {opacity: .6} to {opacity: 1} }
+
+        .info-box { background: rgba(44, 122, 123, 0.1); border-left: 4px solid var(--barca-gold); padding: 1.5rem; border-radius: 8px; margin: 2rem 0; }
+    </style>
 </head>
 <body>
     <div id="main-nav"></div>
@@ -37,138 +53,146 @@
     <div class="docs-wrapper">
         <aside class="sidebar">
             <div class="sidebar-nav">
-                <h4>IDE Integration</h4>
+                <h4>Application</h4>
                 <ul>
-                    <li><a href="#overview" class="active">Overview</a></li>
-                    <li><a href="#annotators">Annotator Strategy</a></li>
-                    <li><a href="#maven">Maven Embedder</a></li>
-                    <li><a href="#codemodel">Java Code Model</a></li>
-                    <li><a href="#refactoring">Refactoring Bridge</a></li>
-                    <li><a href="#lifecycle">Hot Reloading</a></li>
+                    <li><a href="#overview">Overview</a></li>
+                </ul>
+                
+                <h4>NetBeans Toolkits</h4>
+                <ul>
+                    <li><a href="#maven"><i class="fas fa-hammer"></i> Maven</a></li>
+                    <li><a href="#projects"><i class="fas fa-project-diagram"></i> Projects</a></li>
+                    <li><a href="#codemodel"><i class="fas fa-sitemap"></i> CodeModel</a></li>
+                    <li><a href="#hints"><i class="fas fa-lightbulb"></i> Hints</a></li>
+                    <li><a href="#refactor"><i class="fas fa-magic"></i> Refactor</a></li>
+                    <li><a href="#editor"><i class="fas fa-edit"></i> Editor</a></li>
+                    <li><a href="#ide"><i class="fas fa-laptop-code"></i> IDE</a></li>
+                    <li><a href="#nbjava"><i class="fab fa-java"></i> NbJava</a></li>
                 </ul>
             </div>
         </aside>
 
         <main class="main-content">
-            <section id="overview">
-                <h1>NetBeans <span style="color: var(--barca-gold)">ASI Studio</span></h1>
-                <p class="tagline" style="text-align: left;">Deep IDE orchestration for the ultimate Java coding experience. Turning NetBeans into a high-fidelity ASI Container.</p>
-                <p>NetBeans ASI Studio is not just a plugin; it's a structural bridge that gives the model direct access to project graphs, compilation lifecycles, and the industry-standard NetBeans Refactoring engine. It follows the **IDE API Preference Principle**: always prefer <code>MimeLookup</code> or <code>EditorKit</code> over direct file manipulation.</p>
+            <section id="overview" class="toolkit-section">
+                <h1>Anahata <span style="color: var(--barca-gold)">ASI Studio - NetBeans</span></h1>
                 
-                <div class="nb-card" style="border-top-color: var(--barca-gold);">
-                    <p><b>Singularity-Ready:</b> By integrating directly with the IDE's internal state, the ASI respects transactional integrity and project-specific configurations (like Compile on Save) that are invisible to standard file-system agents.</p>
-                </div>
-            </section>
-
-            <section id="annotators">
-                <h2>The Annotator Strategy</h2>
-                <p>The Studio provides non-intrusive, real-time visual feedback directly on the source code via the <code>AnahataAnnotationProvider</code>. This is achieved through a <b>Manual Delegation Chain</b> that preserves existing IDE decorators (like Git status or Error badges).</p>
-                
-                <div class="mermaid-card" onclick="this.classList.toggle('expanded')">
-                    <div class="code-header">Annotator Delegation Flow</div>
-                    <div class="mermaid">
-                        graph TD
-                            NB[NetBeans Node] --> AAP[AnahataAnnotationProvider]
-                            AAP --> |BUSY Guard| Delegate[delegateIcon / delegateNameHtml]
-                            Delegate --> Git[GitAnnotationProvider]
-                            Delegate --> Error[ErrorAnnotationProvider]
-                            Git --> AAP
-                            Error --> AAP
-                            AAP --> |Final Overlay| UI[Anahata Bell + Session Count]
+                <!-- Screenshot Carousel -->
+                <div class="carousel-container">
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/netbeans/ChatInterface.png" alt="Chat Interface" class="clickable-media" data-caption="Native Docking - The Anahata chat interface running as a high-fidelity NetBeans TopComponent.">
+                        <div class="carousel-caption">Native Docking - The Anahata chat interface running as a high-fidelity NetBeans TopComponent.</div>
                     </div>
-                </div>
-
-                <div class="asymmetric-grid">
-                    <div class="nb-card" style="margin: 0; border-top-color: var(--verified-green);">
-                        <h4>Project View Badges</h4>
-                        <p style="font-size: 0.9rem;">Injected at position <code>10000</code>, our provider adds the Anahata bell icon and real-time session counters (e.g., <code>[2]</code>) to the Projects view, indicating active AI analysis.</p>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/netbeans/ProjectStructureContextProvider.png" alt="Project Structure" class="clickable-media" data-caption="Structural Awareness - Real-time exploration of physical and logical project graphs.">
+                        <div class="carousel-caption">Structural Awareness - Real-time exploration of physical and logical project graphs.</div>
                     </div>
-                    <div class="nb-card" style="margin: 0; border-top-color: var(--barca-red);">
-                        <h4>Line Annotations</h4>
-                        <p style="font-size: 0.9rem;">The ASI "paints" suggestions or errors directly onto specific lines using native <code>Annotation</code> objects, allowing for visual-first, agentic debugging.</p>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/netbeans/ProjectAlertsContextProvider.png" alt="Project Alerts" class="clickable-media" data-caption="Metabolic Diagnostics - Monitoring compiler errors and project health via context providers.">
+                        <div class="carousel-caption">Metabolic Diagnostics - Monitoring compiler errors and project health via context providers.</div>
                     </div>
-                </div>
-            </section>
-
-            <section id="maven">
-                <h2>NetBeans Maven Embedder</h2>
-                <p>The <code>Maven</code> toolkit leverages the host IDE's internal Maven engine to perform synchronous build goal execution and recursive dependency resolution.</p>
-                
-                <div class="nb-card">
-                    <ul style="list-style: none; padding: 0;">
-                        <li style="margin-bottom: 1.5rem;"><i class="fas fa-check-circle" style="color: var(--verified-green); margin-right: 12px;"></i> <b>Full Transitive Analysis:</b> <code>getResolvedDependencies</code> returns the absolute runtime classpath, providing the model with total situational awareness.</li>
-                        <li style="margin-bottom: 1.5rem;"><i class="fas fa-check-circle" style="color: var(--verified-green); margin-right: 12px;"></i> <b>Synchronous Build Loop:</b> Executes <code>clean</code>, <code>install</code>, or <code>nbmreload</code> and captures the log output for immediate feedback in the chat.</li>
-                        <li style="margin-bottom: 1.5rem;"><i class="fas fa-check-circle" style="color: var(--verified-green); margin-right: 12px;"></i> <b>The addDependency Super-Tool:</b> A safe, multi-phase tool that verifies artifact existence and downloads sources before modifying the POM.</li>
-                    </ul>
-                </div>
-            </section>
-
-            <section id="codemodel">
-                <h2>Java Code Model (Index-Aware)</h2>
-                <p>Powered by <code>org.netbeans.api.java.source</code>, the <code>CodeModel</code> toolkit is the model's primary sensor. It explores types via high-performance indices rather than slow manual parsing.</p>
-                
-                <div class="code-header">Technical Advantage: FQN-Resolution</div>
-                <div class="nb-card" style="border-top-color: var(--barca-blue);">
-                    <p style="margin: 0;">Tools like <code>getMembersByFqn</code> allow the ASI to skip "discovery turns." If the type name is known, the model jumps straight to the source, significantly reducing turn overhead and token cost.</p>
-                </div>
-                
-                <div class="code-header" style="margin-top: 2rem;">Implementation: Subtype Search Task</div>
-                <pre><code class="language-java">// Exposing the IDE Index as an AI Tool
-public JavaHierarchyNode getSubtypesByFqn(String fqn, int maxDepth) {
-    // Uses NetBeans ElementHandle and ClassIndex to build a recursive tree
-    // across all open projects and their dependencies.
-    return searchSubtypes(fqn, maxDepth);
-}</code></pre>
-            </section>
-
-            <section id="refactoring">
-                <h2>Smart Refactoring Bridge</h2>
-                <p>The <code>Refactor</code> toolkit exposes the IDE's industry-standard refactoring engine as agentic tools. This ensures that when the ASI modifies code, every reference in every open project is updated atomically.</p>
-                
-                <div class="nb-card">
-                    <h5 style="color: var(--barca-gold); margin-top: 0; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 1px;">The Refactoring Lifecycle</h5>
-                    <div class="responsive-grid" style="margin: 1.5rem 0 0 0;">
-                        <div>
-                            <span style="color: var(--primary-light); font-weight: 700;">1. Pre-check</span>
-                            <p style="font-size: 0.8rem; opacity: 0.7;">Verifies the element exists and is eligible for the operation (e.g., not a read-only JAR).</p>
-                        </div>
-                        <div>
-                            <span style="color: var(--primary-light); font-weight: 700;">2. Parameters</span>
-                            <p style="font-size: 0.8rem; opacity: 0.7;">Validates new names or signatures (FQN-resolution, reserved words).</p>
-                        </div>
-                        <div>
-                            <span style="color: var(--primary-light); font-weight: 700;">3. Prepare</span>
-                            <p style="font-size: 0.8rem; opacity: 0.7;">Discovers all references and structural impact across the entire project graph.</p>
-                        </div>
-                        <div>
-                            <span style="color: var(--primary-light); font-weight: 700;">4. Execute</span>
-                            <p style="font-size: 0.8rem; opacity: 0.7;">Transactional application of changes to the filesystem and the active IDE buffer.</p>
-                        </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/netbeans/RadioTool.png" alt="Radio Toolkit" class="clickable-media" data-caption="Focused Development - The integrated Radio toolkit providing the soundtrack for Tiki-Taka coding.">
+                        <div class="carousel-caption">Focused Development - The integrated Radio toolkit providing the soundtrack for Tiki-Taka coding.</div>
                     </div>
+                    <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+                    <a class="next" onclick="plusSlides(1)">&#10095;</a>
                 </div>
 
-                <div class="code-header" style="margin-top: 2rem;">Implementation: A Safe Rename Tool</div>
-                <pre><code class="language-java">// Extracted from Refactor.java
-@AiTool("Renames a file or class. This is a 'safe' rename...")
-public String rename(String filePath, String newName) throws Exception {
-    FileObject fo = getFileObject(filePath);
-    RenameRefactoring refactoring = new RenameRefactoring(getLookupForFile(fo));
-    refactoring.setNewName(newName);
-    
-    // Execute through the 4-phase lifecycle and return a detailed log
-    return executeRefactoring(refactoring, "Rename " + fo.getName());
-}</code></pre>
+                <p class="tagline" style="text-align: left;">Deep IDE orchestration for the ultimate Java coding experience.</p>
+                <div class="info-box">
+                    <p style="margin: 0; font-size: 1rem; color: var(--white);">
+                        It contains all the tools of the <a href="desktop.html" style="color: var(--barca-gold); text-decoration: underline;">standalone version</a>, plus these toolkits (the ones that are only available in NetBeans):
+                    </p>
+                </div>
             </section>
 
-            <section id="lifecycle">
-                <h2>The Development Lifecycle</h2>
-                <p>Contributors building new toolkits can leverage the <code>nbmreload</code> goal. This triggers a synchronous reload of the Anahata plugin into the host IDE instance, allowing for a tight "Code → Build → Test" loop in a single turn without platform restarts.</p>
+            <!-- Maven Toolkit -->
+            <section id="maven" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-hammer"></i><h2>Maven Toolkit</h2></div>
+                <p>Leverages the host IDE's internal Maven engine for synchronous build goal execution and recursive dependency resolution.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">runGoals(List&lt;String&gt; goals) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes Maven goals (clean, install, etc.) synchronously.</p></div>
+                    <div class="tool-card"><span class="tool-sig">addDependency(groupId, artifactId, version) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Surgically adds a dependency to the project POM.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getResolvedDependencies(path) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Returns the full transitive runtime classpath.</p></div>
+                </div>
+            </section>
+
+            <!-- Projects Toolkit -->
+            <section id="projects" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-project-diagram"></i><h2>Projects Toolkit</h2></div>
+                <p>Provides the ASI with deep structural awareness of the IDE workspace and project metadata.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">openProject(path) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Opens a project in the IDE workspace.</p></div>
+                    <div class="tool-card"><span class="tool-sig">setMainProject(path) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Sets the authoritative main project for the IDE.</p></div>
+                    <div class="tool-card"><span class="tool-sig">invokeAction(path, action) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Triggers native NetBeans project actions.</p></div>
+                </div>
+            </section>
+
+            <!-- CodeModel Toolkit -->
+            <section id="codemodel" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-sitemap"></i><h2>CodeModel Toolkit</h2></div>
+                <p>Powered by the NetBeans Java Index, enabling one-shot type exploration and FQN resolution.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">findTypes(query) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Fast index-based search for Java types across all projects.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getMembersByFqn(fqn) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Skips discovery turns by jumping straight to members.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getSubtypesByFqn(fqn) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Builds recursive implementation and inheritance trees.</p></div>
+                </div>
+            </section>
+
+            <!-- Hints Toolkit -->
+            <section id="hints" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-lightbulb"></i><h2>Hints Toolkit</h2></div>
+                <p>Programmatic access to the NetBeans Hint engine for automated code quality and fixing.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">getAllHints(projectPath) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Retrieves all warnings and suggestions for a project.</p></div>
+                    <div class="tool-card"><span class="tool-sig">applyHintFix(filePath, hintId) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes the suggested quick-fix for a specific hint.</p></div>
+                </div>
+            </section>
+
+            <!-- Refactor Toolkit -->
+            <section id="refactor" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-magic"></i><h2>Refactor Toolkit</h2></div>
+                <p>Transactional refactoring tools that maintain integrity across the entire project graph.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">rename(path, newName) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Safe rename updating all references in the workspace.</p></div>
+                    <div class="tool-card"><span class="tool-sig">move(path, targetFolder) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Relocates types or files while correcting imports.</p></div>
+                    <div class="tool-card"><span class="tool-sig">safeDelete(path) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Verifies usages before removing elements.</p></div>
+                </div>
+            </section>
+
+            <!-- Editor Toolkit -->
+            <section id="editor" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-edit"></i><h2>Editor Toolkit</h2></div>
+                <p>Direct interaction with the active NetBeans editor tabs and document buffers.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">openFile(path, scrollToLine) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Opens and focuses a file in the IDE editor.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getOpenFiles() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Lists all currently open editor tabs.</p></div>
+                    <div class="tool-card"><span class="tool-sig">closeAllFiles() <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Clears the editor workspace.</p></div>
+                </div>
+            </section>
+
+            <!-- IDE Toolkit -->
+            <section id="ide" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-laptop-code"></i><h2>IDE Toolkit</h2></div>
+                <p>Generic IDE orchestration and observability tools.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">monitorLogs(pattern) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Tails the IDE messages.log for real-time debugging.</p></div>
+                    <div class="tool-card"><span class="tool-sig">selectIn(path, target) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Highlights elements in the Projects or Files view.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getOutputTabsMarkdown() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Captures a snapshot of all active Output windows.</p></div>
+                </div>
+            </section>
+
+            <!-- NbJava Toolkit -->
+            <section id="nbjava" class="toolkit-section">
+                <div class="toolkit-header"><i class="fab fa-java"></i><h2>NbJava Toolkit</h2></div>
+                <p>NetBeans-aware Java execution engine that manages NBM-specific classpath isolation.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">compileAndExecuteInProject(code) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes model code using the project's own target/classes.</p></div>
+                </div>
             </section>
         </main>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <script src="nav.js"></script>
     <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=f19c44f5-8b2e-458f-beab-96e4f9f8e603" />
 </body>

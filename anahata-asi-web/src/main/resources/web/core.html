@@ -553,7 +553,7 @@
                 <h3>Advanced State Management</h3>
                 <p>Toolkits manage three scopes of memory: <b>Session</b> (AGI turn), <b>Container</b> (all sessions), and <b>Application</b> (JVM-wide). Deserialization is handled via <code>rebind()</code>.</p>
                 <div class="code-header">Java: Scoped Persistence & Rebinding</div>
-                <pre><code class="language-java">@AiToolkit(value = "Task Orchestration", maxDepth = 12)
+                <pre><code class="language-java">@AgiToolkit(value = "Task Orchestration", maxDepth = 12)
 public class TaskToolkit extends AnahataToolkit {
     private List&lt;String&gt; persistentTasks = new ArrayList&lt;&gt;(); // Serialized by Kryo
     private transient Map&lt;String, Long&gt; runtimeMetrics; // Cleared on save
@@ -563,7 +563,7 @@ public class TaskToolkit extends AnahataToolkit {
         this.runtimeMetrics = new ConcurrentHashMap&lt;&gt;(); // Restored upon deserialization
     }
 
-    @AiTool("Shares a task across the ASI Container.")
+    @AgiTool("Shares a task across the ASI Container.")
     public String createGlobalTask(String task) {
         getSessionMap().put("last", task);      // Local turn memory
         getContainerMap().put("latest", task);   // Shared across all app AGIs

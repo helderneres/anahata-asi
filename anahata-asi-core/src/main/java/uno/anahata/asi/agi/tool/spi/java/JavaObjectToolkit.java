@@ -64,7 +64,7 @@ public class JavaObjectToolkit extends AbstractToolkit<JavaMethodTool> implement
         
         AgiToolkit toolkitAnnotation = toolClass.getAnnotation(AgiToolkit.class);
         if (toolkitAnnotation == null) {
-            throw new IllegalArgumentException("Class " + toolClass.getName() + " is not annotated with @AiToolkit.");
+            throw new IllegalArgumentException("Class " + toolClass.getName() + " is not annotated with @AgiToolkit.");
         }
         
         // Set parent fields

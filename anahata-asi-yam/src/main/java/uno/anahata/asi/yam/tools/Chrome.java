@@ -730,7 +730,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
 
     /* --- TROUBLESHOOTING TOOLS (Commented out to clean up API) ---
     
-    @AiTool("Lists all Chrome profiles found in the user data directory.")
+    @AgiTool("Lists all Chrome profiles found in the user data directory.")
     public List<String> listProfiles() {
         String userDataDir = OsUtils.getDefaultChromeUserDataDir();
         File dir = new File(userDataDir);
@@ -753,7 +753,7 @@ public class Chrome extends AnahataToolkit implements Rebindable {
         return results;
     }
 
-    @AiTool("Refreshes the list of running Chrome processes and their debug ports.")
+    @AgiTool("Refreshes the list of running Chrome processes and their debug ports.")
     public String listProcesses() {
         return getProcessReport();
     }

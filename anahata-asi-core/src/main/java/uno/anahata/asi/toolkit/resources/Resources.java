@@ -90,7 +90,7 @@ public class Resources extends AnahataToolkit {
      */
     private String getActor() {
         String toolName = getResponse().getCall().getTool().getName();
-        return getModelId() + " via @AiTool " + toolName;
+        return getModelId() + " via @AgiTool " + toolName;
     }
 
     /**

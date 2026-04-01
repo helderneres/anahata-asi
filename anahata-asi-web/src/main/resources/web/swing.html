@@ -164,7 +164,7 @@ ToolkitUiRegistry.getInstance().register(MyToolkit.class, MyToolkitRenderer.clas
 
             <section id="param-renderers">
                 <h2>Tool Parameters</h2>
-                <p>Create specialized visualizers for <code>@AiToolParam</code> arguments. Renderers are resolved based on the Java type or an explicit <code>rendererId</code> hint in the annotation.</p>
+                <p>Create specialized visualizers for <code>@AgiToolParam</code> arguments. Renderers are resolved based on the Java type or an explicit <code>rendererId</code> hint in the annotation.</p>
                 
                 <div class="nb-card" style="border-top-color: var(--barca-gold);">
                     <h5 style="color: var(--white); margin-top: 0;">Representational Fidelity</h5>
@@ -172,9 +172,9 @@ ToolkitUiRegistry.getInstance().register(MyToolkit.class, MyToolkitRenderer.clas
                 </div>
 
                 <div class="code-header">Example: Custom UI via Hint</div>
-                <pre><code class="language-java">@AiTool("Performs a specialized operation")
+                <pre><code class="language-java">@AgiTool("Performs a specialized operation")
 public void myTool(
-    @AiToolParam(value = "Input", rendererId = "json") String input
+    @AgiToolParam(value = "Input", rendererId = "json") String input
 ) { ... }</code></pre>
             </section>
 

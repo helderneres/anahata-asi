@@ -15,6 +15,6 @@ This document provides a comprehensive summary of the V2 resource management fra
 
 -   **`ResourceManager` (The Container):** This class acts as the central, ordered container (`LinkedHashMap`) for all registered `AbstractResource` instances.
 -   **`ContextManager` (The Injector):** The `ContextManager` queries the `ResourceManager` on every turn and intelligently injects the rendered parts of each resource into the correct location in the prompt (`SYSTEM_INSTRUCTIONS` or `PROMPT_AUGMENTATION`).
--   **Dedicated Toolkits (`Files.java`):** The framework uses dedicated, professional-grade toolkits for each resource domain. The `Files.java` toolkit demonstrates this with robust error handling (`AiToolException`), clear self-documentation (`@AiTool`, `@AIToolParam`), and efficient context management (`retention = 0`).
+-   **Dedicated Toolkits (`Files.java`):** The framework uses dedicated, professional-grade toolkits for each resource domain. The `Files.java` toolkit demonstrates this with robust error handling (`AiToolException`), clear self-documentation (`@AgiTool`, `@AgiToolParam`), and efficient context management (`retention = 0`).
 
 The result is a complete, end-to-end resource management system that is a foundational pillar of the V2 framework.

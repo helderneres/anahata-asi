@@ -76,7 +76,7 @@ public final class NetBeansTopComponents {
     }
 
     /**
-     * Gathers raw info objects for the @AiTool method.
+     * Gathers raw info objects for the @AgiTool method.
      * 
      * @return A list of TopComponentInfo.
      * @throws Exception if gathering fails.

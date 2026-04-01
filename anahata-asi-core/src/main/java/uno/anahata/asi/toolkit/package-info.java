@@ -3,7 +3,7 @@
  * High-level tool implementations for autonomous agentic workflows.
  * <p>
  * Toolkits in this package extend the core framework's capabilities by 
- * providing specialized @AiTool methods for host interaction, session 
+ * providing specialized @AgiTool methods for host interaction, session 
  * management, and multimodal processing.
  * </p>
  */

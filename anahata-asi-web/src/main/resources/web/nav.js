@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Carousel Logic for desktop.html
-    if (isActive('desktop.html')) {
+    if (isActive('desktop.html') || isActive('nb.html')) {
         let slideIndex = 1;
         
         window.plusSlides = (n) => {

@@ -43,7 +43,7 @@ This project contains the foundational logic, while provider-specific implementa
 
 ### 2.4. V2 Tool Framework (`uno.anahata.asi.tool.*`)
 
--   **Annotation-Driven**: Tools defined using `@AiToolkit`, `@AiTool`, and `@AiToolParam`.
+-   **Annotation-Driven**: Tools defined using `@AgiToolkit`, `@AgiTool`, and `@AgiToolParam`.
 -   **`SchemaProvider`**: Automatically generates OpenAPI 3 schemas from Java types.
 -   **`ToolContext`**: Provides a context-aware API (via `ThreadLocal`) for logging and session access.
 

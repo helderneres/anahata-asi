@@ -239,7 +239,7 @@ public class Java extends AnahataToolkit {
      * @throws IllegalAccessException if access to a member is denied.
      * @throws InvocationTargetException if a method invocation fails.
      */
-    //@AiTool("Compiles the source code of a java class with the default compiler classpath")
+    //@AgiTool("Compiles the source code of a java class with the default compiler classpath")
     public Class compile(
             @AgiToolParam(value = "The source code", rendererId = "java") String sourceCode,
             @AgiToolParam("The class name") String className,

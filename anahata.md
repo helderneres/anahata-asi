@@ -39,7 +39,7 @@ This project uses a set of key documents to guide development. For detailed info
 - **Fail Fast**: Avoid defensive programming like redundant null checks for internal components. Let it fail so root causes can be fixed. 
 - **No Method-Start Null Checks**: You are strictly forbidden from starting a method with a null check on parameters for the sake of defensive programming (e.g., `if (other == null) return;`). Let the JVM throw the NullPointerException so the caller can be corrected.
 - **No Quietly Catching Exceptions**: You are strictly forbidden from catching exceptions and doing nothing. All exceptions should be logged. 
-- **Clean Execution**: Do not use try-catch blocks inside `@AiTool` methods unless performing specific recovery. The framework handles exceptions automatically.
+- **Clean Execution**: Do not use try-catch blocks inside `@AgiTool` methods unless performing specific recovery. The framework handles exceptions automatically.
 - **Mandatory Braces**: Always use curly braces `{}` for all control flow statements (`if`, `else`, `for`, `while`, `do`).
 - **Logging Standard**: Use SLF4J (`@Slf4j`) for all logging. Never use `System.out.println()`.
 - **Lombok Purity**: Rely on Lombok annotation processing; do not add explicit getters/setters for Lombok-managed fields.
@@ -51,7 +51,7 @@ This project uses a set of key documents to guide development. For detailed info
     1. `rebind()` (if needed)
     2. `getSystemInstructions()` (if needed)
     3. `populateMessage()` (if needed)
-    4. `@AiTool` methods
+    4. `@AgiTool` methods
     5. Public helper methods (if needed)
     6. Private implementation details (if needed)
 

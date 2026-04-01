@@ -103,7 +103,7 @@ public class Maven extends AnahataToolkit {
      * 
      * @return the Maven path, or a failure message if not found or execution fails.
      */
-    //@AiTool("Gets the path to the Maven installation configured in NetBeans.")
+    //@AgiTool("Gets the path to the Maven installation configured in NetBeans.")
     public static String getNbCommandLineMavenPath() {
         try {
             Preferences prefs = NbPreferences.root().node("org/netbeans/modules/maven");

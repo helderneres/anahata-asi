@@ -219,9 +219,8 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
             responseTitledPanel.getComponent(0).addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    resultsTabbedPane.setVisible(!resultsTabbedPane.isVisible());
-                    responseTitledPanel.revalidate();
-                    responseTitledPanel.repaint();
+                    AbstractToolResponse<?> resp = getPart().getResponse();
+                    resp.setExpanded(!resp.isExpanded());
                 }
             });
         }
@@ -407,6 +406,7 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         // 3. Dynamic Visibility
         boolean hasResults = resultsTabbedPane.getTabCount() > 0;
         responseTitledPanel.setVisible(hasResults);
+        resultsTabbedPane.setVisible(response.isExpanded());
         
         if (hasResults) {
             if (response.getStatus() == ToolExecutionStatus.FAILED && hasError) {

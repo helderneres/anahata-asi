@@ -102,7 +102,7 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
      */
     @Schema(hidden = true)
     @JsonIgnore
-    private boolean expanded = true;
+    private boolean expanded = false;
 
     /**
      * Constructs a new AbstractToolResponse.
@@ -158,6 +158,16 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
     public void setErrors(String errors) {
         this.errors = errors;
         updateTokenCount();
+    }
+
+    /**
+     * Sets the persistent UI state for the response expansion and fires a property change event.
+     * @param expanded The new expanded state.
+     */
+    public void setExpanded(boolean expanded) {
+        boolean old = this.expanded;
+        this.expanded = expanded;
+        propertyChangeSupport.firePropertyChange("expanded", old, expanded);
     }
 
     /**
@@ -234,7 +244,7 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
      */
     public void decline() {
         setStatus(ToolExecutionStatus.DECLINED);
-        setUserFeedback("Declined by user. @AiTool annotated method did not get invoked.");
+        setUserFeedback("Declined by user. @AgiTool annotated method did not get invoked.");
         setResult(null);
         setErrors(null);
         setThread(null);
