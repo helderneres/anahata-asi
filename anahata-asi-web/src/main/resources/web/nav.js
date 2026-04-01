@@ -33,12 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div class="dropdown">
-                        <a href="#" class="dropdown-toggle ${(isActive('nb.html') || isActive('standalone.html')) ? 'active-link' : ''}">
+                        <a href="#" class="dropdown-toggle ${(isActive('nb.html') || isActive('desktop.html')) ? 'active-link' : ''}">
                             Applications <i class="fas fa-chevron-down"></i>
                         </a>
                         <div class="dropdown-menu">
                             <a href="nb.html" class="${isActive('nb.html') ? 'active-item' : ''}"><i class="fas fa-code"></i> NetBeans ASI Studio</a>
-                            <a href="standalone.html" class="${isActive('standalone.html') ? 'active-item' : ''}"><i class="fas fa-rocket"></i> Anahata ASI Desktop</a>
+                            <a href="desktop.html" class="${isActive('desktop.html') ? 'active-item' : ''}"><i class="fas fa-rocket"></i> Anahata ASI Desktop</a>
                         </div>
                     </div>
 

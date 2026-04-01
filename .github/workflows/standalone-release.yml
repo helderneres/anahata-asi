@@ -2,6 +2,8 @@ name: Build Standalone Binaries
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -48,7 +50,7 @@ jobs:
       - name: Package Native App (jpackage)
         shell: bash
         run: |
-          jpackage --name "Anahata-ASI" \
+          jpackage --name "Anahata-ASI-Desktop" \
                    --app-version "${{ env.VERSION }}" \
                    --input package-input \
                    --main-jar "anahata-asi-standalone-${{ env.VERSION }}.jar" \
@@ -59,11 +61,11 @@ jobs:
           
           # Zip/Tar the result for distribution
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            7z a "Anahata-ASI-${{ env.VERSION }}-windows.zip" "./dist/Anahata-ASI"
+            7z a "Anahata-ASI-Desktop-${{ env.VERSION }}-windows.zip" "./dist/Anahata-ASI-Desktop"
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-            cd dist && zip -r "../Anahata-ASI-${{ env.VERSION }}-macos.zip" "Anahata-ASI.app" && cd ..
+            cd dist && zip -r "../Anahata-ASI-Desktop-${{ env.VERSION }}-macos.zip" "Anahata-ASI-Desktop.app" && cd ..
           else
-            tar -czf "Anahata-ASI-${{ env.VERSION }}-linux.tar.gz" -C dist "Anahata-ASI"
+            tar -czf "Anahata-ASI-Desktop-${{ env.VERSION }}-linux.tar.gz" -C dist "Anahata-ASI-Desktop"
           fi
 
       - name: Upload Artifacts
@@ -71,8 +73,8 @@ jobs:
         with:
           name: bin-${{ matrix.os }}
           path: |
-            Anahata-ASI-*.zip
-            Anahata-ASI-*.tar.gz
+            Anahata-ASI-Desktop-*.zip
+            Anahata-ASI-Desktop-*.tar.gz
 
   release:
     name: Create GitHub Release
@@ -93,8 +95,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            all-artifacts/Anahata-ASI-*.zip
-            all-artifacts/Anahata-ASI-*.tar.gz
+            all-artifacts/Anahata-ASI-Desktop-*.zip
+            all-artifacts/Anahata-ASI-Desktop-*.tar.gz
           draft: false
           prerelease: false
         env:

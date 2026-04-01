@@ -6,8 +6,8 @@
         <artifactId>anahata-asi-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>anahata-asi-standalone</artifactId>
-    <name>Anahata ASI Standalone Launcher</name>
+    <artifactId>anahata-asi-desktop</artifactId>
+    <name>Anahata ASI Desktop</name>
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
