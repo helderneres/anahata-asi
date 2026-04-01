@@ -3,20 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anahata Standalone | Anahata ASI Platform</title>
+    <title>Anahata ASI Desktop | Anahata ASI Platform</title>
     <link rel="icon" type="image/png" href="https://www.anahata.uno/icons/anahata_16.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        .docs-wrapper { display: flex; max-width: 1400px; margin: 0 auto; padding: 160px 2rem 100px; gap: 4rem; }
-        .sidebar { width: 300px; flex-shrink: 0; position: sticky; top: 130px; height: calc(100vh - 160px); overflow-y: auto; padding-right: 1.5rem; }
-        .sidebar-nav h4 { color: var(--barca-gold); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(237, 187, 0, 0.2); padding-bottom: 8px; }
-        .sidebar-nav ul { list-style: none; padding: 0; }
-        .sidebar-nav a { color: var(--text-muted); text-decoration: none; display: block; padding: 10px 15px; transition: var(--transition); border-left: 3px solid transparent; }
-        .sidebar-nav a:hover, .sidebar-nav a.active { color: var(--primary-light); border-left-color: var(--primary-light); background: linear-gradient(to right, rgba(44, 122, 123, 0.1), transparent); }
-        .main-content { flex-grow: 1; max-width: 900px; }
-        .launcher-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 2.5rem; margin: 2rem 0; text-align: center; }
-        .launcher-card i { font-size: 3rem; color: var(--primary-light); margin-bottom: 1.5rem; }
+        /* Documentation-specific layout adjustments */
+        .toolkit-section { margin-bottom: 5rem; scroll-margin-top: 140px; }
+        .toolkit-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem; }
+        .toolkit-header i { font-size: 2rem; color: var(--barca-gold); }
+        
+        .tool-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; transition: var(--transition); }
+        .tool-card:hover { border-color: rgba(79, 170, 255, 0.3); background: rgba(255,255,255,0.04); }
+        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 0.85rem; margin-bottom: 0.8rem; display: block; }
+        .tool-desc { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; }
+        
+        .badge-perm { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; margin-left: 10px; vertical-align: middle; }
+        .perm-prompt { background: rgba(80, 200, 120, 0.1); color: #50c878; border: 1px solid rgba(80, 200, 120, 0.2); }
+        .perm-always { background: rgba(255, 92, 92, 0.1); color: #ff5c5c; border: 1px solid rgba(255, 92, 92, 0.2); }
+        .perm-never { background: rgba(255, 255, 255, 0.05); color: #a0aec0; border: 1px solid rgba(255, 255, 255, 0.1); }
     </style>
 </head>
 <body>
@@ -25,47 +30,230 @@
     <div class="docs-wrapper">
         <aside class="sidebar">
             <div class="sidebar-nav">
-                <h4>Standalone App</h4>
-                    <li><a href="#overview" class="active">Overview</a></li>
-                    <li><a href="#launchers">Swing Launcher</a></li>
-                    <li><a href="#persistence">Persistence Metabolism</a></li>
-                    <li><a href="#portability">Pure Java Portability</a></li>
+                <h4>Application</h4>
+                <ul>
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#installation">Installation</a></li>
+                </ul>
+                
+                <h4>Core Toolkits</h4>
+                <ul>
+                    <li><a href="#resources"><i class="fas fa-file-code"></i> Resources</a></li>
+                    <li><a href="#shell"><i class="fas fa-terminal"></i> Shell</a></li>
+                    <li><a href="#chrome"><i class="fab fa-chrome"></i> Chrome</a></li>
+                    <li><a href="#audio"><i class="fas fa-microphone"></i> Audio</a></li>
+                    <li><a href="#radio"><i class="fas fa-radio"></i> Radio</a></li>
+                    <li><a href="#speech"><i class="fas fa-comment-dots"></i> Speech</a></li>
+                    <li><a href="#screens"><i class="fas fa-desktop"></i> Screens</a></li>
+                    <li><a href="#host"><i class="fas fa-server"></i> Host</a></li>
+                    <li><a href="#history"><i class="fas fa-history"></i> History</a></li>
+                    <li><a href="#session"><i class="fas fa-fingerprint"></i> Session</a></li>
+                    <li><a href="#java"><i class="fab fa-java"></i> Java (Swing)</a></li>
                 </ul>
             </div>
         </aside>
 
         <main class="main-content">
-            <section id="overview">
+            <section id="overview" class="toolkit-section">
                 <h1>Anahata <span style="color: var(--barca-gold)">ASI Desktop</span></h1>
-                <p class="tagline" style="text-align: left;">Portable ASI launchers for desktop and terminal environments.</p>
+                <p class="tagline" style="text-align: left;">The authoritative cross-platform ASI launcher.</p>
+                <p>Anahata ASI Desktop provides a standalone, high-performance environment for running agentic workflows outside of any IDE. Built on the <b>Blaugrana DNA</b> architecture, it offers total portability and absolute stability across Linux, Windows, and macOS.</p>
                 
-                <p>Standalone provides pure Java application wrappers to run Anahata ASI sessions outside of any IDE, making the platform accessible anywhere Java is installed.</p>
+                <div class="nb-card" style="border-top-color: var(--barca-gold);">
+                    <p><b>Write Once, Run Singularity:</b> Anahata ASI Desktop requires only a JDK 25 compatible runtime. It bundles its own multimodal rendering engine and stateful persistence metabolism.</p>
+                </div>
             </section>
 
-            <section id="launchers">
-                <h2>The Swing Launcher</h2>
-                <p>The <code>SwingMain</code> class provides the entry point for the desktop experience. It initializes a specialized <code>StandaloneAsiContainer</code> that provides the full multimodal interface in a streamlined, independent window frame.</p>
+            <!-- Resources Toolkit -->
+            <section id="resources" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fas fa-file-code"></i>
+                    <h2>Resources Toolkit</h2>
+                </div>
+                <p>Unified URI-centric management for all project files, remote data, and ephemeral content.</p>
                 
-                <div class="launcher-card">
+                <div class="tool-card">
+                    <span class="tool-sig">loadResources(List&lt;String&gt; uriStrings, TextViewportSettings settings) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Loads multiple resources (files or URLs) into the context. Automatically handles MIME detection and viewport sizing.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">editTextResource(TextResourceLineEdits edits) <span class="badge-perm perm-never">Never</span></span>
+                    <p class="tool-desc"><b>Direct Supervised Access:</b> This ultra-precise surgical editor is reserved for manual human intervention. It targets absolute 1-based line coordinates with high-fidelity diff visualization.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">createTextFile(FullTextFileCreate create) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Creates a new text file and registers it as a managed resource in the current context.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">updateTextResource(FullTextResourceUpdate update) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Updates an existing text file using full content replacement, generating a standard unified diff.</p>
+                </div>
+            </section>
+
+            <!-- Shell Toolkit -->
+            <section id="shell" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fas fa-terminal"></i>
+                    <h2>Shell Toolkit</h2>
+                </div>
+                <p>Execution engine for operating system commands with real-time stream capture.</p>
+                
+                <div class="tool-card">
+                    <span class="tool-sig">runAndWait(String command, ShellType type) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Runs a shell command synchronously (BASH, CMD, or PowerShell) and captures stdout/stderr for analysis.</p>
+                </div>
+            </section>
+
+            <!-- Chrome Toolkit -->
+            <section id="chrome" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fab fa-chrome"></i>
+                    <h2>Chrome Toolkit</h2>
+                </div>
+                <p>Advanced web automation and browser orchestration powered by Selenium.</p>
+                
+                <div class="tool-card">
+                    <span class="tool-sig">connect(String profile) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Initializes a Selenium session, connecting to existing Chrome profiles and tabs.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">navigate(String url) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Directs the browser to the specified URL.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">fillForm(Map&lt;String, String&gt; data) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Intelligently identifies and populates web forms based on field IDs or labels.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">getScreenshot(String name) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Captures the current browser viewport as a high-fidelity image resource.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">executeScript(String script) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Executes arbitrary JavaScript within the active browser context.</p>
+                </div>
+            </section>
+
+            <!-- Audio Toolkit -->
+            <section id="audio" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fas fa-microphone"></i>
+                    <h2>Audio Toolkit</h2>
+                </div>
+                <p>Hardware-aware management for audio recording and playback across local devices.</p>
+                
+                <div class="tool-card">
+                    <span class="tool-sig">record(int durationSeconds, String deviceId) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Captures audio from the selected input device for processing or transcription.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">play(String uri, String deviceId) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Plays audio files (local or remote) on the specified hardware output device.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">selectRecordingDevice(String id) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Selects the authoritative input device for audio capture.</p>
+                </div>
+            </section>
+
+            <!-- Radio Toolkit -->
+            <section id="radio" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fas fa-radio"></i>
+                    <h2>Radio Toolkit</h2>
+                </div>
+                <p>Stream management for internet radio, supporting high-fidelity MP3 decoding.</p>
+                
+                <div class="tool-card">
+                    <span class="tool-sig">start(String url) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Initiates high-fidelity playback of the specified internet radio stream.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">stop() <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Gracefully terminates the active radio stream.</p>
+                </div>
+            </section>
+
+            <!-- Speech Toolkit -->
+            <section id="speech" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fas fa-comment-dots"></i>
+                    <h2>Speech Toolkit</h2>
+                </div>
+                <p>Pure-Java text-to-speech (TTS) synthesis and system alerts.</p>
+                
+                <div class="tool-card">
+                    <span class="tool-sig">speak(String text) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Synthesizes the given text into an audible voice via the Kevin16 engine.</p>
+                </div>
+            </section>
+
+            <!-- Screens Toolkit -->
+            <section id="screens" class="toolkit-section">
+                <div class="toolkit-header">
                     <i class="fas fa-desktop"></i>
-                    <h3>High-Fidelity Interface</h3>
-                    <p>Utilizes the same <b>Diff-and-Update</b> rendering engine and reactive bindings as the NetBeans module, ensuring no loss in capability when running outside the IDE.</p>
+                    <h2>Screens Toolkit</h2>
                 </div>
-            </section>
-
-            <section id="persistence">
-                <h2>Persistence Metabolism</h2>
-                <p>Standalone sessions use a transactional-grade persistence model. The entire AGI state—including conversation history, registered toolkits, and metabolic stats—is serialized using <b>Kryo</b> on every turn.</p>
+                <p>High-fidelity visual capture of physical displays and application windows.</p>
                 
-                <div style="background: rgba(255,255,255,0.02); border-left: 4px solid var(--barca-gold); padding: 1.5rem; margin: 2rem 0; border-radius: 0 8px 8px 0;">
-                    <h5 style="color: var(--barca-gold); margin-top: 0;">Session Storage Location</h5>
-                    <code>~/.anahata/asi/standalone/sessions/{uuid}/agi.bin</code>
+                <div class="tool-card">
+                    <span class="tool-sig">takeScreenshot(int deviceIdx) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Captures a full screenshot of the specified graphics display device.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">screenshotAllWindows() <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Bulk captures all visible application windows as individual high-fidelity attachments.</p>
                 </div>
             </section>
 
-            <section id="portability">
-                <h2>Pure Java Portability</h2>
-                <p>Engineered for the "Write Once, Run Singularity" model. Anahata ASI Desktop requires only a <b>JDK 25</b> compatible runtime and works seamlessly across Linux, Windows, and macOS via standardized <code>OsUtils</code> abstractions.</p>
+            <!-- History Toolkit -->
+            <section id="history" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fas fa-history"></i>
+                    <h2>History Toolkit</h2>
+                </div>
+                <p>Governance for the conversation context. Allows for surgical pruning and pinning of turns.</p>
+                
+                <div class="tool-card">
+                    <span class="tool-sig">setMessagePruningState(List&lt;Long&gt; ids, PruningState state) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Bulk updates the pruning state of entire conversation turns to optimize token usage.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">setInjectInbandMetadata(boolean enabled) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Toggles the injection of unique sequential IDs for all history items.</p>
+                </div>
+            </section>
+
+            <!-- Session Toolkit -->
+            <section id="session" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fas fa-fingerprint"></i>
+                    <h2>Session Toolkit</h2>
+                </div>
+                <p>Metadata management and capability orchestration for the active AGI session.</p>
+                
+                <div class="tool-card">
+                    <span class="tool-sig">updateSessionSummary(String summary) <span class="badge-perm perm-always">Always</span></span>
+                    <p class="tool-desc">Updates the human-readable summary visible in the container dashboard.</p>
+                </div>
+                <div class="tool-card">
+                    <span class="tool-sig">enableHostedTools() <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Switches the session to server-side tool mode (e.g., Google Search), disabling local Java execution.</p>
+                </div>
+            </section>
+
+            <!-- Java (Swing) Toolkit -->
+            <section id="java" class="toolkit-section">
+                <div class="toolkit-header">
+                    <i class="fab fa-java"></i>
+                    <h2>Java (Swing) Toolkit</h2>
+                </div>
+                <p>On-the-fly compilation and execution of Java code with direct access to the Swing UI context.</p>
+                
+                <div class="tool-card">
+                    <span class="tool-sig">compileAndExecute(String sourceCode, String[] options) <span class="badge-perm perm-prompt">Prompt</span></span>
+                    <p class="tool-desc">Compiles a model-generated 'Anahata' class and executes it on the host JVM with full thread-safety and EDT awareness.</p>
+                </div>
             </section>
         </main>
     </div>
