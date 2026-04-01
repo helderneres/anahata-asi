@@ -25,7 +25,7 @@
         .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem; }
         .tool-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 0.8rem 1rem; transition: var(--transition); display: flex; flex-direction: column; justify-content: center; }
         .tool-card:hover { border-color: rgba(79, 170, 255, 0.3); background: rgba(255,255,255,0.04); }
-        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 0.7rem; margin-bottom: 0.3rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tool-desc { color: var(--text-muted); font-size: 0.8rem; line-height: 1.4; margin: 0; }
         
         .badge-perm { font-size: 0.6rem; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; font-weight: bold; margin-left: 6px; vertical-align: middle; }
@@ -34,7 +34,7 @@
         .perm-never { background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); }
  
         /* Carousel Styles (Fixed aspect-ratio and centering) */
-        .carousel-container { position: relative; max-width: 1000px; height: 550px; margin: 2rem auto 4rem; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.4); background: #000; }
+        .carousel-container { position: relative; max-width: 1000px; height: 550px; margin: 1rem auto 3rem; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.4); background: #000; }
         .carousel-slide { display: none; height: 100%; width: 100%; position: relative; }
         .carousel-slide img { width: 100%; height: calc(100% - 40px); object-fit: contain; display: block; background: #000; }
         .carousel-caption { height: 40px; line-height: 40px; background: rgba(0,0,0,0.9); color: var(--barca-gold); text-align: center; font-size: 0.85rem; font-weight: 600; border-top: 1px solid rgba(255,255,255,0.05); }
@@ -45,6 +45,17 @@
         @keyframes fade { from {opacity: .6} to {opacity: 1} }
 
         .info-box { background: rgba(44, 122, 123, 0.1); border-left: 4px solid var(--barca-gold); padding: 1.5rem; border-radius: 8px; margin: 2rem 0; }
+        
+        /* Refined Title Styles */
+        .main-content h1 { font-size: 2.8rem; margin-bottom: 0.4rem; margin-top: -3.5rem; }
+        .main-content .subtitle { font-size: 1.05rem; color: var(--text-muted); margin-bottom: 2rem; max-width: 800px; line-height: 1.5; }
+
+        /* Provider Specific Styles */
+        .provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+        .provider-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 1.5rem; transition: var(--transition); border-top: 3px solid var(--barca-gold); }
+        .provider-card:hover { background: rgba(255,255,255,0.04); border-color: var(--primary-light); transform: translateY(-3px); }
+        .provider-card h4 { color: var(--white); margin: 0 0 0.8rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.6rem; }
+        .provider-card p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin: 0; }
     </style>
 </head>
 <body>
@@ -69,12 +80,18 @@
                     <li><a href="#ide"><i class="fas fa-laptop-code"></i> IDE</a></li>
                     <li><a href="#nbjava"><i class="fab fa-java"></i> NbJava</a></li>
                 </ul>
+
+                <h4>Sensory Context</h4>
+                <ul>
+                    <li><a href="#context-providers"><i class="fas fa-eye"></i> Context Providers</a></li>
+                </ul>
             </div>
         </aside>
 
         <main class="main-content">
             <section id="overview" class="toolkit-section">
                 <h1>Anahata <span style="color: var(--barca-gold)">ASI Studio - NetBeans</span></h1>
+                <p class="subtitle">The best Java AI Coding assistant on earth and SDK for developing custom Anahata ASI Containers, Agi Toolkits and Context Providers</p>
                 
                 <!-- Screenshot Carousel -->
                 <div class="carousel-container">
@@ -91,8 +108,8 @@
                         <div class="carousel-caption">Custom FileObject Resource adapter for tracking changes to resources in context</div>
                     </div>
                     <div class="carousel-slide fade">
-                        <img src="screenshots/netbeans/ProjectStructureContextProvider.png" alt="Project Structure" class="clickable-media" data-caption="Directory Tree for NetBeans Source Groups with element kinds and inner classess">
-                        <div class="carousel-caption">Directory Tree for NetBeans Source Groups with element kinds and inner classess</div>
+                        <img src="screenshots/netbeans/ProjectStructureContextProvider.png" alt="Project Structure" class="clickable-media" data-caption="Directory Tree for NetBeans Source Groups with element kinds, versioning info and inner classess">
+                        <div class="carousel-caption">Directory Tree for NetBeans Source Groups with element kinds, versioning info and inner classess</div>
                     </div>
                     <div class="carousel-slide fade">
                         <img src="screenshots/netbeans/ProjectAlertsContextProvider.png" alt="Project Alerts" class="clickable-media" data-caption="Metabolic Diagnostics - Monitoring compiler errors and project health via context providers.">
@@ -106,7 +123,6 @@
                     <a class="next" onclick="plusSlides(1)">&#10095;</a>
                 </div>
 
-                <p class="tagline" style="text-align: left;">Deep IDE orchestration for the ultimate Java coding experience.</p>
                 <div class="info-box">
                     <p style="margin: 0; font-size: 1rem; color: var(--white);">
                         It contains all the tools of the <a href="desktop.html" style="color: var(--barca-gold); text-decoration: underline;">standalone version</a>, plus these toolkits (the ones that are only available in NetBeans):
@@ -234,6 +250,38 @@
                 <div class="tool-grid">
                     <div class="tool-card"><span class="tool-sig">compileAndExecuteInProject(...) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes model code using the project's own target/classes.</p></div>
                     <div class="tool-card"><span class="tool-sig">compileAndExecute(code, ...) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Inherited: Executes code in the application's JVM.</p></div>
+                </div>
+            </section>
+
+            <!-- Context Providers Section -->
+            <section id="context-providers" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-eye"></i><h2>Context Providers</h2></div>
+                <p>The sensory array of the ASI. These providers feed the RAG message with high-salience, real-time IDE metadata.</p>
+                <div class="provider-grid">
+                    <div class="provider-card">
+                        <h4><i class="fas fa-info-circle"></i> Project Overview</h4>
+                        <p>Injects authoritative metadata, available actions, declared dependencies, and automatically synchronizes project-specific instructions from anahata.md.</p>
+                    </div>
+                    <div class="provider-card">
+                        <h4><i class="fas fa-sitemap"></i> Project Structure</h4>
+                        <p>Provides a unified, architecturally-aware view of the project, including logical Java packages, physical resources, and inner class hierarchies.</p>
+                    </div>
+                    <div class="provider-card">
+                        <h4><i class="fas fa-folder-open"></i> Project Files</h4>
+                        <p>Renders a real-time Markdown tree of the entire project directory, distinguishing between root files and source groups for precise surgical targeting.</p>
+                    </div>
+                    <div class="provider-card">
+                        <h4><i class="fas fa-exclamation-triangle"></i> Project Alerts</h4>
+                        <p>Continuous monitoring of Java compiler errors and project health, providing the ASI with metabolic awareness of broken code and workspace problems.</p>
+                    </div>
+                    <div class="provider-card">
+                        <h4><i class="fas fa-window-restore"></i> Open Windows</h4>
+                        <p>Observability into the user's visual workspace, reporting on all active editor tabs, explorer views, and docked TopComponents.</p>
+                    </div>
+                    <div class="provider-card">
+                        <h4><i class="fas fa-terminal"></i> Output Monitor</h4>
+                        <p>Streaming build logs and process output from all active tabs in the NetBeans Output Window, enabling real-time debugging and feedback loops.</p>
+                    </div>
                 </div>
             </section>
         </main>
