@@ -132,6 +132,11 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         // Listen to both the call and its response for state changes
         new EdtPropertyChangeListener(this, part, null, this::handlePropertyChange);
         new EdtPropertyChangeListener(this, part.getResponse(), null, this::handlePropertyChange);
+        new EdtPropertyChangeListener(this, part.getTool(), "permission", evt -> {
+            ToolPermission tp = (ToolPermission) evt.getNewValue();
+            permissionCombo.setSelectedItem(tp);
+            permissionCombo.setForeground(SwingAgiConfig.getColor(tp));
+        });
     }
 
     /**
@@ -368,10 +373,14 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         // 1. Prepare content
         String output = response.getResult() != null ? response.getResult().toString() : "";
         boolean hasOutput = !output.isEmpty();
-        if (hasOutput) outputArea.setText(output);
+        if (hasOutput) {
+            outputArea.setText(output);
+        }
 
         boolean hasAttachments = !response.getAttachments().isEmpty();
-        if (hasAttachments) attachmentsPanel.render(response);
+        if (hasAttachments) {
+            attachmentsPanel.render(response);
+        }
         
         StringBuilder logsBuilder = new StringBuilder();
         for (String log : response.getLogs()) {
@@ -379,11 +388,15 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         }
         String logs = logsBuilder.toString();
         boolean hasLogs = !logs.isEmpty();
-        if (hasLogs) logsArea.setText(logs);
+        if (hasLogs) {
+            logsArea.setText(logs);
+        }
 
         String error = response.getErrors() != null ? response.getErrors() : "";
         boolean hasError = !error.isEmpty();
-        if (hasError) errorArea.setText(error);
+        if (hasError) {
+            errorArea.setText(error);
+        }
 
         // 2. Sync Tabs (Order: Output, Attachments, Logs, Error)
         syncTab(outputScrollPane, "Output", hasOutput, 0);
@@ -457,11 +470,10 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
      * Updates the status and action buttons based on tool execution state.
      */
     private void updateControls(AbstractToolCall<?, ?> call, AbstractToolResponse<?> response) {
-        permissionCombo.setSelectedItem(call.getTool().getPermission());
+        ToolPermission tp = call.getTool().getPermission();
+        permissionCombo.setSelectedItem(tp);
+        permissionCombo.setForeground(SwingAgiConfig.getColor(tp));
         statusCombo.setSelectedItem(response.getStatus());
-        
-        // Ensure initial colors are set
-        permissionCombo.setForeground(SwingAgiConfig.getColor(call.getTool().getPermission()));
         statusCombo.setForeground(SwingAgiConfig.getColor(response.getStatus()));
         
         if (!feedbackField.getText().equals(response.getUserFeedback())) {
