@@ -198,11 +198,15 @@ public class JavaObjectToolkit extends AbstractToolkit<JavaMethodTool> implement
 
     /**
      * Recursively finds all methods annotated with {@link AgiTool} in the class hierarchy.
+     * <p>
+     * <b>Discovery Pattern:</b> This method traverses up the superclass hierarchy, ensuring 
+     * that child overrides take precedence over parent declarations.
+     * </p>
      * 
      * @param clazz The class to start the search from.
-     * @return A list of annotated methods, with child methods taking precedence over parent methods.
+     * @return A list of annotated methods.
      */
-    private static List<Method> getAllAnnotatedMethods(Class<?> clazz) {
+    public static List<Method> getAllAnnotatedMethods(Class<?> clazz) {
         List<Method> annotatedMethods = new ArrayList<>();
         Set<String> signatures = new HashSet<>();
         Class<?> currentClass = clazz;
