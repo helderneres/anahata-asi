@@ -10,29 +10,38 @@
     <style>
         /* Documentation-specific layout adjustments */
         .toolkit-section { margin-bottom: 5rem; scroll-margin-top: 140px; }
-        .toolkit-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem; }
-        .toolkit-header i { font-size: 2rem; color: var(--barca-gold); }
+        .toolkit-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.8rem; }
+        .toolkit-header i { font-size: 1.8rem; color: var(--barca-gold); }
         
-        .tool-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; transition: var(--transition); }
+        .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem; }
+        .tool-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 0.8rem 1rem; transition: var(--transition); display: flex; flex-direction: column; justify-content: center; }
         .tool-card:hover { border-color: rgba(79, 170, 255, 0.3); background: rgba(255,255,255,0.04); }
-        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 0.8rem; margin-bottom: 0.5rem; display: block; }
-        .tool-desc { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; }
+        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 0.7rem; margin-bottom: 0.3rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tool-desc { color: var(--text-muted); font-size: 0.8rem; line-height: 1.4; margin: 0; }
         
-        .badge-perm { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; margin-left: 10px; vertical-align: middle; }
+        .badge-perm { font-size: 0.6rem; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; font-weight: bold; margin-left: 6px; vertical-align: middle; }
         .perm-prompt { background: rgba(0, 123, 255, 0.1); color: #007bff; border: 1px solid rgba(0, 123, 255, 0.2); }
         .perm-always { background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2); }
         .perm-never { background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); }
-
-        /* Carousel Styles */
-        .carousel-container { position: relative; max-width: 1000px; margin: 2rem 0 4rem; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
-        .carousel-slide { display: none; }
-        .carousel-slide img { width: 100%; height: auto; display: block; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .carousel-caption { padding: 1rem; background: rgba(0,0,0,0.8); color: var(--barca-gold); text-align: center; font-size: 0.9rem; font-weight: 600; }
-        .prev, .next { cursor: pointer; position: absolute; top: 50%; width: auto; padding: 16px; margin-top: -22px; color: white; font-weight: bold; font-size: 18px; transition: 0.6s ease; border-radius: 0 3px 3px 0; user-select: none; background: rgba(0,0,0,0.3); }
+ 
+        /* Carousel Styles (Fixed aspect-ratio and centering) */
+        .carousel-container { position: relative; max-width: 1000px; height: 550px; margin: 2rem auto 4rem; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.4); background: #000; }
+        .carousel-slide { display: none; height: 100%; width: 100%; position: relative; }
+        .carousel-slide img { width: 100%; height: calc(100% - 40px); object-fit: contain; display: block; background: #000; }
+        .carousel-caption { height: 40px; line-height: 40px; background: rgba(0,0,0,0.9); color: var(--barca-gold); text-align: center; font-size: 0.85rem; font-weight: 600; border-top: 1px solid rgba(255,255,255,0.05); }
+        .prev, .next { cursor: pointer; position: absolute; top: 50%; width: auto; padding: 16px; margin-top: -42px; color: white; font-weight: bold; font-size: 18px; transition: 0.6s ease; border-radius: 0 3px 3px 0; user-select: none; background: rgba(0,0,0,0.3); z-index: 10; }
         .next { right: 0; border-radius: 3px 0 0 3px; }
         .prev:hover, .next:hover { background-color: rgba(0,0,0,0.8); color: var(--barca-gold); }
-        .fade { animation-name: fade; animation-duration: 1.5s; }
-        @keyframes fade { from {opacity: .4} to {opacity: 1} }
+        .fade { animation-name: fade; animation-duration: 1s; }
+        @keyframes fade { from {opacity: .6} to {opacity: 1} }
+
+        /* Download Section Icons */
+        .download-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2rem; }
+        .dl-card { text-align: center; padding: 2rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; transition: var(--transition); text-decoration: none; color: inherit; }
+        .dl-card i { font-size: 3rem; margin-bottom: 1rem; color: var(--white); }
+        .dl-card:hover { transform: translateY(-5px); border-color: var(--barca-gold); background: rgba(255,255,255,0.06); }
+        .dl-card h3 { margin: 0; font-size: 1.1rem; color: var(--barca-gold); }
+        .dl-card span { font-size: 0.8rem; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -47,7 +56,7 @@
                     <li><a href="#installation">Continuous Delivery</a></li>
                 </ul>
                 
-                <h4>Core Toolkits</h4>
+                <h4>Desktop Toolkits</h4>
                 <ul>
                     <li><a href="#resources"><i class="fas fa-file-code"></i> Resources</a></li>
                     <li><a href="#shell"><i class="fas fa-terminal"></i> Shell</a></li>
@@ -59,7 +68,7 @@
                     <li><a href="#host"><i class="fas fa-server"></i> Host</a></li>
                     <li><a href="#history"><i class="fas fa-history"></i> History</a></li>
                     <li><a href="#session"><i class="fas fa-fingerprint"></i> Session</a></li>
-                    <li><a href="#java"><i class="fab fa-java"></i> Java (Swing)</a></li>
+                    <li><a href="#java"><i class="fab fa-java"></i> Swing Java</a></li>
                 </ul>
             </div>
         </aside>
@@ -71,280 +80,148 @@
                 <!-- Screenshot Carousel -->
                 <div class="carousel-container">
                     <div class="carousel-slide fade">
-                        <img src="screenshots/visca-el-barca.png" alt="Anahata Dashboard">
-                        <div class="carousel-caption">The Blaugrana Dashboard - Multi-session monitoring and metrics.</div>
+                        <img src="screenshots/desktop/JndiStyleContextWindow.png" alt="Context Explorer" class="clickable-media" data-caption="The Nervous System - Exploring the Agi's mental context and tool-chain.">
+                        <div class="carousel-caption">The Nervous System - Exploring the Agi's mental context and tool-chain.</div>
                     </div>
                     <div class="carousel-slide fade">
-                        <img src="screenshots/surgical-diff-viewer.png" alt="Surgical Diff Viewer">
-                        <div class="carousel-caption">Surgical Precision - High-fidelity diff visualization for model edits.</div>
+                        <img src="screenshots/desktop/MermaidUML.png" alt="Mermaid UML Rendering" class="clickable-media" data-caption="Architectural Vision - High-fidelity Mermaid UML rendering within the chat.">
+                        <div class="carousel-caption">Architectural Vision - High-fidelity Mermaid UML rendering within the chat.</div>
                     </div>
                     <div class="carousel-slide fade">
-                        <img src="screenshots/context-explorer-tree.png" alt="Context Explorer">
-                        <div class="carousel-caption">The Nervous System - Visualizing the Agi's mental context tree.</div>
+                        <img src="screenshots/desktop/SyntaxHighlighting.png" alt="Syntax Highlighting" class="clickable-media" data-caption="Surgical Code - Professional syntax highlighting for 108+ languages.">
+                        <div class="carousel-caption">Surgical Code - Professional syntax highlighting for 108+ languages.</div>
                     </div>
                     <div class="carousel-slide fade">
-                        <img src="screenshots/metabolic-donut-gc.png" alt="Metabolic GC">
-                        <div class="carousel-caption">Metabolic Intelligence - Real-time token usage and garbage collection.</div>
+                        <img src="screenshots/desktop/ToolManager.png" alt="Rules of Engagement" class="clickable-media" data-caption="Container Authority - Managing global tool permissions in the Command Center.">
+                        <div class="carousel-caption">Container Authority - Managing global tool permissions in the Command Center.</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/desktop/RemoteResources.png" alt="Remote Resource Integration" class="clickable-media" data-caption="Global Reach - Managing remote URLs and cloud data as native local resources.">
+                        <div class="carousel-caption">Global Reach - Managing remote URLs and cloud data as native local resources.</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/desktop/SwingJava.png" alt="On-the-fly Swing Execution" class="clickable-media" data-caption="Agentic UI - Model-generated Java code executing directly on the host JVM.">
+                        <div class="carousel-caption">Agentic UI - Model-generated Java code executing directly on the host JVM.</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/desktop/ContextWindowGarbageCollector.png" alt="Metabolic Intelligence" class="clickable-media" data-caption="Metabolic Intelligence - Real-time tracking of the context window GC.">
+                        <div class="carousel-caption">Metabolic Intelligence - Real-time tracking of the context window GC.</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/desktop/AsiContainer1.png" alt="Session Dashboard" class="clickable-media" data-caption="Mission Control - A high-fidelity overview of all active agentic sessions.">
+                        <div class="carousel-caption">Mission Control - A high-fidelity overview of all active agentic sessions.</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/desktop/AsiContainer3.png" alt="Preferences Command Center" class="clickable-media" data-caption="Command Center - Configuring the global DNA and provider-specific API keys.">
+                        <div class="carousel-caption">Command Center - Configuring the global DNA and provider-specific API keys.</div>
                     </div>
                     <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
                     <a class="next" onclick="plusSlides(1)">&#10095;</a>
                 </div>
 
                 <p class="tagline" style="text-align: left;">The authoritative cross-platform ASI launcher.</p>
-                <p>Anahata ASI Desktop provides a standalone, high-performance environment for running agentic workflows outside of any IDE. Built on the <b>Blaugrana DNA</b> architecture, it offers total portability and absolute stability across Linux, Windows, and macOS.</p>
-                
-                <div class="nb-card" style="border-top-color: var(--barca-gold);">
-                    <p><b>Write Once, Run Singularity:</b> Anahata ASI Desktop requires only a JDK 25 compatible runtime. It bundles its own multimodal rendering engine and stateful persistence metabolism.</p>
-                </div>
+                <p>Anahata ASI Desktop provides a standalone environment for running agentic workflows outside of any IDE. Built on the <b>Blaugrana DNA</b> architecture, it offers absolute stability across Linux, Windows, and macOS.</p>
             </section>
 
             <section id="installation" class="toolkit-section">
                 <h2>Continuous Delivery</h2>
-                <p>Anahata ASI Desktop is built and packaged automatically on every push to the main branch.</p>
-                <div class="feature-grid">
-                    <div class="tool-card">
-                        <h3><i class="fab fa-github"></i> Cutting Edge Binaries</h3>
-                        <p class="tool-desc">Get the latest builds immediately. Navigate to the <b>Actions</b> tab on GitHub, select the latest "Build Standalone Binaries" run, and download the artifacts for your platform (Linux, Windows, or macOS) at the bottom of the page.</p>
-                        <a href="https://github.com/anahata-os/anahata-asi/actions" target="_blank" class="btn-secondary" style="display: inline-block; margin-top: 1rem; font-size: 0.8rem;">View GitHub Actions</a>
-                    </div>
+                <p>Native app binaries are built automatically on every push. Select your platform below to download the latest "Cutting Edge" release artifacts from the official GitHub Releases page.</p>
+                
+                <div class="download-grid">
+                    <a href="https://github.com/anahata-os/anahata-asi/releases/latest" class="dl-card">
+                        <i class="fab fa-windows"></i>
+                        <h3>Windows</h3>
+                        <span>.zip (Portable)</span>
+                    </a>
+                    <a href="https://github.com/anahata-os/anahata-asi/releases/latest" class="dl-card">
+                        <i class="fab fa-apple"></i>
+                        <h3>macOS</h3>
+                        <span>.zip (App Bundle)</span>
+                    </a>
+                    <a href="https://github.com/anahata-os/anahata-asi/releases/latest" class="dl-card">
+                        <i class="fab fa-linux"></i>
+                        <h3>Linux</h3>
+                        <span>.tar.gz (Binary)</span>
+                    </a>
                 </div>
             </section>
 
             <!-- Resources Toolkit -->
             <section id="resources" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fas fa-file-code"></i>
-                    <h2>Resources Toolkit</h2>
-                </div>
-                <p>Unified URI-centric management for all project files, remote data, and ephemeral content.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">loadResources(List&lt;String&gt; uriStrings) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Loads multiple resources (files or URLs) into the context. Automatically handles MIME detection.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">editTextResource(TextResourceLineEdits edits) <span class="badge-perm perm-never">Never</span></span>
-                    <p class="tool-desc"><b>Direct Supervised Access:</b> This ultra-precise surgical editor is reserved for manual human intervention.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">createTextFile(FullTextFileCreate create) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Creates a new text file and registers it as a managed resource in the current context.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">updateTextResource(FullTextResourceUpdate update) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Updates an existing text file using full content replacement, generating a standard unified diff.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">unloadResources(List&lt;String&gt; uuids) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Surgically removes multiple resources from the context to optimize memory and tokens.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">updateViewport(String uuid, TextViewportSettings settings) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Adjusts the visible range and filtering for a text resource in the RAG message.</p>
-                </div>
-            </section>
-
-            <!-- Shell Toolkit -->
-            <section id="shell" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fas fa-terminal"></i>
-                    <h2>Shell Toolkit</h2>
-                </div>
-                <p>Execution engine for operating system commands with real-time stream capture.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">runAndWait(String command, ShellType type) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Runs a shell command synchronously (BASH, CMD, or PowerShell) and captures stdout/stderr.</p>
+                <div class="toolkit-header"><i class="fas fa-file-code"></i><h2>Resources Toolkit (6 Tools)</h2></div>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">loadResources(List&lt;String&gt; uris) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Loads files or URLs into the context.</p></div>
+                    <div class="tool-card"><span class="tool-sig">editTextResource(TextEdits edits) <span class="badge-perm perm-never">Never</span></span><p class="tool-desc">Supervised surgical editing for text resources.</p></div>
+                    <div class="tool-card"><span class="tool-sig">createTextFile(FileCreate create) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Creates a new managed text file.</p></div>
+                    <div class="tool-card"><span class="tool-sig">updateTextResource(Update update) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Full content replacement for existing resources.</p></div>
+                    <div class="tool-card"><span class="tool-sig">unloadResources(List&lt;String&gt; ids) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Removes resources to optimize mental RAM.</p></div>
+                    <div class="tool-card"><span class="tool-sig">updateViewport(String id, Settings s) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Adjusts the visible window of a resource.</p></div>
                 </div>
             </section>
 
             <!-- Chrome Toolkit -->
             <section id="chrome" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fab fa-chrome"></i>
-                    <h2>Chrome Toolkit</h2>
-                </div>
-                <p>Advanced web automation and browser orchestration powered by Selenium.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">connect(String profile) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Initializes a Selenium session, connecting to existing Chrome profiles and tabs.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">navigate(String url) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Directs the browser to the specified URL.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">clickElement(String identifier) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Interacts with a specific element on the page using its ID, name, or visible text.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">fillForm(Map&lt;String, String&gt; data) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Intelligently identifies and populates web forms based on field IDs or labels.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">inspectForm() <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Analyzes the current page for input fields and submission buttons.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">getScreenshot(String name) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Captures the current browser viewport as a high-fidelity image resource.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">goBack() / goForward() <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Navigates through the browser's session history.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">executeScript(String script) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Executes arbitrary JavaScript within the active browser context.</p>
+                <div class="toolkit-header"><i class="fab fa-chrome"></i><h2>Chrome Toolkit (8 Tools)</h2></div>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">connect(String profile) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Initializes a Selenium session with a Chrome profile.</p></div>
+                    <div class="tool-card"><span class="tool-sig">navigate(String url) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Directs the browser to the specified URL.</p></div>
+                    <div class="tool-card"><span class="tool-sig">clickElement(String id) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Interacts with a specific element on the page.</p></div>
+                    <div class="tool-card"><span class="tool-sig">fillForm(Map data) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Populates web forms based on identifiers.</p></div>
+                    <div class="tool-card"><span class="tool-sig">inspectForm() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Analyzes current page for interactive inputs.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getScreenshot(String name) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Captures browser viewport as an image resource.</p></div>
+                    <div class="tool-card"><span class="tool-sig">goBack() / goForward() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Navigates browser session history.</p></div>
+                    <div class="tool-card"><span class="tool-sig">executeScript(String script) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes arbitrary JavaScript in the page.</p></div>
                 </div>
             </section>
 
-            <!-- Audio Toolkit -->
+            <!-- Shell Toolkit -->
+            <section id="shell" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-terminal"></i><h2>Shell Toolkit (1 Tool)</h2></div>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">runAndWait(String cmd, Type t) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Runs a command (BASH/CMD) and captures output.</p></div>
+                </div>
+            </section>
+
+            <!-- Audio/Radio Toolkit -->
             <section id="audio" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fas fa-microphone"></i>
-                    <h2>Audio Toolkit</h2>
-                </div>
-                <p>Hardware-aware management for audio recording and playback across local devices.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">record(int durationSeconds, String deviceId) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Captures audio from the selected input device for processing or transcription.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">play(String uri, String deviceId) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Plays audio files (local or remote) on the specified hardware output device.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">selectRecordingDevice(String id) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Selects the authoritative input device for audio capture.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">selectOutputDevice(String id) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Selects the authoritative hardware device for audio output.</p>
+                <div class="toolkit-header"><i class="fas fa-microphone"></i><h2>Audio & Radio (7 Tools)</h2></div>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">record(int sec, String dev) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Captures audio from hardware input.</p></div>
+                    <div class="tool-card"><span class="tool-sig">play(String uri, String dev) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Plays audio files on output hardware.</p></div>
+                    <div class="tool-card"><span class="tool-sig">radio.start(String url) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Initiates high-fidelity internet stream.</p></div>
+                    <div class="tool-card"><span class="tool-sig">radio.stop() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Gracefully terminates active radio stream.</p></div>
+                    <div class="tool-card"><span class="tool-sig">selectRecordingDevice(String id) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Selects authoritative input hardware.</p></div>
+                    <div class="tool-card"><span class="tool-sig">selectOutputDevice(String id) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Selects authoritative output hardware.</p></div>
                 </div>
             </section>
 
-            <!-- Radio Toolkit -->
-            <section id="radio" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fas fa-radio"></i>
-                    <h2>Radio Toolkit</h2>
-                </div>
-                <p>Stream management for internet radio, supporting high-fidelity MP3 decoding.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">start(String url) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Initiates high-fidelity playback of the specified internet radio stream.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">stop() <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Gracefully terminates the active radio stream.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">selectOutputDevice(String id) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Selects the authoritative hardware device for radio playback.</p>
-                </div>
-            </section>
-
-            <!-- Speech Toolkit -->
-            <section id="speech" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fas fa-comment-dots"></i>
-                    <h2>Speech Toolkit</h2>
-                </div>
-                <p>Pure-Java text-to-speech (TTS) synthesis and system alerts.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">speak(String text) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Synthesizes the given text into an audible voice via the Kevin16 engine.</p>
-                </div>
-            </section>
-
-            <!-- Screens Toolkit -->
-            <section id="screens" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fas fa-desktop"></i>
-                    <h2>Screens Toolkit</h2>
-                </div>
-                <p>High-fidelity visual capture of physical displays and application windows.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">takeScreenshot(int deviceIdx) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Captures a full screenshot of the specified graphics display device.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">screenshotAllWindows() <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Bulk captures all visible application windows as individual high-fidelity attachments.</p>
-                </div>
-            </section>
-
-            <!-- Host Toolkit -->
+            <!-- Screens/Host Toolkit -->
             <section id="host" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fas fa-server"></i>
-                    <h2>Host Toolkit</h2>
-                </div>
-                <p>Operating system orchestration and process management.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">listProcesses() <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Retrieves a list of all active processes running on the host system.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">killProcess(long pid, boolean force) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Terminates a specific process by its PID.</p>
+                <div class="toolkit-header"><i class="fas fa-server"></i><h2>Screens & Host (4 Tools)</h2></div>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">takeScreenshot(int device) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Captures a full screenshot of the display.</p></div>
+                    <div class="tool-card"><span class="tool-sig">screenshotAllWindows() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Bulk captures all windows as attachments.</p></div>
+                    <div class="tool-card"><span class="tool-sig">listProcesses() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Retrieves active system processes.</p></div>
+                    <div class="tool-card"><span class="tool-sig">killProcess(long pid, bool force) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Terminates a specific process by PID.</p></div>
                 </div>
             </section>
 
-            <!-- History Toolkit -->
+            <!-- History/Session Toolkit -->
             <section id="history" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fas fa-history"></i>
-                    <h2>History Toolkit</h2>
-                </div>
-                <p>Governance for the conversation context. Allows for surgical pruning and pinning of turns.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">setMessagePruningState(List&lt;Long&gt; ids, PruningState state) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Bulk updates the pruning state of entire conversation turns to optimize token usage.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">setInjectInbandMetadata(boolean enabled) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Toggles the injection of unique sequential IDs for all history items.</p>
-                </div>
-            </section>
-
-            <!-- Session Toolkit -->
-            <section id="session" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fas fa-fingerprint"></i>
-                    <h2>Session Toolkit</h2>
-                </div>
-                <p>Metadata management and capability orchestration for the active AGI session.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">updateSessionSummary(String summary) <span class="badge-perm perm-always">Always</span></span>
-                    <p class="tool-desc">Updates the human-readable summary visible in the container dashboard.</p>
-                </div>
-                <div class="tool-card">
-                    <span class="tool-sig">enableHostedTools() <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Switches the session to server-side tool mode (e.g., Google Search).</p>
+                <div class="toolkit-header"><i class="fas fa-history"></i><h2>Governance (4 Tools)</h2></div>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">setMessagePruningState(ids, s) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Bulk updates history pruning states.</p></div>
+                    <div class="tool-card"><span class="tool-sig">setInjectInbandMetadata(bool) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Toggles history management metadata.</p></div>
+                    <div class="tool-card"><span class="tool-sig">updateSessionSummary(String s) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Updates human-readable dashboard summary.</p></div>
+                    <div class="tool-card"><span class="tool-sig">enableHostedTools() <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Switches to server-side mode (Google Search).</p></div>
                 </div>
             </section>
 
             <!-- Java (Swing) Toolkit -->
             <section id="java" class="toolkit-section">
-                <div class="toolkit-header">
-                    <i class="fab fa-java"></i>
-                    <h2>Java (Swing) Toolkit</h2>
-                </div>
-                <p>On-the-fly compilation and execution of Java code with direct access to the Swing UI context.</p>
-                
-                <div class="tool-card">
-                    <span class="tool-sig">compileAndExecute(String sourceCode, String[] options) <span class="badge-perm perm-prompt">Prompt</span></span>
-                    <p class="tool-desc">Compiles a model-generated 'Anahata' class and executes it on the host JVM with full thread-safety and EDT awareness.</p>
+                <div class="toolkit-header"><i class="fab fa-java"></i><h2>Swing Java (1 Tool)</h2></div>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">compileAndExecute(Code, Options) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Compiles model-generated Java with total EDT awareness.</p></div>
                 </div>
             </section>
         </main>
