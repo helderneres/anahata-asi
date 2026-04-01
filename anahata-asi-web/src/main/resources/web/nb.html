@@ -60,11 +60,11 @@
                 
                 <h4>NetBeans Toolkits</h4>
                 <ul>
+                    <li><a href="#refactor"><i class="fas fa-magic"></i> Refactor</a></li>
+                    <li><a href="#codemodel"><i class="fas fa-sitemap"></i> CodeModel</a></li>
                     <li><a href="#maven"><i class="fas fa-hammer"></i> Maven</a></li>
                     <li><a href="#projects"><i class="fas fa-project-diagram"></i> Projects</a></li>
-                    <li><a href="#codemodel"><i class="fas fa-sitemap"></i> CodeModel</a></li>
                     <li><a href="#hints"><i class="fas fa-lightbulb"></i> Hints</a></li>
-                    <li><a href="#refactor"><i class="fas fa-magic"></i> Refactor</a></li>
                     <li><a href="#editor"><i class="fas fa-edit"></i> Editor</a></li>
                     <li><a href="#ide"><i class="fas fa-laptop-code"></i> IDE</a></li>
                     <li><a href="#nbjava"><i class="fab fa-java"></i> NbJava</a></li>
@@ -79,12 +79,20 @@
                 <!-- Screenshot Carousel -->
                 <div class="carousel-container">
                     <div class="carousel-slide fade">
-                        <img src="screenshots/netbeans/ChatInterface.png" alt="Chat Interface" class="clickable-media" data-caption="Native Docking - The Anahata chat interface running as a high-fidelity NetBeans TopComponent.">
-                        <div class="carousel-caption">Native Docking - The Anahata chat interface running as a high-fidelity NetBeans TopComponent.</div>
+                        <img src="screenshots/netbeans/InContextResourcesVisualization.png" alt="In-Context Resource Visualization" class="clickable-media" data-caption="Atomic Context - Visualizing managed text resources directly within the IDE's augmented workflow.">
+                        <div class="carousel-caption">Atomic Context - Visualizing managed text resources directly within the IDE's augmented workflow.</div>
                     </div>
                     <div class="carousel-slide fade">
-                        <img src="screenshots/netbeans/ProjectStructureContextProvider.png" alt="Project Structure" class="clickable-media" data-caption="Structural Awareness - Real-time exploration of physical and logical project graphs.">
-                        <div class="carousel-caption">Structural Awareness - Real-time exploration of physical and logical project graphs.</div>
+                        <img src="screenshots/netbeans/InlineAIAnnotations.png" alt="Inline AI Annotations" class="clickable-media" data-caption="Agentic Feedback - Real-time AI suggestions and diagnostics painted directly onto source code lines.">
+                        <div class="carousel-caption">Agentic Feedback - Real-time AI suggestions and diagnostics painted directly onto source code lines.</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/netbeans/NbHandleForFileObjectIntegration.png" alt="Custom FileObject Resource Adapter" class="clickable-media" data-caption="Custom FileObject Resource adapter for tracking changes to resources in context">
+                        <div class="carousel-caption">Custom FileObject Resource adapter for tracking changes to resources in context</div>
+                    </div>
+                    <div class="carousel-slide fade">
+                        <img src="screenshots/netbeans/ProjectStructureContextProvider.png" alt="Project Structure" class="clickable-media" data-caption="Directory Tree for NetBeans Source Groups with element kinds and inner classess">
+                        <div class="carousel-caption">Directory Tree for NetBeans Source Groups with element kinds and inner classess</div>
                     </div>
                     <div class="carousel-slide fade">
                         <img src="screenshots/netbeans/ProjectAlertsContextProvider.png" alt="Project Alerts" class="clickable-media" data-caption="Metabolic Diagnostics - Monitoring compiler errors and project health via context providers.">
@@ -106,88 +114,126 @@
                 </div>
             </section>
 
-            <!-- Maven Toolkit -->
-            <section id="maven" class="toolkit-section">
-                <div class="toolkit-header"><i class="fas fa-hammer"></i><h2>Maven Toolkit</h2></div>
-                <p>Leverages the host IDE's internal Maven engine for synchronous build goal execution and recursive dependency resolution.</p>
+            <!-- Refactor Toolkit -->
+            <section id="refactor" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-magic"></i><h2>Refactor Toolkit (17 Tools)</h2></div>
+                <p>Transactional refactoring tools that maintain integrity across the entire project graph by leveraging the industry-standard NetBeans Refactoring engine.</p>
                 <div class="tool-grid">
-                    <div class="tool-card"><span class="tool-sig">runGoals(List&lt;String&gt; goals) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes Maven goals (clean, install, etc.) synchronously.</p></div>
-                    <div class="tool-card"><span class="tool-sig">addDependency(groupId, artifactId, version) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Surgically adds a dependency to the project POM.</p></div>
-                    <div class="tool-card"><span class="tool-sig">getResolvedDependencies(path) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Returns the full transitive runtime classpath.</p></div>
-                </div>
-            </section>
-
-            <!-- Projects Toolkit -->
-            <section id="projects" class="toolkit-section">
-                <div class="toolkit-header"><i class="fas fa-project-diagram"></i><h2>Projects Toolkit</h2></div>
-                <p>Provides the ASI with deep structural awareness of the IDE workspace and project metadata.</p>
-                <div class="tool-grid">
-                    <div class="tool-card"><span class="tool-sig">openProject(path) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Opens a project in the IDE workspace.</p></div>
-                    <div class="tool-card"><span class="tool-sig">setMainProject(path) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Sets the authoritative main project for the IDE.</p></div>
-                    <div class="tool-card"><span class="tool-sig">invokeAction(path, action) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Triggers native NetBeans project actions.</p></div>
+                    <div class="tool-card"><span class="tool-sig">rename(path, newName) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Safe rename updating all references in the workspace.</p></div>
+                    <div class="tool-card"><span class="tool-sig">renameMember(path, member, newName) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Renames a class member across all open projects.</p></div>
+                    <div class="tool-card"><span class="tool-sig">move(path, targetFolder) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Relocates types or files while correcting imports.</p></div>
+                    <div class="tool-card"><span class="tool-sig">copy(path, targetFolder) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Copies a file or class to a different package.</p></div>
+                    <div class="tool-card"><span class="tool-sig">safeDelete(path, comments) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Verifies usages before removing elements.</p></div>
+                    <div class="tool-card"><span class="tool-sig">inline(path, member, type) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Replaces usages with method body or constant value.</p></div>
+                    <div class="tool-card"><span class="tool-sig">encapsulateField(path, field, g, s) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Creates getter/setter and updates all references.</p></div>
+                    <div class="tool-card"><span class="tool-sig">invertBoolean(path, member, newName) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Inverts logic and updates all call sites.</p></div>
+                    <div class="tool-card"><span class="tool-sig">extractInterface(path, name, members) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Moves members to a new interface.</p></div>
+                    <div class="tool-card"><span class="tool-sig">pullUp(path, target, members) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Moves members to a superclass.</p></div>
+                    <div class="tool-card"><span class="tool-sig">pushDown(path, members) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Moves members to subclasses.</p></div>
+                    <div class="tool-card"><span class="tool-sig">changeMethodSignature(...) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Updates name, return type, and parameters.</p></div>
+                    <div class="tool-card"><span class="tool-sig">extractSuperclass(path, name, members) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Extracts a new superclass from existing class.</p></div>
+                    <div class="tool-card"><span class="tool-sig">useSupertype(path, supertypeFqn) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Replaces class usages with a supertype.</p></div>
+                    <div class="tool-card"><span class="tool-sig">moveInnerToTopLevel(path, name) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Promotes a nested class to its own file.</p></div>
+                    <div class="tool-card"><span class="tool-sig">whereUsed(path, comments) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Finds all references of a file or type.</p></div>
+                    <div class="tool-card"><span class="tool-sig">whereUsedMember(path, member, comm) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Finds all usages of a specific class member.</p></div>
                 </div>
             </section>
 
             <!-- CodeModel Toolkit -->
             <section id="codemodel" class="toolkit-section">
-                <div class="toolkit-header"><i class="fas fa-sitemap"></i><h2>CodeModel Toolkit</h2></div>
-                <p>Powered by the NetBeans Java Index, enabling one-shot type exploration and FQN resolution.</p>
+                <div class="toolkit-header"><i class="fas fa-sitemap"></i><h2>CodeModel Toolkit (16 Tools)</h2></div>
+                <p>Powered by the NetBeans Java Index, enabling high-performance type exploration and one-shot FQN resolution.</p>
                 <div class="tool-grid">
-                    <div class="tool-card"><span class="tool-sig">findTypes(query) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Fast index-based search for Java types across all projects.</p></div>
-                    <div class="tool-card"><span class="tool-sig">getMembersByFqn(fqn) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Skips discovery turns by jumping straight to members.</p></div>
-                    <div class="tool-card"><span class="tool-sig">getSubtypesByFqn(fqn) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Builds recursive implementation and inheritance trees.</p></div>
+                    <div class="tool-card"><span class="tool-sig">findTypes(query, ...) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Index-based search across all projects (Ctrl+O).</p></div>
+                    <div class="tool-card"><span class="tool-sig">loadTypeSources(javaType) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Registers a type's source file as a resource.</p></div>
+                    <div class="tool-card"><span class="tool-sig">loadTypeSourcesByFqn(fqn) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">One-shot source loading for known FQNs.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getTypeJavadocs(javaType) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Retrieves the Javadoc for a given type.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getTypeJavadocsByFqn(fqn) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Javadoc retrieval for known FQNs.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getMemberSources(member) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Retrieves source code for a specific member.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getMemberSourcesByFqn(fqn) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Source loading for known member FQNs.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getMemberJavadocs(member) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Retrieves Javadoc for a specific member.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getMemberJavadocsByFqn(fqn) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Javadoc retrieval for known member FQNs.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getMembers(javaType, ...) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Lists fields, constructors, and methods.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getMembersByFqn(fqn, ...) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Jump straight to members of a known type.</p></div>
+                    <div class="tool-card"><span class="tool-sig">findTypesInPackage(...) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Scans a package (optionally recursive) for types.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getSubtypes(javaType, depth) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Explores implementations for a JavaType.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getSubtypesByFqn(fqn, depth) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Builds recursive implementation trees.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getSupertypes(javaType, depth) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Explores inheritance for a JavaType.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getSupertypesByFqn(fqn, depth) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Builds recursive inheritance trees.</p></div>
+                </div>
+            </section>
+
+            <!-- Maven Toolkit -->
+            <section id="maven" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-hammer"></i><h2>Maven Toolkit (7 Tools)</h2></div>
+                <p>Leverages the host IDE's internal Maven engine for synchronous build goal execution and recursive dependency resolution.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">runGoals(projectId, goals, ...) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes Maven goals (clean, install) synchronously.</p></div>
+                    <div class="tool-card"><span class="tool-sig">addDependency(path, g, a, v, ...) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Surgically adds a dependency to the project POM.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getDeclaredDependencies(path) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Lists dependencies directly declared in the POM.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getResolvedDependencies(path) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Returns the full transitive runtime classpath.</p></div>
+                    <div class="tool-card"><span class="tool-sig">searchMavenIndex(query, ...) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Searches Central and local repositories for artifacts.</p></div>
+                    <div class="tool-card"><span class="tool-sig">downloadProjectDependencies(...) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Bulk downloads sources and javadocs.</p></div>
+                    <div class="tool-card"><span class="tool-sig">downloadDependencyArtifact(...) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Verifies artifact existence before POM modification.</p></div>
+                </div>
+            </section>
+
+            <!-- Projects Toolkit -->
+            <section id="projects" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-project-diagram"></i><h2>Projects Toolkit (7 Tools)</h2></div>
+                <p>Provides the ASI with deep structural awareness of the IDE workspace and project metadata.</p>
+                <div class="tool-grid">
+                    <div class="tool-card"><span class="tool-sig">openProject(path, subprojects) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Opens a project in the IDE workspace.</p></div>
+                    <div class="tool-card"><span class="tool-sig">setMainProject(path) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Sets the authoritative main project for the IDE.</p></div>
+                    <div class="tool-card"><span class="tool-sig">closeProjects(paths) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Closes one or more open projects.</p></div>
+                    <div class="tool-card"><span class="tool-sig">openSubprojects(path) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Opens all child modules of a Maven parent.</p></div>
+                    <div class="tool-card"><span class="tool-sig">setCompileOnSaveOverride(p, bool) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Configures CoS in nb-configuration.xml.</p></div>
+                    <div class="tool-card"><span class="tool-sig">setProjectProviderEnabled(...) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Toggles project-level context providers.</p></div>
+                    <div class="tool-card"><span class="tool-sig">invokeAction(path, action) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Triggers native NetBeans project actions.</p></div>
                 </div>
             </section>
 
             <!-- Hints Toolkit -->
             <section id="hints" class="toolkit-section">
-                <div class="toolkit-header"><i class="fas fa-lightbulb"></i><h2>Hints Toolkit</h2></div>
-                <p>Programmatic access to the NetBeans Hint engine for automated code quality and fixing.</p>
+                <div class="toolkit-header"><i class="fas fa-lightbulb"></i><h2>Hints Toolkit (3 Tools)</h2></div>
+                <p>Programmatic access to the NetBeans Hint engine for automated code quality and surgical fixes.</p>
                 <div class="tool-grid">
-                    <div class="tool-card"><span class="tool-sig">getAllHints(projectPath) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Retrieves all warnings and suggestions for a project.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getAllHints(projectPath, ...) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Retrieves all warnings and suggestions for a project.</p></div>
                     <div class="tool-card"><span class="tool-sig">applyHintFix(filePath, hintId) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes the suggested quick-fix for a specific hint.</p></div>
-                </div>
-            </section>
-
-            <!-- Refactor Toolkit -->
-            <section id="refactor" class="toolkit-section">
-                <div class="toolkit-header"><i class="fas fa-magic"></i><h2>Refactor Toolkit</h2></div>
-                <p>Transactional refactoring tools that maintain integrity across the entire project graph.</p>
-                <div class="tool-grid">
-                    <div class="tool-card"><span class="tool-sig">rename(path, newName) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Safe rename updating all references in the workspace.</p></div>
-                    <div class="tool-card"><span class="tool-sig">move(path, targetFolder) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Relocates types or files while correcting imports.</p></div>
-                    <div class="tool-card"><span class="tool-sig">safeDelete(path) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Verifies usages before removing elements.</p></div>
+                    <div class="tool-card"><span class="tool-sig">removeUnusedImports(filePath) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Surgically cleans up Java import statements.</p></div>
                 </div>
             </section>
 
             <!-- Editor Toolkit -->
             <section id="editor" class="toolkit-section">
-                <div class="toolkit-header"><i class="fas fa-edit"></i><h2>Editor Toolkit</h2></div>
+                <div class="toolkit-header"><i class="fas fa-edit"></i><h2>Editor Toolkit (3 Tools)</h2></div>
                 <p>Direct interaction with the active NetBeans editor tabs and document buffers.</p>
                 <div class="tool-grid">
                     <div class="tool-card"><span class="tool-sig">openFile(path, scrollToLine) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Opens and focuses a file in the IDE editor.</p></div>
-                    <div class="tool-card"><span class="tool-sig">getOpenFiles() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Lists all currently open editor tabs.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getOpenFiles() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Lists all currently open editor tabs and status.</p></div>
                     <div class="tool-card"><span class="tool-sig">closeAllFiles() <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Clears the editor workspace.</p></div>
                 </div>
             </section>
 
             <!-- IDE Toolkit -->
             <section id="ide" class="toolkit-section">
-                <div class="toolkit-header"><i class="fas fa-laptop-code"></i><h2>IDE Toolkit</h2></div>
-                <p>Generic IDE orchestration and observability tools.</p>
+                <div class="toolkit-header"><i class="fas fa-laptop-code"></i><h2>IDE Toolkit (4 Tools)</h2></div>
+                <p>Generic IDE orchestration, observability, and navigation tools.</p>
                 <div class="tool-grid">
-                    <div class="tool-card"><span class="tool-sig">monitorLogs(pattern) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Tails the IDE messages.log for real-time debugging.</p></div>
-                    <div class="tool-card"><span class="tool-sig">selectIn(path, target) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Highlights elements in the Projects or Files view.</p></div>
+                    <div class="tool-card"><span class="tool-sig">monitorLogs(pattern, tail) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Tails the IDE messages.log for real-time debugging.</p></div>
+                    <div class="tool-card"><span class="tool-sig">selectIn(path, target) <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Highlights elements in Projects, Files, or Favorites.</p></div>
+                    <div class="tool-card"><span class="tool-sig">getTopComponentsMarkdown() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Returns a table of all open IDE windows.</p></div>
                     <div class="tool-card"><span class="tool-sig">getOutputTabsMarkdown() <span class="badge-perm perm-always">Always</span></span><p class="tool-desc">Captures a snapshot of all active Output windows.</p></div>
                 </div>
             </section>
 
             <!-- NbJava Toolkit -->
             <section id="nbjava" class="toolkit-section">
-                <div class="toolkit-header"><i class="fab fa-java"></i><h2>NbJava Toolkit</h2></div>
-                <p>NetBeans-aware Java execution engine that manages NBM-specific classpath isolation.</p>
+                <div class="toolkit-header"><i class="fab fa-java"></i><h2>NbJava Toolkit (2 Tools)</h2></div>
+                <p>NetBeans-aware Java execution engine that manages NBM-specific classpath isolation and hot-reloading.</p>
                 <div class="tool-grid">
-                    <div class="tool-card"><span class="tool-sig">compileAndExecuteInProject(code) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes model code using the project's own target/classes.</p></div>
+                    <div class="tool-card"><span class="tool-sig">compileAndExecuteInProject(...) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Executes model code using the project's own target/classes.</p></div>
+                    <div class="tool-card"><span class="tool-sig">compileAndExecute(code, ...) <span class="badge-perm perm-prompt">Prompt</span></span><p class="tool-desc">Inherited: Executes code in the application's JVM.</p></div>
                 </div>
             </section>
         </main>
