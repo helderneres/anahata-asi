@@ -52,10 +52,17 @@ public class Resources extends AnahataToolkit {
     @Override
     public List<String> getSystemInstructions() throws Exception {
         return Collections.singletonList(
-                "**Resources Toolkit** (Surgical Precision Rules):\n"
-                + "1. **Context Integrity**: Only modify resources currently in context. Always use the `lastModified` timestamp from the LATEST RAG message.\n"
+                "**Resources Toolkit**:\n"
+                + "In The Anahata ASI platform, resources can be local or remote, and they have a ContextPosition attribute that can take the following values:\n"
+                        + "\tSYSTEM_INSTRUCTIONS: They are loaded directly into the system instructions (only the user or the platform can do this).\n"
+                        + "\tPROMPT_AUGMENTATION: Their are included on the RAG message.\n"
+                + "Regardless of the position, resources are always preceeded by a beautiful header containing all the metadata about the resource and they can "
+                        + "be updated regarless of the position for as long as they are 'writable'. You don't need to re-load a resource positioned as SYSTEM_INSTRUCTIONS "
+                        + "to make updates to it. All you need is the uuid and the lastModified timestamp.\n\n "
+                + "*\nVery important rules for working with resources:*\n"
+                + "1. **Context Integrity**: You can only modify resources currently in context. Always use the `lastModified` timestamp from the resource header (either in RAG message or in the system instructions).\n"
                 + "2. **Reasoning**: Always provide a meaningful `reason` each time you update a resource; it will be displayed as an AI comment in the UI.\n"
-                + "3. **Updating text resources**: All update text resource tools flush the changes to disk inmediatly when `EXECUTED`.\n "
+                + "3. **Updating resources**: All update resource tools flush the changes to disk inmediatly when `EXECUTED`.\n "
                 + "4. **Rag Message**: The Rag Message is the source of truth for resource modifications, it gets freshly generated when the user completes his turn (i.e. after all tools in the batch have been executed or declined). "
                         + "All resources registered with `LIVE` refresh policy are garanteed to be up to date (in sync) with the underlying storage.\n"
                 + "5. **Resources.editTextResource tool**: This is not a git style tool that requires surrounding anchor lines. It is a strict, surgical 1-based line number tool with optimistic locking validation for text resources loaded with includeLineNumbers=true."
