@@ -25,8 +25,8 @@
         .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem; }
         .tool-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 0.8rem 1rem; transition: var(--transition); display: flex; flex-direction: column; justify-content: center; }
         .tool-card:hover { border-color: rgba(79, 170, 255, 0.3); background: rgba(255,255,255,0.04); }
-        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .tool-desc { color: var(--text-muted); font-size: 0.8rem; line-height: 1.4; margin: 0; }
+        .tool-sig { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); font-size: 1.1rem; font-weight: 600; margin-bottom: 0.3rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tool-desc { color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; margin: 0; }
         
         .badge-perm { font-size: 0.6rem; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; font-weight: bold; margin-left: 6px; vertical-align: middle; }
         .perm-prompt { background: rgba(0, 123, 255, 0.1); color: #007bff; border: 1px solid rgba(0, 123, 255, 0.2); }
@@ -47,8 +47,17 @@
         .info-box { background: rgba(44, 122, 123, 0.1); border-left: 4px solid var(--barca-gold); padding: 1.5rem; border-radius: 8px; margin: 2rem 0; }
         
         /* Refined Title Styles */
-        .main-content h1 { font-size: 2.8rem; margin-bottom: 0.4rem; margin-top: -3.5rem; }
-        .main-content .subtitle { font-size: 1.05rem; color: var(--text-muted); margin-bottom: 2rem; max-width: 800px; line-height: 1.5; }
+        .main-content h1 { font-size: 2.2rem; margin-bottom: 0.4rem; margin-top: -5rem; }
+        .main-content .subtitle { font-size: 1rem; color: var(--text-muted); margin-bottom: 1.5rem; max-width: 900px; line-height: 1.5; }
+
+        /* Feature Bullets & Tags */
+        .usp-list { list-style: none; padding: 0; margin-bottom: 2rem; }
+        .usp-list li { margin-bottom: 0.8rem; display: flex; align-items: flex-start; gap: 1rem; color: var(--white); font-size: 0.95rem; line-height: 1.4; }
+        .usp-list li i { color: var(--barca-gold); margin-top: 4px; font-size: 0.9rem; }
+        
+        .tag-row { display: flex; gap: 0.8rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .tag { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-muted); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .tag-gold { border-color: var(--barca-gold); color: var(--barca-gold); background: rgba(237, 187, 0, 0.05); }
 
         /* Provider Specific Styles */
         .provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
@@ -93,6 +102,22 @@
                 <h1>Anahata <span style="color: var(--barca-gold)">ASI Studio - NetBeans</span></h1>
                 <p class="subtitle">The best Java AI Coding assistant on earth and SDK for developing custom Anahata ASI Containers, Agi Toolkits and Context Providers</p>
                 
+                <ul class="usp-list">
+                    <li><i class="fas fa-check-circle"></i> Anahata ASI Container 1.0.0 Reference Implementation</li>
+                    <li><i class="fas fa-check-circle"></i> The best Java AI Coding assistant on the market.</li>
+                    <li><i class="fas fa-check-circle"></i> Fully Observable, Fully Autonomous JVM Agent with JIT compilation and Dynamic classpath extension to execute any LLM-generated code using any Java library directly on the NetBeans JVM.</li>
+                    <li><i class="fas fa-check-circle"></i> SDK for developing custom Anahata ASI Containers, AGI Toolkits, and Context Providers.</li>
+                    <li><i class="fas fa-check-circle"></i> Autobackups - Context Window Flight Recorder - Fully Auditable Agentic Execution - Persists the AgiContainer on every turn and after each executed tool.</li>
+                    <li><i class="fas fa-check-circle"></i> Context Window Garbage Collector with per-part, per-tool, depth-based, two stage context window item reclamation.</li>
+                    <li><i class="fas fa-check-circle"></i> Unified Resource Management - Local And Remote Resources</li>
+                </ul>
+
+                <div class="tag-row">
+                    <span class="tag">Apache Licensed</span>
+                    <span class="tag">Enterprise Ready</span>
+                    <span class="tag tag-gold">Donation Based Support</span>
+                </div>
+
                 <!-- Screenshot Carousel -->
                 <div class="carousel-container">
                     <div class="carousel-slide fade">

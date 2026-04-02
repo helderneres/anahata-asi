@@ -61,13 +61,18 @@ public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
         int metadata = 0;
         int activeHistory = 0;
         int prunedHistory = 0;
+        
+        boolean injectInband = contextManager.getAgi().getRequestConfig().isInjectInbandMetadata();
 
         for (AbstractMessage msg : contextManager.getHistory()) {
-            if (msg.shouldCreateMetadata()) {
+            if (injectInband && msg.shouldCreateMetadata()) {
                 metadata += TokenizerUtils.countTokens(msg.createMetadataHeader());
             }
             for (AbstractPart part : msg.getParts()) {
-                metadata += part.getMetadataTokenCount();
+                if (injectInband) {
+                    metadata += part.getMetadataTokenCount();
+                }
+                
                 if (part.isEffectivelyPruned()) {
                     prunedHistory += part.getTokenCount();
                 } else {
@@ -75,13 +80,25 @@ public class ContextWindowGarbageCollector extends BasicPropertyChangeSource {
                 }
             }
         }
+        
+        // 4. RAG Message Pass - High Fidelity
+        RagMessage ragMessage = contextManager.buildRagMessage();
+        int totalRagTokens = ragMessage.getTokenCount(true);
+        
+        if (!injectInband) {
+            // In consolidated mode, calculate the History Metadata block tokens specifically
+            uno.anahata.asi.toolkit.History historyToolkit = contextManager.getAgi().getToolkit(uno.anahata.asi.toolkit.History.class).orElse(null);
+            if (historyToolkit != null) {
+                metadata = TokenizerUtils.countTokens(historyToolkit.createConsolidatedIndex());
+            }
+            sb.ragTokens(totalRagTokens - metadata);
+        } else {
+            sb.ragTokens(totalRagTokens);
+        }
+        
         sb.metadataTokens(metadata);
         sb.activeHistoryTokens(activeHistory);
         sb.prunedHistoryTokens(prunedHistory);
-
-        // 4. RAG Message Pass - High Fidelity
-        RagMessage ragMessage = contextManager.buildRagMessage();
-        sb.ragTokens(ragMessage.getTokenCount(true));
         
         // 5. Cumulative Garbage Collected (from Logs)
         int totalGarbageCollected = logRecords.stream()

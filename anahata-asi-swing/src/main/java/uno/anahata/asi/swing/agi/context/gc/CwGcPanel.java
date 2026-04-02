@@ -66,6 +66,7 @@ public class CwGcPanel extends JPanel {
     private JXTable logTable;
     private DefaultTableModel logModel;
     private MetabolicDonutChart donutChart;
+    private JLabel strategyLabel;
 
     /** Reactive listener for history changes. */
     private EdtPropertyChangeListener historyListener;
@@ -107,6 +108,20 @@ public class CwGcPanel extends JPanel {
      * and the historical recycling log.
      */
     private void initComponents() {
+        JPanel headerPanel = new JPanel(new MigLayout("insets 10, fillx", "[grow][]", "[]"));
+        headerPanel.setBackground(new Color(245, 245, 245));
+        headerPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
+        JLabel titleLabel = new JLabel("Context Window Garbage Collector");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+        headerPanel.add(titleLabel, "growx");
+
+        strategyLabel = new JLabel("Strategy: Unknown");
+        strategyLabel.setFont(new Font("SansSerif", Font.ITALIC, 11));
+        strategyLabel.setForeground(Color.GRAY);
+        headerPanel.add(strategyLabel, "right");
+
+        add(headerPanel, BorderLayout.NORTH);
+
         JPanel mainContent = new JPanel(new MigLayout("insets 10, fill", "[grow]", "[350!][grow]"));
 
         // --- Top: Metrics and Chart ---
@@ -237,6 +252,9 @@ public class CwGcPanel extends JPanel {
             return gc.getStats();
         }, stats -> {
             int threshold = cm.getTokenThreshold();
+            
+            boolean inject = agi.getRequestConfig().isInjectInbandMetadata();
+            strategyLabel.setText("Metadata Strategy: " + (inject ? "In-Band Injection" : "Consolidated Index"));
 
             systemTokensLabel.setText(NUMBER_FORMAT.format(stats.getSystemInstructionsTokens()));
             toolTokensLabel.setText(NUMBER_FORMAT.format(stats.getToolDeclarationsTokens()));
