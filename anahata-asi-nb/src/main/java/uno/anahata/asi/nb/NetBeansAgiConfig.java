@@ -21,16 +21,17 @@ import uno.anahata.asi.nb.tools.java.CodeRefiner;
 import uno.anahata.asi.swing.agi.SwingAgiConfig;
 import uno.anahata.asi.toolkit.Host;
 import uno.anahata.asi.swing.toolkit.SwingJava;
+import uno.anahata.asi.nb.tools.services.database.Database;
 
 /**
- * NetBeans-specific agi configuration.
- * It replaces the core {@link Files} toolkit with the IDE-integrated {@link NbFiles}
- * and adds NetBeans-specific toolkits like {@link Maven}, {@link Projects}, and {@link CodeModel}.
+ * NetBeans-specific agi configuration. It replaces the core {@link Files}
+ * toolkit with the IDE-integrated {@link NbFiles} and adds NetBeans-specific
+ * toolkits like {@link Maven}, {@link Projects}, and {@link CodeModel}.
  * <p>
- * It also configures the {@link NetBeansIconProvider} to display authentic IDE icons 
- * in the context hierarchy.
+ * It also configures the {@link NetBeansIconProvider} to display authentic IDE
+ * icons in the context hierarchy.
  * </p>
- * 
+ *
  * @author anahata
  */
 public class NetBeansAgiConfig extends SwingAgiConfig {
@@ -39,7 +40,7 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
         // Replace core Java with NbJava
         getToolClasses().remove(SwingJava.class);
         getToolClasses().add(NbJava.class);
-        
+
         getToolClasses().add(Maven.class);
         getToolClasses().add(Projects.class);
         getToolClasses().add(CodeModel.class);
@@ -51,15 +52,17 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
         getToolClasses().add(Refactor.class);
         getToolClasses().add(Host.class);
         getToolClasses().add(Screens.class);
-        
+        getToolClasses().add(Database.class);
+
         setIconProvider(new NetBeansIconProvider());
-        
+
         setSelectedProviderUuid("Gemini");
         setSelectedModelId("models/gemini-flash-latest");
     }
-    
+
     /**
      * Constructs a new NetBeansAgiConfig.
+     *
      * @param asiConfig The global AI configuration.
      */
     public NetBeansAgiConfig(AbstractAsiContainer asiConfig) {
@@ -68,6 +71,7 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
 
     /**
      * Constructs a new NetBeansAgiConfig with a specific session ID.
+     *
      * @param asiConfig The global AI configuration.
      * @param sessionId The unique session ID.
      */
@@ -75,10 +79,11 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
         super(asiConfig, sessionId);
     }
 
-    /** 
-     * {@inheritDoc} 
+    /**
+     * {@inheritDoc}
      * <p>
-     * Overrides the factory to return the reactive NbHandle for local or JAR resources.
+     * Overrides the factory to return the reactive NbHandle for local or JAR
+     * resources.
      * </p>
      */
     @Override
