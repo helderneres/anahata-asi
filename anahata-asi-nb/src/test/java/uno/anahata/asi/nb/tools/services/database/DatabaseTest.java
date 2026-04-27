@@ -5,7 +5,6 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -74,7 +73,7 @@ public class DatabaseTest extends AsiToolTestBase {
         when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
 
         // Act
-        List<DatabaseConnectionInfo> result = databaseToolkit.listConnections();
+        List<DatabaseConnectionInfo> result = wrapException(() -> databaseToolkit.listConnections());
 
         // Assert
         assertEquals(1, result.size());
@@ -95,7 +94,7 @@ public class DatabaseTest extends AsiToolTestBase {
         }).when(mockManager).showConnectionDialog(mockConn);
 
         // Act
-        String result = databaseToolkit.connect("TestDB");
+        String result = wrapException(() -> databaseToolkit.connect("TestDB"));
 
         // Assert
         assertTrue(result.contains("Successfully connected"));
@@ -109,7 +108,7 @@ public class DatabaseTest extends AsiToolTestBase {
         when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
 
         // Act
-        String result = databaseToolkit.disconnect("TestDB");
+        String result = wrapException(() -> databaseToolkit.disconnect("TestDB"));
 
         // Assert
         assertTrue(result.contains("Successfully disconnected"));
@@ -264,7 +263,6 @@ public class DatabaseTest extends AsiToolTestBase {
         assertFalse(col.isNullable());
     }
 
-    @SuppressWarnings("ThrowableResultIgnored")
     @Test
     void test_givenNoConnection_whenConnect_thenThrowsException() {
         // Arrange
@@ -274,5 +272,14 @@ public class DatabaseTest extends AsiToolTestBase {
         assertThrows(AgiToolException.class, () -> {
             databaseToolkit.connect("NonExistent");
         });
+    }
+
+    @Test
+    void test_givenToolkit_whenInitialize_thenRegistersConnectionListener() {
+        // Act
+        databaseToolkit.initialize();
+
+        // Assert
+        verify(mockManager).addConnectionListener(databaseToolkit);
     }
 }
