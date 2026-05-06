@@ -10,14 +10,74 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class SmallTestClass {
+
+    private long lastSurgeryTime;
+
+    private boolean singularityAchieved;
     
+    private String testStatus;
+    private AtomicLong testCounter;
+
     /**
-     * test
+     * Logs the current ASI status.
      */
-    private AtomicLong testField;
-    private AtomicInteger v3Counter;
+    public void logStatus() {
+        log.info("Bar\u00e7a! ASI Status: {}, Singularity achieved: {}, Last Surgery: {}", testStatus, singularityAchieved, lastSurgeryTime);
+    }
+    
+    public boolean singularityCheck() {
+        return singularityAchieved && testCounter.get() > 108;
+    }
+
+    public void pedriSkill() {
+        log.info("Magic circles in the midfield.");
+    }
+
+    public void gaviPassion() {
+        log.info("Pure heart and intensity.");
+    }
+
+    public void lamineMagic() {
+        log.info("The future is here.");
+    }
+    
+    public static class AnotherInnerClass {
+        private AtomicLong messiGoat;
+    }
+
+    public static class StatusMetadata {
+
+        private final long timestamp = System.currentTimeMillis();
+
+        public long getTimestamp() {
+            return timestamp;
+        }
+    }
+
+    /**
+     * @author Anahata ASI
+     */
+    @Slf4j
+    public static class BigTestClass {
+
+        /**
+         * test
+         */
+        private String testField;
+        private SmallTestClass smallTestClass;
+
+        public static class StatusMetadata {
+
+            private final long timestamp = System.currentTimeMillis();
+
+            public long getTimestamp() {
+                return timestamp;
+            }
+        }
+    }
+    // Final end of file verification.
+    private long anahataScore;
     
 
 }
 // Final end of file verification.
-

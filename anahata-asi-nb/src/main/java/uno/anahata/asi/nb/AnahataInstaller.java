@@ -8,37 +8,33 @@ import org.openide.modules.ModuleInstall;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
-import uno.anahata.asi.nb.tools.java.coderefiner.CodeRefinementBatch;
-import uno.anahata.asi.nb.ui.render.CodeRefinementBatchRenderer;
-import uno.anahata.asi.nb.ui.render.FullTextResourceUpdateRenderer;
-import uno.anahata.asi.nb.ui.render.TextResourceReplacementsRenderer;
 import uno.anahata.asi.nb.ui.resources.NbResourceUI;
 import uno.anahata.asi.nb.util.ElementHandleModule;
-import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.internal.SwingUtils;
-import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
-import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
 
 /**
- * Installer for the Anahata ASI NetBeans module.
- * Handles lifecycle management and global UI synchronization.
+ * Installer for the Anahata ASI NetBeans module. Handles lifecycle management
+ * and global UI synchronization.
  * <p>
- * This class leverages NetBeans' native window system persistence for 
+ * This class leverages NetBeans' native window system persistence for
  * TopComponents, eliminating the need for manual handoff files.
  * </p>
- * 
+ *
  * @author anahata
  */
 public class AnahataInstaller extends ModuleInstall {
 
     private static final Logger log = Logger.getLogger(AnahataInstaller.class.getName());
-    
-    /** The singleton container instance. */
+
+    /**
+     * The singleton container instance.
+     */
     private static NetBeansAsiContainer container;
 
     /**
      * Gets the global ASI container for NetBeans.
+     *
      * @return The container instance.
      */
     public static synchronized NetBeansAsiContainer getContainer() {
@@ -49,24 +45,19 @@ public class AnahataInstaller extends ModuleInstall {
     }
 
     /**
-     * {@inheritDoc}
-     * Performs module initialization and sets up global listeners for UI updates.
+     * {@inheritDoc} Performs module initialization and sets up global listeners
+     * for UI updates.
      */
     @Override
     public void restored() {
         log.info("Anahata ASI NetBeans Module Restored");
-        
+
         // Register the NetBeans-native resource UI strategy
         ResourceUiRegistry.getInstance().setResourceUI(new NbResourceUI());
-        
-        // Register specialized parameter renderers for file operations
-        ParameterRendererFactory.register(FullTextResourceUpdate.class, FullTextResourceUpdateRenderer.class);        
-        ParameterRendererFactory.register(TextResourceReplacements.class, TextResourceReplacementsRenderer.class);
-        ParameterRendererFactory.register(CodeRefinementBatch.class, CodeRefinementBatchRenderer.class);
-        
+
         // Register the ElementHandle module for global JSON support in the IDE
         SchemaProvider.OBJECT_MAPPER.registerModule(new ElementHandleModule());
-        
+
         // Load active sessions from disk. This must happen before TopComponents are restored.
         int failed = getContainer().loadSessions();
         if (failed > 0) {
@@ -75,14 +66,14 @@ public class AnahataInstaller extends ModuleInstall {
     }
 
     /**
-     * {@inheritDoc}
-     * Shuts down the container and closes all TopComponents when the module is uninstalled.
-     * This is critical to prevent classloader leaks during nbmreload.
+     * {@inheritDoc} Shuts down the container and closes all TopComponents when
+     * the module is uninstalled. This is critical to prevent classloader leaks
+     * during nbmreload.
      */
     @Override
     public void uninstalled() {
         log.log(Level.INFO, "Anahata ASI V2 Module Uninstalled - Thread: {0}", Thread.currentThread().getName());
-        
+
         try {
             SwingUtils.runInEDTAndWait(() -> {
                 Set<TopComponent> opened = WindowManager.getDefault().getRegistry().getOpened();

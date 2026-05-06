@@ -70,7 +70,7 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
      * </p>
      */
     @Override
-    public String calculateResultingContent(Agi agi) throws Exception {
+    protected String doCalculateResultingContent(Agi agi) throws Exception {
         if (originalContent == null) {
             throw new AgiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
         }
@@ -111,7 +111,13 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
      */
     @Override
     public void validate(uno.anahata.asi.agi.Agi agi) throws Exception {
-        super.validate(agi);
+        validateStructuralState(agi);
+
+        if ((insertions == null || insertions.isEmpty()) && 
+            (replacements == null || replacements.isEmpty()) && 
+            (deletions == null || deletions.isEmpty())) {
+            throw new AgiToolException("No line edits provided.");
+        }
 
         /*
         // Calculate line count using the authoritative snapshot
@@ -173,5 +179,7 @@ public class TextResourceLineEdits extends AbstractTextResourceWrite {
                 lastEnd = (edit instanceof LineReplacement rep) ? rep.getEndLine() : ((LineDeletion) edit).getEndLine();
             }
         }
+        
+        validateIdenticalContent(agi);
     }
 }

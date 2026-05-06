@@ -1,9 +1,10 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.modal;
 
-import uno.anahata.asi.openai.OpenAiCompatibleModel;
-import uno.anahata.asi.openai.OpenAiCompatibleProvider;
-import uno.anahata.asi.openai.ReasoningStyle;
+import uno.anahata.asi.openai.compatible.OpenAiCompatibleModel;
+import uno.anahata.asi.openai.compatible.OpenAiCompatibleProvider;
+import uno.anahata.asi.openai.compatible.OpenAiCompatibleReasoningStyle;
+
 
 /**
  * Specialized model implementation for Modal's GLM-5 endpoint.
@@ -29,7 +30,7 @@ public class ModalModel extends OpenAiCompatibleModel {
         setMaxOutputTokens(65536);
 
         // Modal's GLM-5 uses the reasoning_content field
-        setReasoningStyle(ReasoningStyle.FIELD);
+        setReasoningStyle(OpenAiCompatibleReasoningStyle.FIELD);
         setReasoningFieldName("reasoning_content");
     }
 }

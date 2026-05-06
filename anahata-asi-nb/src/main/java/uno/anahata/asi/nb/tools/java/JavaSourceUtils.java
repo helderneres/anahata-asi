@@ -10,6 +10,7 @@ import com.sun.source.tree.ModifiersTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
+import com.sun.source.util.TreePathScanner;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.File;
 import java.io.IOException;
@@ -20,10 +21,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import lombok.extern.slf4j.Slf4j;
 import org.netbeans.api.java.source.CompilationController;
@@ -56,17 +61,75 @@ import org.openide.cookies.SaveCookie;
 public class JavaSourceUtils {
 
     /**
-     * Defines positions for structural member insertion.
+     * The authoritative identification standard for all Anahata Java toolkits.
      */
-    public enum RelativePosition {
-        @Schema(description = "Insert at the very beginning of the class or file.")
-        START, 
-        @Schema(description = "Insert at the very end of the class or file.")
-        END, 
-        @Schema(description = "Insert immediately before the specified anchor member.")
-        BEFORE, 
-        @Schema(description = "Insert immediately after the specified anchor member.")
-        AFTER
+    public static final String CANONICAL_FQN_STANDARD = 
+              "### Anahata Canonical Identification Standard (Global)\n"
+            + "All Java toolkits require members to be identified using this exact FQN syntax. **No simple names, no fallbacks**.\n"
+            + "\n"
+            + "| Entity | Canonical Identification FQN Syntax | Example |\n"
+            + "| :--- | :--- | :--- |\n"
+            + "| **Top-Level Type** | `package.sub.ClassName` | `java.util.ArrayList` |\n"
+            + "| **Nested/Inner Type** | `package.sub.Outer$Inner` | `java.util.Map$Entry` |\n"
+            + "| **Field** | `[ClassFQN].fieldName` | `java.lang.System.out` |\n"
+            + "| **Method** | `[ClassFQN].methodName(Param1FQN,...)` | `java.lang.String.concat(java.lang.String)` |\n"
+            + "| **Constructor** | `[ClassFQN].<init>(Param1FQN,...)` | `java.util.ArrayList.<init>(int)` |\n"
+            + "| **Static Block** | `[ClassFQN].<clinit>#n()` | `com.foo.Bar.<clinit>#1()` |\n"
+            + "| **Instance Block** | `[ClassFQN].<init-block>#n()` | `com.foo.Bar.<init-block>#1()` |\n"
+            + "\n"
+            + "**Rules for Identification**:\n"
+            + "- **Separators**: Use `.` for packages and members. Use `$` **strictly and only** to separate nested types.\n"
+            + "- **Parentheses**: **Mandatory** for all methods, constructors, and blocks, even if no-args (e.g. `toString()`).\n"
+            + "- **Parameter FQNs**: Use full FQNs for all parameter types (except primitives).\n"
+            + "- **Type Erasure**: Always use the raw type. **Generics (<...>) are strictly forbidden** in identification FQNs.\n"
+            + "- **Arrays**: Use the `[]` suffix (e.g. `java.lang.String[]`).\n";
+
+    /**
+     * Generates the Anahata Canonical FQN for a given element.
+     */
+    public static String getCanonicalFqn(Element e) {
+        if (e == null) return null;
+        if (e instanceof javax.lang.model.element.PackageElement pe) {
+            return pe.getQualifiedName().toString();
+        }
+        Element enclosing = e.getEnclosingElement();
+        if (enclosing == null || enclosing.getKind() == javax.lang.model.element.ElementKind.PACKAGE) {
+            return (e instanceof TypeElement te) ? te.getQualifiedName().toString() : e.getSimpleName().toString();
+        }
+
+        String parentFqn = getCanonicalFqn(enclosing);
+        if (e.getKind().isClass() || e.getKind().isInterface()) {
+            return parentFqn + "$" + e.getSimpleName();
+        }
+
+        if (e instanceof ExecutableElement ee) {
+            String name = (ee.getKind() == javax.lang.model.element.ElementKind.CONSTRUCTOR) ? "<init>" : ee.getSimpleName().toString();
+            String params = ee.getParameters().stream()
+                    .map(p -> getCanonicalFqn(p.asType()))
+                    .collect(Collectors.joining(","));
+            return parentFqn + "." + name + "(" + params + ")";
+        }
+
+        return parentFqn + "." + e.getSimpleName();
+    }
+
+    /**
+     * Generates the Anahata Canonical FQN for a given type mirror.
+     */
+    public static String getCanonicalFqn(TypeMirror m) {
+        if (m == null) return null;
+        if (m.getKind().isPrimitive()) return m.toString();
+        if (m.getKind() == TypeKind.ARRAY) {
+            return getCanonicalFqn(((ArrayType) m).getComponentType()) + "[]";
+        }
+        if (m instanceof DeclaredType dt) {
+            Element e = dt.asElement();
+            if (e != null) {
+                return getCanonicalFqn(e);
+            }
+        }
+        String s = m.toString();
+        return s.contains("<") ? s.substring(0, s.indexOf('<')) : s;
     }
 
     /**
@@ -120,66 +183,20 @@ public class JavaSourceUtils {
     }
 
     /**
-     * @deprecated Use {@link #resolveMember(FileObject, String)} for
-     * high-precision FQN resolution.
-     */
-    @Deprecated
-    public static TreePathHandle getTreePathHandleForMember(FileObject fo, String memberName) throws IOException {
-        JavaSource js = JavaSource.forFileObject(fo);
-        if (js == null) {
-            return null;
-        }
-
-        final TreePathHandle[] handle = new TreePathHandle[1];
-        js.runUserActionTask(new Task<>() {
-            @Override
-            public void run(CompilationController parameter) throws Exception {
-                parameter.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
-                for (TypeElement te : parameter.getTopLevelElements()) {
-                    for (Element e : te.getEnclosedElements()) {
-                        if (e.getSimpleName().contentEquals(memberName)) {
-                            handle[0] = TreePathHandle.create(e, parameter);
-                            return;
-                        }
-                    }
-                }
-            }
-        }, true);
-        return handle[0];
-    }
-
-    /**
-     * Creates a {@link TreePathHandle} for the primary top-level class in a
-     * file.
+     * Normalizes an Anahata FQN (which uses '$' for inner classes) to a
+     * standard Java FQN (using '.') for compatibility with standard APIs.
      *
-     * @param fo The FileObject.
-     * @return A TreePathHandle for the class or null.
-     * @throws IOException If the source cannot be parsed.
+     * @param fqn The FQN to normalize.
+     * @return The normalized FQN.
      */
-    public static TreePathHandle getTreePathHandleForClass(FileObject fo) throws IOException {
-        JavaSource js = JavaSource.forFileObject(fo);
-        if (js == null) {
+    public static String normalizeFqn(String fqn) {
+        if (fqn == null) {
             return null;
         }
-
-        final TreePathHandle[] handle = new TreePathHandle[1];
-        js.runUserActionTask(new Task<>() {
-            @Override
-            public void run(CompilationController parameter) throws Exception {
-                parameter.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
-                for (TypeElement te : parameter.getTopLevelElements()) {
-                    if (te.getSimpleName().contentEquals(fo.getName())) {
-                        handle[0] = TreePathHandle.create(te, parameter);
-                        return;
-                    }
-                }
-                if (!parameter.getTopLevelElements().isEmpty()) {
-                    handle[0] = TreePathHandle.create(parameter.getTopLevelElements().get(0), parameter);
-                }
-            }
-        }, true);
-        return handle[0];
+        return fqn.replace('$', '.');
     }
+
+    
 
     public static Tree findTree(CompilationInfo info, final String memberFqn) {
         final String pureFqn;
@@ -201,25 +218,26 @@ public class JavaSourceUtils {
             indexPart = null;
             pureFqn = memberFqn;
         }
-        
         final Tree[] found = new Tree[1];
-        new com.sun.source.util.TreePathScanner<Void, Void>() {
+        new TreePathScanner<Void, Void>() {
             @Override
             public Void visitClass(ClassTree node, Void p) {
                 if (found[0] != null) return null;
                 Element el = info.getTrees().getElement(getCurrentPath());
                 if (el instanceof TypeElement te) {
                     String currentFqn = te.getQualifiedName().toString();
-                    if (currentFqn.equals(pureFqn) && !memberFqn.contains("(") && indexPart == null) {
+                    String normalizedPureFqn = normalizeFqn(pureFqn);
+                    // Case 1: Exact Class Match
+                    if (currentFqn.equals(normalizedPureFqn) && !memberFqn.contains("(") && indexPart == null) {
                         found[0] = node;
                         return null;
                     }
-                    
-                    if (pureFqn.startsWith(currentFqn)) {
+                    // Case 2: Member Match inside Class
+                    if (normalizedPureFqn.startsWith(currentFqn)) {
                         int currentBlockCount = 0;
                         for (Tree member : node.getMembers()) {
                             if (indexPart != null && member.getKind() == Tree.Kind.BLOCK) {
-                                String blockName = ((BlockTree)member).isStatic() ? "<clinit>" : "<init-block>";
+                                String blockName = ((BlockTree) member).isStatic() ? "<clinit>" : "<init-block>";
                                 if (blockName.equals(getMemberSimpleName(pureFqn))) {
                                     if (++currentBlockCount == Integer.parseInt(indexPart)) {
                                         found[0] = member;
@@ -230,9 +248,14 @@ public class JavaSourceUtils {
                             if (member instanceof MethodTree mt) {
                                 String name = mt.getName().toString();
                                 String targetName = getMemberSimpleName(pureFqn);
-                                if (name.equals(targetName) || (name.equals("<init>") && targetName.equals("<init>"))) {
+                                String className = te.getSimpleName().toString();
+                                // Support both <init> and ClassName for constructors in the FQN
+                                boolean nameMatch = name.equals(targetName) || 
+                                                 (name.equals("<init>") && (targetName.equals("<init>") || targetName.equals(className)));
+                                if (nameMatch) {
                                     if (memberFqn.contains("(")) {
-                                        Element e = info.getTrees().getElement(new TreePath(getCurrentPath(), member));
+                                        TreePath memberPath = new TreePath(getCurrentPath(), member);
+                                        Element e = info.getTrees().getElement(memberPath);
                                         if (e instanceof ExecutableElement ee && matchSignature(info, ee, memberFqn)) {
                                             found[0] = member;
                                             return null;
@@ -244,7 +267,7 @@ public class JavaSourceUtils {
                                 }
                             }
                             if (member instanceof VariableTree vt && vt.getName().contentEquals(getMemberSimpleName(pureFqn))) {
-                                if (currentFqn.equals(getParentFqn(pureFqn))) {
+                                if (currentFqn.equals(normalizeFqn(getParentFqn(pureFqn)))) {
                                     found[0] = member;
                                     return null;
                                 }
@@ -255,23 +278,13 @@ public class JavaSourceUtils {
                 return super.visitClass(node, p);
             }
         }.scan(new TreePath(info.getCompilationUnit()), null);
-        
         return found[0];
     }
-
-    /**
-     * Finds a {@link Element} by its fully qualified name within a
-     * {@link WorkingCopy}. Supports types, members, and packages.
-     *
-     * @param wc The working copy.
-     * @param memberFqn The FQN to search for.
-     * @return The resolved Element or null.
-     */
-    public static Element findElement(CompilationInfo wc, String memberFqn) {
-        Tree tree = findTree(wc, memberFqn);
-        return tree == null ? null : wc.getTrees().getElement(TreePath.getPath(wc.getCompilationUnit(), tree));
-    }
-
+    // Case 1: Exact Class Match
+    // Case 2: Member Match inside Class
+    // Support both <init> and ClassName for constructors in the FQN
+        // Support both <init> and ClassName for constructors
+        
     /**
      * Internal helper to match a method element against a string signature.
      * <p>
@@ -279,34 +292,25 @@ public class JavaSourceUtils {
      * contain generics, it will match against the raw AST type.
      * </p>
      */
-    private static boolean matchSignature(CompilationInfo wc, ExecutableElement ee, String methodFqn) {
-        String paramsPart = methodFqn.substring(methodFqn.indexOf('(') + 1, methodFqn.lastIndexOf(')')).trim();
-        List<String> expectedTypes = splitParameters(paramsPart);
-        if (expectedTypes.size() != ee.getParameters().size()) {
-            return false;
+    private static boolean matchSignature(CompilationInfo info, ExecutableElement ee, String methodFqn) {
+        String actualFqn = getCanonicalFqn(ee).replaceAll("\\s+", "");
+        String expectedFqn = methodFqn.replaceAll("\\s+", "");
+        
+        // Normalization: remove generics from both sides to ensure raw signature matching
+        if (expectedFqn.contains("<")) {
+            expectedFqn = expectedFqn.replaceAll("<[^>]*>", "");
         }
-        for (int i = 0; i < expectedTypes.size(); i++) {
-            String expected = expectedTypes.get(i);
-            if (expected.contains(" ")) {
-                String[] parts = expected.split("\\s+");
-                expected = parts[parts.length - 1];
-                if (expected.endsWith(">")) {
-                    expected = parts[parts.length - 2];
-                }
-            }
-            TypeMirror actualMirror = ee.getParameters().get(i).asType();
-            Element actualEl = wc.getTypes().asElement(actualMirror);
-            String actual = (actualEl instanceof TypeElement te)
-                    ? ElementHandle.create(te).getBinaryName()
-                    : actualMirror.toString();
-            if (!expected.contains("<") && actual.contains("<")) {
-                actual = actual.substring(0, actual.indexOf('<'));
-            }
-            if (!actual.endsWith(expected)) {
-                return false;
+        if (actualFqn.contains("<")) {        
+            actualFqn = actualFqn.replaceAll("<[^>]*>", "");
+        }
+        // Special case: Constructor name normalization (<init> vs ClassName)
+        if (ee.getKind() == ElementKind.CONSTRUCTOR) {
+            String className = ee.getEnclosingElement().getSimpleName().toString();
+            if (expectedFqn.contains("." + className + "(")) {
+                expectedFqn = expectedFqn.replace("." + className + "(", ".<init>(");
             }
         }
-        return true;
+        return actualFqn.equals(expectedFqn);
     }
 
     /**
@@ -342,216 +346,10 @@ public class JavaSourceUtils {
         return result;
     }
 
-    /**
-     *
-     * /
-     *
-     **
-     * @deprecated Use the signature-aware
-     * {@link #findMemberIndex(WorkingCopy, List, String)}
-     */
-    @Deprecated
-    public static int findMemberIndex(List<? extends Tree> members, String memberName) {
-        return findMemberIndex(null, members, memberName);
-    }
+    
 
-    /**
-     * Finds the index of a member by its name or canonical signature.
-     *
-     * @param wc The working copy for resolution.
-     * @param members The list of class members.
-     * @param memberName The name or signature to look for.
-     * @return The index, or -1 if not found.
-     */
-    public static int findMemberIndex(WorkingCopy wc, List<? extends Tree> members, String memberName) {
-        for (int i = 0; i < members.size(); i++) {
-            Tree m = members.get(i);
-            String name = null;
-            String signature = null;
-            if (m instanceof MethodTree mt) {
-                name = mt.getName().toString();
-                if (wc != null) {
-                    TreePath path = TreePath.getPath(wc.getCompilationUnit(), m);
-                    Element e = wc.getTrees().getElement(path);
-                    if (e instanceof ExecutableElement ee) {
-                        String params = ee.getParameters().stream().map(p -> {
-                            String t = p.asType().toString();
-                            int bracket = t.indexOf('<');
-                            return bracket != -1 ? t.substring(0, bracket) : t;
-                        }).collect(Collectors.joining(","));
-                        signature = (name.equals("<init>") ? "<init>" : name) + "(" + params + ")";
-                    }
-                }
-            } else if (m instanceof VariableTree vt) {
-                name = vt.getName().toString();
-            } else if (m instanceof ClassTree ct) {
-                name = ct.getSimpleName().toString();
-            } else if (m.getKind() == Tree.Kind.BLOCK) {
-                name = ((BlockTree) m).isStatic() ? "<clinit>" : "<init-block>";
-            }
-            if (memberName.equals(name) || memberName.equals(signature)) {
-                return i;
-            }
-            if (memberName.contains("#")) {
-                String typePart = memberName.substring(0, memberName.indexOf('#'));
-                int targetIndex = Integer.parseInt(memberName.substring(memberName.indexOf('#') + 1, memberName.indexOf('(')));
-                int currentCount = 0;
-                for (Tree prev : members) {
-                    String prevName = null;
-                    if (prev.getKind() == Tree.Kind.BLOCK) {
-                        prevName = ((BlockTree) prev).isStatic() ? "<clinit>" : "<init-block>";
-                    }
-                    if (typePart.equals(prevName)) {
-                        if (++currentCount == targetIndex && prev == m) {
-                            return i;
-                        }
-                    }
-                }
-            }
-        }
-        return -1;
-    }
+    
 
-    /**
-     * @deprecated Used only by DeprecatedCodeRefiner.
-     */
-    @Deprecated
-    public static ModifiersTree buildModifiers(TreeMaker make, TreeUtilities utils, Set<Modifier> modifiers, List<String> annotations) {
-        List<AnnotationTree> annos = new ArrayList<>();
-        if (annotations != null && !annotations.isEmpty()) {
-            for (String a : annotations) {
-                String clean = a.trim().startsWith("@") ? a.trim().substring(1) : a.trim();
-                if (clean.contains("(")) {
-                    String type = clean.substring(0, clean.indexOf("("));
-                    String args = clean.substring(clean.indexOf("(") + 1, clean.lastIndexOf(")"));
-                    List<String> attrList = splitAttributes(args);
-                    List<ExpressionTree> exprs = new ArrayList<>();
-                    for (String attr : attrList) {
-                        exprs.add(utils.parseExpression(attr, null));
-                    }
-                    annos.add(make.Annotation(make.Type(type), exprs));
-                } else {
-                    annos.add(make.Annotation(make.Type(clean), Collections.emptyList()));
-                }
-            }
-        }
-        return make.Modifiers(modifiers, annos);
-    }
-
-    /**
-     * @deprecated Used only by DeprecatedCodeRefiner.
-     */
-    @Deprecated
-    public static Set<Modifier> getModifiersSet(String modifiersStr) {
-        Set<Modifier> mods = EnumSet.noneOf(Modifier.class);
-        if (modifiersStr != null && !modifiersStr.isBlank()) {
-            for (String m : modifiersStr.split("\\s+")) {
-                try {
-                    mods.add(Modifier.valueOf(m.toUpperCase()));
-                } catch (IllegalArgumentException e) {
-                    log.error("Could not parse modifier {}", m);
-                }
-            }
-        }
-        return mods;
-    }
-
-    private static List<String> splitAttributes(String args) {
-        List<String> result = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        int depth = 0;
-        for (char c : args.toCharArray()) {
-            if (c == '(' || c == '{' || c == '[') {
-                depth++;
-            } else if (c == ')' || c == '}' || c == ']') {
-                depth--;
-            }
-
-            if (c == ',' && depth == 0) {
-                result.add(current.toString().trim());
-                current = new StringBuilder();
-            } else {
-                current.append(c);
-            }
-        }
-        if (current.length() > 0) {
-            result.add(current.toString().trim());
-        }
-        return result;
-    }
-
-    /**
-     * @deprecated Used only by DeprecatedCodeRefiner.
-     */
-    @Deprecated
-    public static ExecutableElement findMethodElement(WorkingCopy wc, String methodFqn) {
-        Element e = findElement(wc, methodFqn);
-        return (e instanceof ExecutableElement ee) ? ee : null;
-    }
-
-    /**
-     * Resolves a set of member names into {@link ElementHandle}s.
-     *
-     * @param fo The FileObject.
-     * @param memberNames The names to resolve.
-     * @param methods Output list for resolved methods.
-     * @param fields Output list for resolved fields.
-     * @throws IOException If the source cannot be parsed.
-     */
-    public static void resolveMembers(FileObject fo, List<String> memberFqns, List<ElementHandle<ExecutableElement>> methods, List<ElementHandle<VariableElement>> fields) throws IOException {
-        JavaSource js = JavaSource.forFileObject(fo);
-        if (js == null) {
-            return;
-        }
-        js.runUserActionTask(new Task<>() {
-            @Override
-            public void run(CompilationController parameter) throws Exception {
-                parameter.toPhase(JavaSource.Phase.RESOLVED);
-                for (String fqn : memberFqns) {
-                    Tree tree = findTree(parameter, fqn);
-                    if (tree != null) {
-                        Element e = parameter.getTrees().getElement(TreePath.getPath(parameter.getCompilationUnit(), tree));
-                        if (e instanceof ExecutableElement ee) {
-                            methods.add(ElementHandle.create(ee));
-                        } else if (e instanceof VariableElement ve) {
-                            fields.add(ElementHandle.create(ve));
-                        }
-                    }
-                }
-            }
-        }, true);
-    }
-
-    /**
-     * Resolves member names into {@link MemberInfo} objects for refactoring.
-     *
-     * @param fo The FileObject.
-     * @param memberNames The names to resolve.
-     * @param members Output list for MemberInfo objects.
-     * @throws IOException If the source cannot be parsed.
-     */
-    public static void resolveMemberInfos(FileObject fo, List<String> memberFqns, List<MemberInfo<ElementHandle<? extends Element>>> members) throws IOException {
-        JavaSource js = JavaSource.forFileObject(fo);
-        if (js == null) {
-            return;
-        }
-
-        js.runUserActionTask(new Task<>() {
-            @Override
-            public void run(CompilationController parameter) throws Exception {
-                parameter.toPhase(JavaSource.Phase.RESOLVED);
-                for (String fqn : memberFqns) {
-                    Tree tree = findTree(parameter, fqn);
-                    if (tree != null) {
-                        Element e = parameter.getTrees().getElement(TreePath.getPath(parameter.getCompilationUnit(), tree));
-                        if (e != null) {
-                            members.add((MemberInfo) MemberInfo.create(e, parameter));
-                        }
-                    }
-                }
-            }
-        }, true);
-    }
 
     /**
      * Generates a list of canonical candidate FQNs for a given partial member
@@ -570,88 +368,24 @@ public class JavaSourceUtils {
         }
         String parentFqn = namePart.substring(0, lastSeparator);
         String name = namePart.substring(lastSeparator + 1);
-        TypeElement parent = info.getElements().getTypeElement(parentFqn);
+        
+        // For lookup we must normalize to dots
+        TypeElement parent = info.getElements().getTypeElement(normalizeFqn(parentFqn));
         if (parent == null) {
             return Collections.emptyList();
         }
+        
         List<String> candidates = new ArrayList<>();
         for (Element e : parent.getEnclosedElements()) {
-            if (e.getSimpleName().contentEquals(name)) {
-                if (e instanceof ExecutableElement ee) {
-                    String params = ee.getParameters().stream()
-                            .map(p -> {
-                                String type = p.asType().toString();
-                                return type.contains("<") ? type.substring(0, type.indexOf("<")) : type;
-                            })
-                            .collect(Collectors.joining(","));
-                    String namePrefix = (e.getKind() == javax.lang.model.element.ElementKind.CONSTRUCTOR) ? "<init>" : name;
-                    candidates.add(parentFqn + "." + namePrefix + "(" + params + ")");
-                } else {
-                    candidates.add(parentFqn + "." + name);
-                }
+            if (e.getSimpleName().contentEquals(name) || (name.equals("<init>") && e.getKind() == javax.lang.model.element.ElementKind.CONSTRUCTOR)) {
+                candidates.add(getCanonicalFqn(e));
             }
         }
         return candidates;
     }
 
-    public static String getMemberNotFoundMessage(CompilationInfo info, String memberFqn) {
-        List<String> candidates = findMemberCandidates(info, memberFqn);
-        if (!candidates.isEmpty()) {
-            StringBuilder sb = new StringBuilder("Member not found: ").append(memberFqn);
-            sb.append("\nDid you mean one of these canonical identification FQNs?\n");
-            for (String c : candidates) {
-                sb.append("- ").append(c).append("\n");
-            }
-            return sb.toString();
-        }
-        return "Member not found: " + memberFqn;
-    }
-
-    /**
-     * Authoritatively resolves a member FQN to a TreePathHandle, throwing a
-     * detailed exception with candidates if not found.
-     *
-     * @param fo The file object.
-     * @param memberFqn The member FQN.
-     * @return The handle.
-     * @throws Exception if not found or parsing fails.
-     */
-    public static TreePathHandle resolveMember(FileObject fo, String memberFqn) throws Exception {
-        JavaSource js = JavaSource.forFileObject(fo);
-        if (js == null) {
-            throw new AgiToolException("Could not get JavaSource for: " + fo.getPath());
-        }
-        final TreePathHandle[] result = new TreePathHandle[1];
-        final String[] candidatesMsg = new String[1];
-
-        js.runUserActionTask(info -> {
-            info.toPhase(JavaSource.Phase.RESOLVED);
-            Tree tree = findTree(info, memberFqn);
-            if (tree != null) {
-                result[0] = TreePathHandle.create(TreePath.getPath(info.getCompilationUnit(), tree), info);
-            } else {
-                List<String> candidates = findMemberCandidates(info, memberFqn);
-                if (!candidates.isEmpty()) {
-                    StringBuilder sb = new StringBuilder("Member not found: ").append(memberFqn);
-                    sb.append("\nDid you mean one of these canonical identification FQNs?\n");
-                    for (String c : candidates) {
-                        sb.append("- ").append(c).append("\n");
-                    }
-                    candidatesMsg[0] = sb.toString();
-                }
-            }
-        }, true);
-
-        if (result[0] != null) {
-            return result[0];
-        }
-
-        if (candidatesMsg[0] != null) {
-            throw new AgiToolException(candidatesMsg[0]);
-        }
-
-        throw new AgiToolException("Member not found: " + memberFqn);
-    }
+    
+    
 
     public static void handleSave(FileObject fo) throws IOException {
         DataObject doid = DataObject.find(fo);

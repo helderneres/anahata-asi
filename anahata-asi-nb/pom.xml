@@ -59,7 +59,7 @@
         </dependency>
         <dependency>
             <groupId>uno.anahata</groupId>
-            <artifactId>anahata-asi-openai</artifactId>
+            <artifactId>anahata-asi-openai-compatible</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -601,6 +601,8 @@
                     <homePageUrl>https://asi.anahata.uno</homePageUrl>
                     <codeNameBase>uno.anahata.asi.nb</codeNameBase>
                     <brandingToken>anahata</brandingToken>
+                    <additionalArguments>${netbeans.runparams}</additionalArguments>
+                    
                     <!--
 <moduleIcon>src/main/resources/icons/anahata_32.png</moduleIcon>
                     -->

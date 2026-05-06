@@ -10,18 +10,14 @@ import lombok.extern.slf4j.Slf4j;
 import net.miginfocom.swing.MigLayout;
 import uno.anahata.asi.nb.tools.java.coderefiner.CodeRefinementBatch;
 import uno.anahata.asi.nb.tools.java.coderefiner.CodeRefinementIntent;
-import uno.anahata.asi.nb.tools.java.coderefiner.DeleteMemberIntent;
-import uno.anahata.asi.nb.tools.java.coderefiner.InsertMemberIntent;
-import uno.anahata.asi.nb.tools.java.coderefiner.MoveMemberIntent;
-import uno.anahata.asi.nb.tools.java.coderefiner.UpdateMemberIntent;
 import uno.anahata.asi.toolkit.resources.text.LineComment;
 
 /**
- * Specialized renderer for Java refinement batches.
+ * Specialized renderer for the robust {@link CodeRefinementBatch}.
  * <p>
- * Provides a surgical dashboard at the top of the diff viewer that lists 
- * all structural intents (Insert, Update, Delete, Move) before showing 
- * the unified code diff.
+ * This renderer provides a surgical dashboard at the top of the diff viewer 
+ * that lists all structural intents in their flattened format, ensuring 
+ * clear feedback for the user before committing the AST changes.
  * </p>
  * 
  * @author anahata
@@ -29,44 +25,28 @@ import uno.anahata.asi.toolkit.resources.text.LineComment;
 @Slf4j
 public class CodeRefinementBatchRenderer extends AbstractTextResourceWriteRenderer<CodeRefinementBatch> {
 
+    /** {@inheritDoc} */
     @Override
     protected List<LineComment> getLineComments() {
-        // Structural AST changes don't produce static line comments in the same way 
-        // full text replacements do. We rely on the Intent Panel for semantic context.
-        return new ArrayList<>();
+        // We rely on the Intent Panel for semantic context of structural changes.
+        // mapping AST trees back to static line numbers for bubbles is non-trivial 
+        // without replaying the full surgery.
+         return update.getCalculatedComments();
     }
 
+    /** {@inheritDoc} */
     @Override
     protected JComponent createIntentPanel() {
         JPanel panel = new JPanel(new MigLayout("fillx, insets 0", "[grow]", "[]"));
         panel.setOpaque(false);
         
-        JLabel title = new JLabel("<html><b>Surgical AST Intents:</b></html>");
+        JLabel title = new JLabel("<html><b>Surgical AST Intents (V2-Flattened):</b></html>");
         panel.add(title, "wrap");
         
         if (update.getIntents() != null) {
             for (CodeRefinementIntent intent : update.getIntents()) {
-                log.info("Creating intent panel for " + intent);
-                String desc = "Structural Modification";
-                String icon = "🛠️";                
-                if (intent instanceof InsertMemberIntent ins) {
-                    String decl = ins.getDeclaration();
-                    String memberType = (decl != null && decl.contains("(")) ? "Method" : "Field";
-                    desc = "<b>Insert " + memberType + "</b> " + ins.getPosition() + " " + ins.getAnchorMemberName();
-                    icon = "<font color='#4CAF50'>[+]</font>";
-                } else if (intent instanceof UpdateMemberIntent upd) {
-                    desc = "<b>Update</b> " + getSimpleName(upd.getMemberFqn());
-                    icon = "<font color='#2196F3'>[*]</font>";
-                } else if (intent instanceof DeleteMemberIntent del) {
-                    desc = "<b>Delete</b> " + getSimpleName(del.getMemberFqn());
-                    icon = "<font color='#F44336'>[-]</font>";
-                } else if (intent instanceof MoveMemberIntent mov) {
-                    desc = "<b>Move</b> " + getSimpleName(mov.getMemberFqn()) + " " + mov.getPosition() + " " + mov.getAnchorMemberName();
-                    icon = "<font color='#FF9800'>[M]</font>";
-                }
-                
-                JLabel label = new JLabel("<html>" + icon + " " + desc + " " + "</html>");
-                label.setToolTipText(intent.toString());
+                JLabel label = new JLabel("<html>" + intent.getHtmlDisplay() + "</html>");
+                label.setToolTipText("Structural Modification: " + intent.getType());
                 panel.add(label, "gapleft 15, wrap");
             }
         }
@@ -74,6 +54,7 @@ public class CodeRefinementBatchRenderer extends AbstractTextResourceWriteRender
         return panel;
     }
 
+    /** {@inheritDoc} */
     @Override
     protected CodeRefinementBatch createUpdatedDto(String newContent) {
         CodeRefinementBatch batch = new CodeRefinementBatch();
@@ -84,16 +65,8 @@ public class CodeRefinementBatchRenderer extends AbstractTextResourceWriteRender
         batch.setIntents(update.getIntents());
         batch.setOptimize(update.isOptimize());
         batch.setSave(update.isSave());
+        batch.setOriginalContent(update.getOriginalContent());
+        batch.setOriginalResourceName(update.getOriginalResourceName());
         return batch;
-    }
-    
-    private static String getSimpleName(String fqn) {
-        if (fqn == null || fqn.isBlank()) {
-            return "Unknown Member";
-        }
-        int paren = fqn.indexOf('(');
-        String namePart = paren == -1 ? fqn : fqn.substring(0, paren);
-        int lastDot = namePart.lastIndexOf('.');
-        return lastDot == -1 ? namePart : namePart.substring(lastDot + 1);
     }
 }

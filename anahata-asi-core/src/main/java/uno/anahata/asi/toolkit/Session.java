@@ -12,15 +12,11 @@ import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.agi.context.ContextManager;
 import uno.anahata.asi.agi.context.ContextProvider;
-import uno.anahata.asi.agi.message.AbstractMessage;
-import uno.anahata.asi.agi.message.AbstractPart;
-import uno.anahata.asi.agi.message.PruningState;
 import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.agi.tool.ToolPermission;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
-import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.tool.AgiToolkit;
 import uno.anahata.asi.agi.tool.AgiToolParam;
@@ -45,20 +41,39 @@ public class Session extends AnahataToolkit {
      * The time when the session started.
      */
     private Date sessionStart = new Date();
-    
+
     /**
      * The last time the session got deserialized.
      */
     private Date sessionRestored;
-    
+
     /**
      * Captures the sessionRestored time during deserialization;
      */
     @Override
     public void postActivate() {
         sessionRestored = new Date();
+        log.info("Session toolkit postActivate. sessionRestored timestamp: " + sessionRestored);
     }
-    
+
+    /**
+     * Updates the AGIs nickname.
+     *
+     * @param nickName the new nickname
+     * @return a confirmation message
+     */
+    @AgiTool(value = "Updates the current AGI nickname. This shows on the ASI container's dashboard. "
+            + "Only call this tool if a) the session doesn't have one (because it has just been created) or the topic has changed to the point that it is worth changing and the user hasn't updated the nickname manually on the UI to reflect this change. Keep it as short as possible. Two words or 20 characters max.",
+            permission = ToolPermission.PROMPT, maxDepth = 2)
+    public String updateSessionNickname(@AgiToolParam("A concise summary of the conversation's current state.") String nickName) {
+        uno.anahata.asi.agi.Agi domainAgi = getAgi();
+        if (nickName != null && !nickName.isBlank()) {
+            domainAgi.setNickname(nickName);
+        }
+        log.info("Session nickname updated: {}", nickName);
+        return "Session nickname updated successfully to " + nickName;
+    }
+
     /**
      * Updates the human-readable summary of the current session.
      * <p>
@@ -68,16 +83,17 @@ public class Session extends AnahataToolkit {
      * sole tool in a turn.
      * </p>
      * <p>
-     * The summary is visible to the user in the container dashboard and helps
-     * maintain continuity across session reloads.
+     * The summary is visible to the user in the container dashboard and the
+     * parent agi if spawned by another agi.
      * </p>
      *
      * @param summary A concise summary of the conversation's current state or
      * topic.
      * @return A confirmation message.
      */
-    @AgiTool(value = "Updates the current AGI session's summary. This shows the ASI container's dashboard, update it with a brief summary of what you are doing or what you have just accomplished. "
-            + "Usage: Call this if you are calling other real-task tools in the same batch, once per turn max, never as the only toll call in the turn.",
+    @AgiTool(value = "Updates the current AGI session summary / dasbhoard. This shows on the ASI container's dashboard. You can use it as the session's dashboard to reflect tasks in progress / tasks completed / tasks on hold, etc. "
+            + "Usage: If you have been created by another AGI, then you must update it in every turn as your 'parent agi' (the session that created this ssession) will see it on every turn."
+            + "If this session was manually created by the user, and the tool is in permission ALWAYS state and the user has 'auto-reply-tool-calls' enabled, you should only call this if you are calling other actual user task-related tools in the same batch, once per turn max",
             permission = ToolPermission.APPROVE_ALWAYS,
             maxDepth = 1)
     public String updateSessionSummary(@AgiToolParam("A concise summary of the conversation's current state.") String summary) {
@@ -102,7 +118,10 @@ public class Session extends AnahataToolkit {
      * @param providerIds The fully qualified IDs of the context providers to
      * update.
      */
-    @AgiTool(value = "Sets the 'providing' flag of various context providers. Use this to enable/disable context providers. Disabl")
+    @AgiTool(value = "Sets the 'providing' flag of various context providers by their context provider id. "
+            + "Use this to enable/disable any context providers. "
+            + " For toolkits, it refers to the instructions and the content they contribute to the rag message. Does not affect the availability of tools from a tool calling perspective. You could disable a toolkits context provider and still be able to call its tools. "
+            + " For resources, it can be used if you dont want to unload them fully. By changing a resource to providing=false, the resource will still be registered with the ResourceManager and you will still get the metadata of the resource (the header with the location, size, last modified, etc) but not the part with the content that follows the header (the View). Can be useful to juggle resources when context window usage demands it.")
     public void setContextProviderProviding(
             @AgiToolParam("Whether to enable or disable the providers.") boolean providing,
             @AgiToolParam("The IDs of the context providers to update.") List<String> providerIds) {
@@ -177,7 +196,6 @@ public class Session extends AnahataToolkit {
         return stoppedCount + " tool(s) have been signaled to stop.\n" + result;
     }
 
-
     /**
      * Switches the session to server-side tool mode.
      * <p>
@@ -188,9 +206,9 @@ public class Session extends AnahataToolkit {
      *
      * @return Confirmation message describing the impact.
      */
-    @AgiTool(value = "Disables local Java tools and enables hosted server tools (e.g., Google Search, Maps). "
-            + "CRITICAL: After calling this, you will lose access to all local tools until the user manually reenables them "
-            + "by clicking the Java icon in the toolbar. Use this only if you specifically need a server-side capability.")
+    @AgiTool(value = "Disables local Java tools (if enabled) and enables hosted server tools (e.g., Google Search, Maps, etc.). "
+            + "CRITICAL: After calling this, you will loose access to local tools until the user manually "
+            + "clicking the Java Tools icon in the toolbar. Use this only if you specifically need a server-side capability.")
     public String enableHostedTools() {
         getAgi().getConfig().setHostedToolsEnabled(true);
         return "Server tools have been enabled. Local tools are now disabled. "
@@ -215,12 +233,16 @@ public class Session extends AnahataToolkit {
         sb.append("## Current Session Metadata:\n");
         sb.append("- **Session ID**: ").append(config.getSessionId()).append("\n");
         sb.append("- **Start Time**: ").append(sessionStart).append("\n");
-        sb.append("- **Last Restore Time**: ").append(sessionRestored != null ? sessionRestored : " This session has not been deserialized").append(" (The last time the session was deserialized) \n");
+        sb.append("- **Last Restore Time**: ").append(sessionRestored != null ? sessionRestored : " This session has not yet been deserialized").append(" (The last time the session was deserialized) \n");
         sb.append("- **Nickname**: ").append(domainAgi.getNickname()).append("\n");
         sb.append("- **Display Name**: ").append(domainAgi.getDisplayName()).append("\n");
         sb.append("- **Summary**: ").append(domainAgi.getConversationSummary() != null ? domainAgi.getConversationSummary() : "N/A").append("\n");
         sb.append("- **Selected Model**: ").append(domainAgi.getSelectedModel() != null ? domainAgi.getSelectedModel().getModelId() : "None").append("\n");
         sb.append("- **Thinking Level**: ").append(domainAgi.getRequestConfig().getThinkingLevel()).append("\n");
+        sb.append("- **Auto-reply tools enabled**: ").append(config.isAutoReplyTools()).append(
+                config.isAutoReplyTools()
+                ? " (If all the tools you propose in a batch have ALWAYS permission, the tool calls will be automatically executed and the responses will be sent to you inmediatly without user intervention )"
+                : " (User has to click 'Run pending and send' for you to get the results.)");
         sb.append("- **Expand Thoughts**: ").append(config.isExpandThoughts()).append(config.isExpandThoughts() ? " (user's ui expands the thought parts with your reasoning when a new part arrives)" : "(**reasonig not showing**)\n");
         sb.append("- **Context Window Usage (Last turn)**: ").append(String.format("%.1f%%", domainAgi.getContextWindowUsage() * 100))
                 .append(" (").append(domainAgi.getLastTotalTokenCount()).append(" / ").append(config.getTokenThreshold()).append(" tokens)\n");
