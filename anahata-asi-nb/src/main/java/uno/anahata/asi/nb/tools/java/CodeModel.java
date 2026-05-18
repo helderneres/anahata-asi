@@ -13,6 +13,7 @@ import org.netbeans.api.java.classpath.ClassPath;
 import org.netbeans.api.java.classpath.GlobalPathRegistry;
 import org.netbeans.api.java.source.ClassIndex;
 import org.netbeans.api.java.source.ClasspathInfo;
+import org.netbeans.api.java.source.CompilationInfo;
 import org.netbeans.api.java.source.ElementHandle;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.SourceUtils;
@@ -43,16 +44,11 @@ public class CodeModel extends AnahataToolkit {
      */
     @Override
     public List<String> getSystemInstructions() throws Exception {
-        String instructions = "CodeModel Toolkit Instructions:\n" 
-                + "- **One Shot Methods (`loadXxxxByFqn` or `getXxxxByFqn`)**: If you already know or can work out the fully qualified name (FQN) of a type or member, you can use the `xxxByFqn` methods to skip the discovery turn.\n" 
-                + "- **Member FQNs**: \n" 
-                + "  - Fields: `package.Class.fieldName` \n" 
-                + "  - Methods: `package.Class.methodName(ParamType1,ParamType2,...)`. Parentheses '()' are MANDATORY, even for no-arg methods (e.g. 'method()'). Use canonical types (no generics/annotations).\n"
-                + "  - Constructors: `package.Class.<init>(ParamType1,...)` \n"
-                + "  - Initializers: `package.Class.<clinit>#n()` (static) or `package.Class.<init-block>#n()` (instance) where n is the 1-based index.\n"
-                + "  - Arrays: Use '[]' for array parameters (e.g. 'java.lang.String[]').\n"
-                + "- **Disambiguation**: If a `xxxxByFqn` method fails due to ambiguity, use `CodeModel.findTypes` or `getMembers` to get the explicit high-precision FQN.\n"
-                + "- **Hierarchy**: Use `getSubtypes` and `getSupertypes` to explore the inheritance tree.\n";
+        String instructions = JavaSourceUtils.CANONICAL_FQN_STANDARD + "\n"
+                + "CodeModel Toolkit Instructions:\n" 
+                + "- **One Shot Methods (`loadXxxxByFqn` or `getXxxxByFqn`)**: If you already know or can work out the FQN of a type or member, use these methods to skip discovery.\n" 
+                + "- **Disambiguation**: If a `xxxxByFqn` method fails, use `findTypes` or `getMembers` to get the explicit high-precision FQN.\n"
+                + "- **Hierarchy**: Use `getSubtypes` and `getSupertypes` to explore inheritance.\n";
         return Collections.singletonList(instructions);
     }
 
@@ -384,7 +380,7 @@ public class CodeModel extends AnahataToolkit {
      *
      * @return All classpaths of all open projects
      */
-    private static ClasspathInfo getGlobalClasspathInfo() {
+    public static ClasspathInfo getGlobalClasspathInfo() {
         Set<ClassPath> sourcePaths = GlobalPathRegistry.getDefault().getPaths(ClassPath.SOURCE);
         Set<ClassPath> compilePaths = GlobalPathRegistry.getDefault().getPaths(ClassPath.COMPILE);
         Set<ClassPath> bootPaths = GlobalPathRegistry.getDefault().getPaths(ClassPath.BOOT);
@@ -460,11 +456,25 @@ public class CodeModel extends AnahataToolkit {
             final String[] msg = new String[1];
             js.runUserActionTask(info -> {
                 info.toPhase(JavaSource.Phase.RESOLVED);
-                msg[0] = JavaSourceUtils.getMemberNotFoundMessage(info, memberFqn);
+                msg[0] = getMemberNotFoundMessage(info, memberFqn);
             }, true);
             throw new AgiToolException(msg[0]);
         }
         
         throw new AgiToolException("Member not found: " + memberFqn + " in type " + typeFqn);
     }
+
+    private static String getMemberNotFoundMessage(CompilationInfo info, String memberFqn) {
+        List<String> candidates = JavaSourceUtils.findMemberCandidates(info, memberFqn);
+        if (!candidates.isEmpty()) {
+            StringBuilder sb = new StringBuilder("Member not found: ").append(memberFqn);
+            sb.append("\nDid you mean one of these canonical identification FQNs?\n");
+            for (String c : candidates) {
+                sb.append("- ").append(c).append("\n");
+            }
+            return sb.toString();
+        }
+        return "Member not found: " + memberFqn;
+    }
+    
 }

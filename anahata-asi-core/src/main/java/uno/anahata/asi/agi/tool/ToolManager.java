@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.NonNull;
@@ -367,7 +366,7 @@ public class ToolManager extends BasicPropertyChangeSource implements ContextPro
                 toolkit.setEnabled(enabled);
                 log.info("{} toolkit: {}", enabled ? "Enabled" : "Disabled", name);
             } else {
-                log.warn("Toolkit not found: {}", name);
+                log.error("Toolkit not found: {}", name);
             }
         }
     }
@@ -414,7 +413,9 @@ public class ToolManager extends BasicPropertyChangeSource implements ContextPro
     @Override
     public List<String> getSystemInstructions() throws Exception {
         return Collections.singletonList("The ToolManager contains a list of all installed toolkits. Each Toolkit "
-                + "contains a list of tools (java methods).");
+                + "contains a list of tools (java methods). If a tool has a DENY_NEVER permission, don't call it. "
+                + "Any toolkit that extends AnahataToolkit (i.e. probably 100%) will also implement the ContextProvider interface."
+                + " If you disable a toolkit, you will also remove all the content contributed by the toolktis context provider from the RAG message and all (if any) child context providers of that toolkit recursively)");
     }
 
     /** {@inheritDoc} */
@@ -431,7 +432,7 @@ public class ToolManager extends BasicPropertyChangeSource implements ContextPro
             }
         }
         
-        sb.append("\n\n**Disabled Toolkits**: Currently disabled to save tokens or for permormance resoons or by user preferences, you can enable them yourself using Session.setToolkitEnabled or suggest the user to enable them if you think you need them.\n");
+        sb.append("\n\n**Disabled Toolkits**: Currently disabled (either because it is in beta, to save tokens, for permormance reasons or by user preferences). You can suggest the user to enable them or ask permission to enable them yourself using Session.setToolkitEnabled (if that tool is available to you).\n");
         for (AbstractToolkit<?> at: getDisabledToolkits()) {
             sb.append("\n\n**").append(at.getName()).append("**");
             sb.append("\n- ID: `").append(at.getName()).append("` ");

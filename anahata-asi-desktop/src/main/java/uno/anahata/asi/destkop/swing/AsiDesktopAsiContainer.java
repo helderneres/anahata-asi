@@ -3,7 +3,7 @@
  */
 package uno.anahata.asi.destkop.swing;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import lombok.Setter;
 import uno.anahata.asi.agi.Agi;
@@ -11,51 +11,73 @@ import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.gemini.GeminiAiProvider;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.provider.AbstractAiProvider;
+import uno.anahata.asi.gemini.vertex.GeminiGoogleCloudExpressAIProvider;
 import uno.anahata.asi.huggingface.HuggingFaceProvider;
-import uno.anahata.asi.openai.OpenAiCompatibleProvider;
 import uno.anahata.asi.openai.OpenAiProvider;
+import uno.anahata.asi.openai.compatible.OpenAiCompatibleProvider;
 import uno.anahata.asi.swing.AbstractSwingAsiContainer;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.resources.DefaultResourceUI;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 
 /**
- * A specialized {@link uno.anahata.asi.AbstractAsiContainer} for the standalone Swing application.
- * It manages the lifecycle of sessions within a standalone UI environment.
- * 
+ * A specialized {@link uno.anahata.asi.AbstractAsiContainer} for the standalone
+ * Swing application. It manages the lifecycle of sessions within a standalone
+ * UI environment.
+ *
  * @author anahata
  */
 @Slf4j
 public class AsiDesktopAsiContainer extends AbstractSwingAsiContainer {
-    
+
     static {
         log.info("Performing global Standalone environment configuration...");
         // Register the universal/standalone resource UI strategy
         ResourceUiRegistry.getInstance().setResourceUI(new DefaultResourceUI());
     }
 
-    /** Cache of UI panels for active sessions. */
-    private final Map<String, AgiPanel> agiPanels = new HashMap<>();
-    
-    /** Reference to the main UI panel for tab management. */
+    /**
+     * Cache of UI panels for active sessions.
+     */
+    private final Map<String, AgiPanel> agiPanels = new ConcurrentHashMap<>();
+
+    /**
+     * Reference to the main UI panel for tab management.
+     */
     @Setter
     private AsiDesktopMainPanel mainPanel;
-    
+
     /**
      * Constructs a new StandaloneAsiContainer.
      */
     public AsiDesktopAsiContainer() {
         super("AsiDesktop");
+
+        if (getProvider("MiniMaxOpenAI") == null) {
+            log.info("Registering Anahata");
+            registerProvider(new OpenAiCompatibleProvider(
+                    "MiniMaxOpenAI", "Minimax (OpenAI)", "https://api.minimax.io/v1", "Minimax (OpenAI)", "https://platform.minimax.io/user-center/basic-information/interface-key"));
+        }
         
         // Ensure Gemini is registered with stable UUID
-        AbstractAiProvider gemini = getProviderByClass(GeminiAiProvider.class);
-        if (gemini == null) {
-            registerProvider(new GeminiAiProvider());
-        } else if (!"Gemini".equals(gemini.getUuid())) {
-            log.info("Migrating legacy Gemini provider ({}) to stable ID", gemini.getUuid());
-            unregisterProvider(gemini.getUuid());
-            registerProvider(new GeminiAiProvider());
+        //AbstractAiProvider gemini = getProviderByClass(GeminiAiProvider.class);
+        if (getProvider("GeminiGCExpress") == null) {
+            registerProvider(new GeminiGoogleCloudExpressAIProvider());
         }
+
+        if (getProvider("Gemni") == null) {
+            registerProvider(new GeminiAiProvider("Gemini", "Gemini AI Studio", false));
+        }
+
+        if (getProvider("GeminiVertex") == null) {
+            registerProvider(new GeminiAiProvider("GeminiVertex", "Gemini Vertex AI", true));
+        }
+
+        if (getProvider("OpenAI") == null) {
+            log.info("Registering OpenAI");
+            registerProvider(new OpenAiProvider());
+        }
+
         /*
         if (getProvider("Z_1") == null) {
             registerProvider(new OpenAiCompatibleProvider(                    
@@ -66,29 +88,23 @@ public class AsiDesktopAsiContainer extends AbstractSwingAsiContainer {
             registerProvider(new OpenAiCompatibleProvider(                    
                     "Z_2", "Z Coding (OpenAI)", "https://api.z.ai/api/coding/paas/v4", "Z"));
         }
-        */
-        
+         */
         if (getProvider("Modal") == null) {
             log.info("Registering Modal");
             registerProvider(new uno.anahata.asi.modal.ModalProvider());
         }
-        
-        if (getProvider("OpenAI") == null) {
-            log.info("Registering OpenAI");
-            registerProvider(new OpenAiProvider());
-        }
-        
+
         if (getProvider("HuggingFace") == null) {
             log.info("Registering HF");
             registerProvider(new HuggingFaceProvider());
         }
-        
+
         if (getProvider("Anahata") == null) {
             log.info("Registering Anahata");
-            registerProvider(new OpenAiCompatibleProvider(                    
+            registerProvider(new OpenAiCompatibleProvider(
                     "Anahata", "Anahata (no SSL)", "http://a.anahata.uno:1234/v1", "Anahata", "https://discord.com/invite/gwGWWxPUXE"));
         }
-        
+
     }
 
     /**
@@ -108,8 +124,8 @@ public class AsiDesktopAsiContainer extends AbstractSwingAsiContainer {
     /**
      * {@inheritDoc}
      * <p>
-     * Implementation details: Delegates tab removal to the main UI panel when
-     * a session is closed.
+     * Implementation details: Delegates tab removal to the main UI panel when a
+     * session is closed.
      * </p>
      */
     @Override

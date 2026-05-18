@@ -6,6 +6,7 @@ import uno.anahata.asi.agi.resource.view.MediaView;
 import uno.anahata.asi.agi.resource.view.TextView;
 import uno.anahata.asi.agi.resource.handle.ResourceHandle;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -400,13 +401,12 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
     @Override
     public String getHeader() {
         StringBuilder sb = new StringBuilder("Resource: uuid=").append(uuid).append("\n");        
+        sb.append(handle.getHeader()).append("\n");
         sb.append("Name: ").append(getName()).append("\n");
         sb.append("Description: ").append(description).append("\n");
-        sb.append("Registration Time: ").append(TimeUtils.formatSmartTimestamp(java.time.Instant.ofEpochMilli(registrationTime))).append("\n");
+        sb.append("Registration Time: ").append(TimeUtils.formatSmartTimestamp(Instant.ofEpochMilli(registrationTime))).append("\n");
         sb.append("Refresh Policy: ").append(getRefreshPolicy()).append("\n");
         sb.append("Context Position: ").append(getContextPosition()).append("\n");
-
-        sb.append(handle.getHeader()).append("\n");
 
         if (view != null) {
             sb.append(view.getHeader()).append("\n");

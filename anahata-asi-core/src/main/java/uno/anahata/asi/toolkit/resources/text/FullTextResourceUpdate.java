@@ -46,7 +46,7 @@ public class FullTextResourceUpdate extends AbstractTextResourceWrite {
 
     /** {@inheritDoc} */
     @Override
-    public String calculateResultingContent(Agi agi) throws Exception {
+    protected String doCalculateResultingContent(Agi agi) throws Exception {
         if (originalContent == null) {
             throw new AgiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
         }
@@ -56,7 +56,10 @@ public class FullTextResourceUpdate extends AbstractTextResourceWrite {
     /** {@inheritDoc} */
     @Override
     public void validate(Agi agi) throws Exception {
-        super.validate(agi);
-        // Identical content check is now in parent validate()
+        validateStructuralState(agi);
+        if (newContent == null) {
+             throw new AgiToolException("New content cannot be null.");
+        }
+        validateIdenticalContent(agi);
     }
 }

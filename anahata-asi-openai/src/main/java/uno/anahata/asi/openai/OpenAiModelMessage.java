@@ -2,139 +2,269 @@
 package uno.anahata.asi.openai;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import lombok.AccessLevel;
+import java.util.stream.Collectors;
+import uno.anahata.asi.agi.message.web.GroundingMetadata;
+import uno.anahata.asi.agi.message.web.GroundingSource;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
-import uno.anahata.asi.agi.message.AbstractPart;
-import uno.anahata.asi.agi.message.ModelTextPart;
+import uno.anahata.asi.agi.message.ModelBlobPart;
+import uno.anahata.asi.agi.message.code.HostedCodeExecutionCallPart;
+import uno.anahata.asi.agi.message.code.HostedCodeExecutionResultPart;
+import uno.anahata.asi.agi.message.web.WebSearchCallPart;
+import uno.anahata.asi.agi.message.TextPart;
 import uno.anahata.asi.agi.provider.FinishReason;
+import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 
 /**
- * Base implementation for OpenAI-specific model messages.
- * Provides common logic for content accumulation, finish reason mapping,
- * and tool call handling across different OpenAI API versions.
+ * Specialized ModelMessage for the OpenAI Responses API.
+<p>Aggregates multiple items (messages, reasoning, function calls, web searches, and code execution) 
+from a single Responses API turn into a unified Anahata message.
+ * It handles complex multi-item
+merging and multimodal data harvesting.</p>
  * 
  * @author anahata
  */
 @Slf4j
-public abstract class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
+@Getter
+@Setter
+public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
 
-    private boolean insideReasoningTags = false;
+    private static final ObjectMapper API_MAPPER = new ObjectMapper();
+
+    /** Placeholder text used for reasoning items in stateless mode when no summary is available. */
+    public static final String ENCRYPTED_REASONING_PLACEHOLDER = "(Encrypted Reasoning Chain)";
+
+    /** The generation phase reported by the model (e.g., 'commentary', 'final_answer'). */
+    private String phase;
 
     public OpenAiModelMessage(Agi agi, String modelId) {
         super(agi, modelId);
     }
 
     /**
-     * Updates the message content and state from a JSON node (choice, item, or event).
+     * Processes a single item from the OpenAI 'output' array and maps it 
+     * to the appropriate Anahata parts.
+     * <p>This includes handling messages, reasoning chains, function calls, 
+     * web searches, and code interpreter executions.</p>
      * 
-     * @param node The JSON node to parse.
-     * @param reasoningStyle The strategy for extracting thoughts.
-     * @param reasoningFieldName The field name for reasoning content (if using FIELD style).
-     * @param reasoningTags The tags for reasoning content (if using TAGS style).
+     * @param item The JSON node representing an OpenAI item.
      */
-    public abstract void updateFromNode(JsonNode node, ReasoningStyle reasoningStyle, String reasoningFieldName, List<String> reasoningTags);
-    
-    /**
-     * Updates a single tool call from a JSON node.
-     * 
-     * @param callNode The JSON node containing the tool call (or delta).
-     */
-    public abstract void updateToolCall(JsonNode callNode);
-
-    /**
-     * Flushes any buffered tool calls (used during streaming).
-     * This ensures that partial tool call arguments are fully assembled and
-     * registered in the tool manager.
-     */
-    public abstract void flushToolCalls();
-
-    /**
-     * Sets the finish reason from a raw OpenAI string.
-     * 
-     * @param fr The raw finish reason string (e.g., "stop", "length").
-     */
-    public void setFinishReasonFromOpenAi(String fr) {
-        setFinishReason(mapFinishReason(fr));
-        if ("stop".equals(fr) || "tool_calls".equals(fr)) {
-            flushToolCalls();
+    @SneakyThrows
+    public void processItem(JsonNode item) {
+        String type = item.path("type").asText();
+        String id = item.path("id").asText(null);
+        
+        // 1. Map Status to FinishReason (updates as we process items)
+        String status = item.path("status").asText();
+        if ("completed".equals(status)) {
+            setFinishReason(FinishReason.STOP);
+        } else if ("incomplete".equals(status)) {
+            setFinishReason(FinishReason.MAX_TOKENS);
         }
-    }
 
-    private FinishReason mapFinishReason(String reason) {
-        if (reason == null) return FinishReason.OTHER;
-        return switch (reason) {
-            case "stop" -> FinishReason.STOP;
-            case "length" -> FinishReason.MAX_TOKENS;
-            case "tool_calls" -> FinishReason.STOP;
-            case "content_filter" -> FinishReason.SAFETY;
-            default -> FinishReason.OTHER;
-        };
-    }
-
-    /**
-     * Appends text to the main content part or creates a new one.
-     * 
-     * @param text The text to append.
-     */
-    public void appendContent(String text) {
-        List<AbstractPart> parts = getParts();
-        if (!parts.isEmpty() && parts.get(parts.size() - 1) instanceof ModelTextPart mtp && !mtp.isThought()) {
-            mtp.appendText(text);
-        } else {
-            addTextPart(text);
-        }
-    }
-
-    /**
-     * Appends text to the reasoning/thought part or creates a new one.
-     * 
-     * @param text The thought text to append.
-     */
-    public void appendThoughts(String text) {
-        List<AbstractPart> parts = getParts();
-        if (!parts.isEmpty() && parts.get(parts.size() - 1) instanceof ModelTextPart mtp && mtp.isThought()) {
-            mtp.appendText(text);
-        } else {
-            addTextPart(text, null, true);
-        }
-    }
-
-    /**
-     * Appends text while detecting and extracting reasoning content wrapped in tags.
-     * 
-     * @param text The text containing potential tags.
-     * @param startTag The opening tag (e.g., "<think>").
-     * @param endTag The closing tag (e.g., "</think>").
-     */
-    public void appendTaggedContent(String text, String startTag, String endTag) {
-        if (!insideReasoningTags && text.contains(startTag)) {
-            int idx = text.indexOf(startTag);
-            String before = text.substring(0, idx);
-            if (!before.isEmpty()) {
-                appendContent(before);
+        if ("message".equals(type)) {
+            setProviderId(id);
+            this.phase = item.path("phase").asText(null);
+            JsonNode content = item.get("content");
+            if (content != null && content.isArray()) {
+                for (JsonNode partNode : content) {
+                    String partType = partNode.path("type").asText();
+                    String text = partNode.path("text").asText();
+                    TextPart tp = null;
+                    if ("output_text".equals(partType)) {
+                        tp = addTextPart(text, null, false);
+                        // Harvesting Citations: Extract annotations and map to GroundingMetadata
+                        JsonNode annotations = partNode.get("annotations");
+                        if (annotations != null && annotations.isArray()) {
+                            processCitations(annotations);
+                        }
+                    } else if ("reasoning_content".equals(partType)) {
+                        tp = addTextPart(text, null, true);
+                    }
+                    if (tp != null) {
+                        tp.setProviderId(id);
+                    }
+                }
             }
-            insideReasoningTags = true;
-            appendTaggedContent(text.substring(idx + startTag.length()), startTag, endTag);
-        } else if (insideReasoningTags && text.contains(endTag)) {
-            int idx = text.indexOf(endTag);
-            String thoughts = text.substring(0, idx);
-            if (!thoughts.isEmpty()) {
-                appendThoughts(thoughts);
+        } else if ("reasoning".equals(type)) {
+            // Stateless Reasoning: Capture the signature even if text is hidden
+            String encrypted = item.path("encrypted_content").asText(null);
+            // Capture optional summary text
+            StringBuilder summaryText = new StringBuilder();
+            JsonNode summary = item.get("summary");
+            if (summary != null && summary.isArray()) {
+                for (JsonNode s : summary) {
+                    if ("summary_text".equals(s.path("type").asText())) {
+                        summaryText.append(s.path("text").asText()).append("\n");
+                    }
+                }
             }
-            insideReasoningTags = false;
-            appendTaggedContent(text.substring(idx + endTag.length()), startTag, endTag);
-        } else {
-            if (insideReasoningTags) {
-                appendThoughts(text);
-            } else {
-                appendContent(text);
+            if (encrypted != null) {
+                String label = summaryText.length() > 0 ? summaryText.toString().trim() : ENCRYPTED_REASONING_PLACEHOLDER;
+                // Store signature in a thought part.
+                TextPart tp = addTextPart(label, encrypted.getBytes(), true);
+                tp.setProviderId(id);
+            }
+        } else if ("function_call".equals(type)) {
+            String callId = item.path("call_id").asText();
+            String ns = item.path("namespace").asText(null);
+            String name = item.path("name").asText();
+            String argsJson = item.path("arguments").asText("{}");
+            // Reconstruct the Canonical FQN for Anahata tool lookup
+            String fullToolName = (ns != null && !ns.isEmpty()) ? ns + "." + name : name;
+            Map<String, Object> args = API_MAPPER.readValue(argsJson, Map.class);
+            AbstractToolCall<?, ?> tc = getAgi().getToolManager().createToolCall(this, callId, fullToolName, args);
+            if (tc != null) {
+                tc.setProviderId(id);
+            }
+        } else if ("web_search_call".equals(type)) {
+             JsonNode action = item.get("action");
+             List<String> queries = new ArrayList<>();
+             if (action.has("query")) {
+                 queries.add(action.get("query").asText());
+             }
+             if (action.has("queries") && action.get("queries").isArray()) {
+                 for (JsonNode q : action.get("queries")) {
+                     queries.add(q.asText());
+                 }
+             }
+             
+             // Responses API Harvesting: Map action sources and results to GroundingSources
+             List<GroundingSource> sources = new ArrayList<>();
+             JsonNode sourcesNode = action.path("sources");
+             if (sourcesNode.isArray()) {
+                 for (JsonNode s : sourcesNode) {
+                     String url = s.path("url").asText(null);
+                     if (url != null) {
+                         sources.add(GroundingSource.builder()
+                                 .uri(url)
+                                 .title(s.path("title").asText(url))
+                                 .build());
+                     }
+                 }
+             }
+             
+             JsonNode results = item.get("results");
+             if (results != null && results.isArray()) {
+                 for (JsonNode r : results) {
+                     String url = r.path("url").asText(null);
+                     if (url != null) {
+                         sources.add(GroundingSource.builder()
+                                 .uri(url)
+                                 .title(r.path("title").asText(url))
+                                 .build());
+                     }
+                 }
+             }
+             
+             if (!queries.isEmpty() || !sources.isEmpty()) {
+                 updateGroundingMetadata(queries, List.of(), sources, null, item.toString());
+             }
+
+             String displayText = String.format("Searching the web for: %s", queries);
+             WebSearchCallPart part = new WebSearchCallPart(this, displayText, queries, null);
+             part.setProviderId(id);
+        } else if ("code_interpreter_call".equals(type)) {
+             String code = item.path("code").asText("");
+             HostedCodeExecutionCallPart callPart = new HostedCodeExecutionCallPart(this, code, "python", null);
+             callPart.setProviderId(id);
+             
+             // Responses API: Outputs (logs, images) are nested in the call item
+             JsonNode outputs = item.get("outputs");
+             if (outputs != null && outputs.isArray()) {
+                 for (JsonNode out : outputs) {
+                     String outType = out.path("type").asText();
+                     if ("logs".equals(outType)) {
+                         HostedCodeExecutionResultPart resultPart = new HostedCodeExecutionResultPart(this, out.path("logs").asText(""), null);
+                         resultPart.setProviderId(id);
+                         resultPart.setParentCall(callPart);
+                     } else if ("image".equals(outType)) {
+                         String b64 = out.path("image").path("data").asText(null);
+                         if (b64 != null) {
+                             ModelBlobPart mbp = addBlobPart("image/png", java.util.Base64.getDecoder().decode(b64), null);
+                             mbp.setProviderId(id);
+                             mbp.setParentCall(callPart);
+                         }
+                     }
+                 }
+             }
+        }
+    }
+
+    private void processCitations(JsonNode annotations) {
+        List<GroundingSource> sources = new ArrayList<>();
+        for (JsonNode ann : annotations) {
+            String type = ann.path("type").asText();
+            if ("url_citation".equals(type)) {
+                sources.add(GroundingSource.builder()
+                        .title(ann.path("title").asText("Web Source"))
+                        .uri(ann.path("url").asText(""))
+                        .build());
+            } else if ("container_file_citation".equals(type)) {
+                sources.add(GroundingSource.builder()
+                        .title(ann.path("filename").asText("Generated File"))
+                        .uri("file-id://" + ann.path("file_id").asText(""))
+                        .build());
             }
         }
+        
+        if (!sources.isEmpty()) {
+            updateGroundingMetadata(List.of(), List.of(), sources, null, annotations.toString());
+        }
+    }
+
+    /**
+     * Aggregates new metadata components into the message's GroundingMetadata.
+     * <p>Ensures that citations, supporting texts, and search queries from multiple 
+     * items are correctly merged and deduped.</p>
+     * 
+     * @param queries Suggested search queries.
+     * @param texts Supporting text segments.
+     * @param sources Grounding sources (citations).
+     * @param html The search entry point HTML.
+     * @param rawJson The raw JSON from the provider.
+     */
+    private void updateGroundingMetadata(List<String> queries, List<String> texts, List<GroundingSource> sources, String html, String rawJson) {
+        GroundingMetadata existing = getGroundingMetadata();
+        
+        List<String> mergedQueries = new ArrayList<>(queries);
+        List<String> mergedTexts = new ArrayList<>(texts);
+        List<GroundingSource> mergedSources = new ArrayList<>(sources);
+        String mergedHtml = html;
+        String mergedRawJson = rawJson;
+
+        if (existing != null) {
+            // High Fidelity Merge: Preserve all existing metadata components
+            if (existing.getWebSearchQueries() != null) mergedQueries.addAll(existing.getWebSearchQueries());
+            if (existing.getSupportingTexts() != null) mergedTexts.addAll(existing.getSupportingTexts());
+            if (existing.getSources() != null) mergedSources.addAll(existing.getSources());
+            if (mergedHtml == null) mergedHtml = existing.getSearchEntryPointHtml();
+            if (mergedRawJson == null) mergedRawJson = existing.getRawJson();
+        }
+
+        // Distinct check to avoid duplicates in aggregate processing
+        mergedQueries = mergedQueries.stream().distinct().collect(Collectors.toList());
+        mergedTexts = mergedTexts.stream().distinct().collect(Collectors.toList());
+
+        setGroundingMetadata(new GroundingMetadata(mergedQueries, mergedTexts, mergedSources, mergedHtml, mergedRawJson));
+    }
+
+
+    @Override
+    public String getFrom() {
+        return getModelId();
+    }
+
+    @Override
+    public String getDevice() {
+        return "OpenAI-Cloud";
     }
 }

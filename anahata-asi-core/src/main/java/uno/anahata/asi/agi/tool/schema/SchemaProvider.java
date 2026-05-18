@@ -304,6 +304,10 @@ public class SchemaProvider {
         }
         
         postProcessAndEnrichSchemas(type, swaggerSchemas, discoveredTypes, polymorphismMap);
+        
+        // 3. Inject Discriminator Enums based on Jackson annotations
+        injectDiscriminatorEnums(swaggerSchemas, discoveredTypes);
+
         Schema rootSchema = createRootSchema(type, swaggerSchemas);
 
         // CRITICAL: Use INTERNAL_MAPPER to convert Swagger objects to Map, 
@@ -341,7 +345,9 @@ public class SchemaProvider {
 
         if (clazz.equals(String.class) || clazz.equals(Class.class)) {
             schemaMap.put("type", "string");
-        } else if (Number.class.isAssignableFrom(clazz) || clazz.isPrimitive() && (clazz.equals(int.class) || clazz.equals(long.class) || clazz.equals(float.class) || clazz.equals(double.class))) {
+        } else if (clazz.equals(Integer.class) || clazz.equals(int.class) || clazz.equals(Long.class) || clazz.equals(long.class)) {
+            schemaMap.put("type", "integer");
+        } else if (Number.class.isAssignableFrom(clazz) || (clazz.isPrimitive() && (clazz.equals(float.class) || clazz.equals(double.class)))) {
             schemaMap.put("type", "number");
         } else if (clazz.equals(Boolean.class) || clazz.equals(boolean.class)) {
             schemaMap.put("type", "boolean");
@@ -462,6 +468,40 @@ public class SchemaProvider {
                 rootSchema.setTitle(getTypeName(type));
             }
             return rootSchema;
+        }
+    }
+
+    /**
+     * Surgically injects 'enum' constraints into discriminator properties by 
+     * reading Jackson's @JsonSubTypes. This ensures the AI model knows the 
+     * exact string values required for polymorphic dispatch.
+     */
+    private static void injectDiscriminatorEnums(Map<String, Schema> allSchemas, Map<String, Type> discoveredTypes) {
+        for (Map.Entry<String, Type> entry : discoveredTypes.entrySet()) {
+            Class<?> clazz = getRawClass(entry.getValue());
+            if (clazz == null) continue;
+
+            JsonSubTypes subTypesAnno = clazz.getAnnotation(JsonSubTypes.class);
+            com.fasterxml.jackson.annotation.JsonTypeInfo typeInfoAnno = clazz.getAnnotation(com.fasterxml.jackson.annotation.JsonTypeInfo.class);
+
+            if (subTypesAnno != null && typeInfoAnno != null && typeInfoAnno.include() == com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY) {
+                String typePropertyName = typeInfoAnno.property();
+                Schema baseSchema = allSchemas.get(clazz.getSimpleName());
+                
+                if (baseSchema != null && baseSchema.getProperties() != null) {
+                    Schema typePropSchema = (Schema) baseSchema.getProperties().get(typePropertyName);
+                    if (typePropSchema != null) {
+                        List<String> validNames = Arrays.stream(subTypesAnno.value())
+                                .map(JsonSubTypes.Type::name)
+                                .collect(Collectors.toList());
+                        typePropSchema.setEnum(validNames);
+                        
+                        String desc = typePropSchema.getDescription();
+                        String enumHint = "Valid values: " + validNames.stream().map(n -> "`" + n + "`").collect(Collectors.joining(", "));
+                        typePropSchema.setDescription(desc == null ? enumHint : desc + "\n\n" + enumHint);
+                    }
+                }
+            }
         }
     }
 
@@ -593,6 +633,23 @@ public class SchemaProvider {
                     if (field != null) {
                         Schema propSchema = propEntry.getValue();
                         Type fieldType = field.getGenericType();
+
+                        // Manually capture 'required' status from @Schema annotation 
+                        // as ModelConverters might miss it due to Visibility settings.
+                        io.swagger.v3.oas.annotations.media.Schema fieldAnno = field.getAnnotation(io.swagger.v3.oas.annotations.media.Schema.class);
+                        if (fieldAnno != null) {
+                            boolean isReq = fieldAnno.required()
+                                    || fieldAnno.requiredMode() == io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
+                            if (isReq) {
+                                if (schema.getRequired() == null) {
+                                    schema.setRequired(new ArrayList<>());
+                                }
+                                if (!schema.getRequired().contains(propEntry.getKey())) {
+                                    schema.getRequired().add(propEntry.getKey());
+                                }
+                            }
+                        }
+
                         if (propSchema.get$ref() != null) {
                             String refName = propSchema.get$ref().substring(propSchema.get$ref().lastIndexOf('/') + 1);
                             addTitleToSchemaRecursive(allSchemas.get(refName), fieldType, allSchemas, discoveredTypes, visited);

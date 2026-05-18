@@ -1,4 +1,3 @@
-/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.toolkit.resources;
 
 import uno.anahata.asi.agi.resource.view.TextViewportSettings;
@@ -65,9 +64,7 @@ public class Resources extends AnahataToolkit {
                 + "3. **Updating resources**: All update resource tools flush the changes to disk inmediatly when `EXECUTED`.\n "
                 + "4. **Rag Message**: The Rag Message is the source of truth for resource modifications, it gets freshly generated when the user completes his turn (i.e. after all tools in the batch have been executed or declined). "
                 + "All resources registered with `LIVE` refresh policy are garanteed to be up to date (in sync) with the underlying storage.\n"
-                + "5. **totalOccurrences Mandatory Checksum**: You MUST provide the exact total number of matches for your `target` string in the current file. This ensures your context is in sync.\n"
-                + "6. **occurrenceIndexes Surgical targeting**: To replace specific instances of identical strings, provide a list of 1-based indices (e.g. `[1, 3]`). If null or empty, all occurrences are replaced.\n"
-                + "7. **Your risponsability**: You are risponsible for managing what resources are in context, if the user wants to switch task, it is your risponsability to unload resources from context as you load the ones for the next task. Don't leave dangling resources in context. A true ASI can hold infinite sessions without burning input tokens with resources that are not longer relevant."
+                + "5. **Your risponsability**: You are risponsible for managing what resources are in context, if the user wants to switch task, it is your risponsability to unload resources from context as you load the ones for the next task. Don't leave dangling resources in context. A true ASI can hold infinite sessions without burning input tokens with resources that are not longer relevant."
         /*+ "5. **Resources.editTextResource tool**: This is not a git style tool that requires surrounding anchor lines. It is a strict, surgical 1-based line number tool with optimistic locking validation for text resources loaded with includeLineNumbers=true."
                         + " The UI for this tool shows the user a rich graphical diff visualizer with the edits you intend to make to the text resource and overlays comic-style annotations with the reasons for your edits on the right hand side of the diff viewer. "
                         + "\n\tUse this tool **paying careful attention to the line numbers in the RAG message** and use it in a **user-oriented way** choosing the appropiate type of edit (insert / replace / delete) for each logical change you intend to make."
@@ -106,7 +103,7 @@ public class Resources extends AnahataToolkit {
     @AgiTool(value = "Loads multiple resources into the context by their URIs.", permission = ToolPermission.APPROVE_ALWAYS)
     public List<String> loadResources(
             @AgiToolParam("The full URIs of the resources.") List<String> uriStrings,
-            @AgiToolParam(value = "Initial viewport settings for text resources. If not provided, it uses the system default viewport (65K chars 1024 col width)", required = false) TextViewportSettings initialSettings) throws Exception {
+            @AgiToolParam(value = "Initial viewport settings for text resources. If not provided, it uses the system default viewport (0-65K chars, 1024 chars col width incluedLines=true)", required = false) TextViewportSettings initialSettings) throws Exception {
 
         List<Resource> toRegister = new ArrayList<>();
         List<String> ids = new ArrayList<>();
@@ -134,7 +131,7 @@ public class Resources extends AnahataToolkit {
             ids.add(resource.getId());
         }
 
-        manager.registerAll(toRegister, getActor());
+        manager.registerAll(toRegister, "Resource Loaded by " + getActor());
         return ids;
     }
 
@@ -201,10 +198,10 @@ public class Resources extends AnahataToolkit {
 
         ResourceHandle handle = getAgi().getConfig().createResourceHandle(path.toUri());
         Resource resource = new Resource(handle);
-        getAgi().getResourceManager().register(resource, getActor());
+        getAgi().getResourceManager().register(resource, "Text File Created by " + getActor());
 
         log("Created text file: " + create.getPath());
-        return resource.getId();
+        return "File created and resource registered with id " + resource.getId() + " lastModified=" + resource.getLastLoadTimestamp();
     }
 
     /**
@@ -214,14 +211,15 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if the update fails.
      */
-    @AgiTool(value = "Updates an existing text resource in the RAG message using full content replacement. Returns a standard unified diff of the changes applied. Do not quietly remove inline comments or javadocs when using this tool.", maxDepth = 4)
+    @AgiTool(value = "Updates an existing text resource in the RAG message using full content replacement. Returns a standard unified diff of the changes applied. Use only in emergency scenarios if findAndReaplceInTextResource can't do. If you do, Do not quietly remove inline comments or javadocs when using this tool.", maxDepth = 4)
     public String updateTextResource(@AgiToolParam("The update details.") FullTextResourceUpdate update) throws Exception {
         update.validate(getAgi());
         Resource res = getAgi().getResourceManager().getResources().get(update.getResourceUuid());
         String revised = update.calculateResultingContent(getAgi());
         res.write(revised);
+        update.setResultingContent(res.asText());
         log("Updated text file: " + res.getName());
-        return update.getUnifiedDiff(getAgi());
+        return update.getUnifiedDiff(getAgi()) + "\n---END OF DIFF---\nResource saved. New Last Modified: " + res.getLastLoadTimestamp();
     }
 
     /**
@@ -232,7 +230,7 @@ public class Resources extends AnahataToolkit {
      * @throws Exception if replacements fail.
      */
     @AgiTool("Performs surgical text replacements in a text resource. "
-            + "\n**1. Mandatory Checksum**: You MUST provide the exact `totalOccurrences` of the `target` string found in the file. If the count doesn't match, the tool fails (prevents working on stale context). "
+            + "\n**1. Mandatory Checksum**: You MUST provide the exact `totalOccurrences` of the `target` string found in the file to prove that you know how many occurrences are in the file. If you don't provide it, provide 0 or the provided value doesn't match, the tool will automatically get declined. "
             + "\n**2. Surgical Targeting**: Use `occurrenceIndexes` (a list of 1-based indices) to replace specific matches (e.g., [1, 3]). If the list is null or empty, ALL occurrences are replaced. "
             + "\n**3. Turn Sequencing**: On any given turn, you can only use this tool ONCE per resource. Batch multiple replacements into a single call. "
             + "\n**4. Validation**: Requires `resourceUuid` and the latest `lastModified` timestamp from the RAG message.")
@@ -241,8 +239,9 @@ public class Resources extends AnahataToolkit {
         Resource res = getAgi().getResourceManager().getResources().get(replacements.getResourceUuid());
         String revised = replacements.calculateResultingContent(getAgi());
         res.write(revised);
+        replacements.setResultingContent(res.asText());
         log("Performed replacements in: " + res.getName());
-        return replacements.getUnifiedDiff(getAgi());
+        return replacements.getUnifiedDiff(getAgi()) + "\n---END OF DIFF---\nResource saved. New Last Modified: " + res.getLastLoadTimestamp();
     }
 
     /**
@@ -257,7 +256,8 @@ public class Resources extends AnahataToolkit {
      * @return A standard unified diff of the changes applied.
      * @throws Exception if application fails.
      */
-//    @AgiTool(value = "An ultra-precise, surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled.\n\n "
+//    
+//    @AgiTool(value = "An ultra-precise, surgical text resource editor for text resources in the RAG message with 'includeLineNumbers' enabled that no LLM on this day and age can use properly.\n\n "
 //            + "Targets absolute 1-based line numbers from the RAG message using semantic intent (Insert, Replace, Delete). "
 //            + "You must target the static line numbers of the RAG message, **don't calculate line shifts manually** for a batch of edits, the tool does this."
 //            + "\n**Vertification**: is based on **otpimistic locking** with the **lastModified** timestamp in the RAG message and  "
@@ -268,7 +268,6 @@ public class Resources extends AnahataToolkit {
 //            + "\n\n"
 //            + "All line numbers you use when calling this tool must correspond to the exact line numbers in the text resource in the RAG message, all changes are performed based on the line numbers of the resource in the RAG message, the tool handles index shifting automatically.\n\n"
 //            + "\n\n**UI**:Your intended edits are presented to the user in a graphical diff viewer where the user reviews your proposed changes and sees the lines that have changed highlighted along with comic-style bubbles (annotations) with your comments / resons on the right hand side of the diff (the tool already works out the line numbers where the annotations on the right hand side of the diff are ment to be shown). "
-//            //+ "Always make sure that each edit (regardless of wether it is an LineInsertion, a LineReplacement or a LineDeletion correspond to a single 'intent' that the user is going to review. "
 //            + "\nWhen adding Javadoc or comments, always use LineInsertion unless you are explicitly correcting an existing (and poorly formatted) comment. Replacing a line with 'itself plus more' is a common source of coordinate errors."
 //            + "\n\n**Tip**: Before submitting, always check the content of startLine - 1 and endLine + 1 in the RAG message to ensure you are not creating redundant syntax (e.g., double brackets, double javadoc markers, or broken indentation).",
 //            permission = ToolPermission.DENY)
@@ -278,7 +277,8 @@ public class Resources extends AnahataToolkit {
         Resource res = getAgi().getResourceManager().getResources().get(edits.getResourceUuid());
         String revised = edits.calculateResultingContent(getAgi());
         res.write(revised);
+        edits.setResultingContent(res.asText());
         log("Applied semantic line edits to: " + res.getName());
-        return edits.getUnifiedDiff(getAgi());
+        return edits.getUnifiedDiff(getAgi()) + "\n---END OF DIFF---\nResource saved. New Last Modified: " + res.getLastLoadTimestamp();
     }
 }

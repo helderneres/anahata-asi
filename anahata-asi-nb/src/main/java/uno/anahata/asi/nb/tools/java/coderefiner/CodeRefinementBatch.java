@@ -1,35 +1,38 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.tools.java.coderefiner;
 
-import com.sun.source.tree.*;
-import com.sun.source.util.SourcePositions;
-import com.sun.source.util.TreePath;
-import io.swagger.v3.oas.annotations.media.Schema;
-import java.io.OutputStream;
-import java.util.*;
-import java.util.stream.Collectors;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.netbeans.api.java.source.*;
+import org.netbeans.api.java.source.ClasspathInfo;
+import com.sun.source.tree.*;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.io.OutputStream;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.tool.AgiToolException;
+import uno.anahata.asi.agi.tool.spi.java.JavaMethodToolResponse;
+import uno.anahata.asi.nb.tools.java.BatchCodeRefiner;
 import uno.anahata.asi.nb.tools.java.JavaSourceUtils;
-import uno.anahata.asi.nb.tools.java.JavaSourceUtils.RelativePosition;
 import uno.anahata.asi.toolkit.resources.text.AbstractTextResourceWrite;
+import uno.anahata.asi.toolkit.resources.text.LineComment;
+import java.util.Collections;
 
 /**
- * A container for a batch of structural Java refinement operations.
+ * Version 2.0 of the refinement batch, using the flattened
+ * {@link CodeRefinementIntent}.
  * <p>
- * This class orchestrates multiple {@link CodeRefinementIntent}s targeted at a
- * single source file. It extends {@link AbstractTextResourceWrite} to leverage
- * the platform's high-fidelity diff rendering and resource-locking mechanisms.
+ * This class is designed to be indestructible for LLMs that struggle with
+ * polymorphic JSON schemas, providing a linear, stable list of structural
+ * intents.
  * </p>
  *
  * @author anahata
@@ -38,13 +41,10 @@ import uno.anahata.asi.toolkit.resources.text.AbstractTextResourceWrite;
 @Slf4j
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@Schema(description = "A batch of structural AST modifications for a single Java file.")
+@Schema(description = "A robust, agent-friendly batch of structural AST modifications for a single Java file.")
 public class CodeRefinementBatch extends AbstractTextResourceWrite {
 
-    @Schema(description = "A manual override of the resulting content. If provided, AST intents are ignored.")
-    private String manualOverride;
-
-    @Schema(description = "The list of structural changes to apply, in order.", required = true)
+    @Schema(description = "The linear list of structural changes to apply.", required = true)
     private List<CodeRefinementIntent> intents = new ArrayList<>();
 
     @Schema(description = "Whether to optimize imports after applying all changes. Defaults to true.")
@@ -54,76 +54,125 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
     private boolean save = true;
 
     /**
+     * Pre-calculated line comments for UI annotations, mapped during content
+     * calculation.
+     */
+    @JsonIgnore
+    @Schema(hidden = true)
+    private List<LineComment> calculatedComments = new ArrayList<>();
+
+    /**
      * {@inheritDoc}
-     * <p>
-     * Calculates the resulting source code by simulating the AST modifications
-     * defined in the batch. This is used by the UI to show a unified
-     * side-by-side diff before execution.</p>
      */
     @Override
-    public String calculateResultingContent(Agi agi) throws Exception {
-        if (agi == null) {
-            throw new AgiToolException("agi is required");
+    protected String doCalculateResultingContent(Agi agi) throws Exception {
+        if (originalContent == null) {
+            captureOriginalContent(agi);
         }
 
-        // 1. Authoritative state capture (if not already done by validate)
-        if (originalContent == null) {
-             captureOriginalContent(agi);
-        }
-        
         uno.anahata.asi.agi.resource.Resource res = agi.getResourceManager().get(resourceUuid);
         if (res == null) {
-            throw new AgiToolException("no resource found for uuid " + resourceUuid);
+            throw new AgiToolException("Resource not found for uuid: " + resourceUuid);
         }
-        
+
         if (!(res.getHandle() instanceof uno.anahata.asi.nb.resources.handle.NbHandle nbh)) {
-            throw new AgiToolException("Resource handle is not a NbHandle " + res.getHandle());
+            throw new AgiToolException("Resource handle is not an IDE-capable NbHandle.");
         }
 
-        FileObject realFo = nbh.getFileObject();
-        log.info("Calculating resulting content for: {}", realFo);
+        FileObject originalFo = nbh.getFileObject();
+        log.info("[V2-SINGULARITY] Replaying multi-stage simulation on: {}", originalFo.getNameExt());
 
-        // 2. Perform sequential AST replay directly on the real FileObject
-        JavaSource js = JavaSource.forFileObject(realFo);
-        ModificationResult mRes = js.runModificationTask(wc -> {
+        // 1. Capture original ClasspathInfo (the "DNA" of the project)
+        ClasspathInfo cpInfo = ClasspathInfo.create(originalFo);
+
+        // 2. Create a "Simulation File" in memory with the current production content
+        FileObject simFo = FileUtil.createMemoryFileSystem().getRoot().createData("Simulation", "java");
+        try (OutputStream os = simFo.getOutputStream()) {
+            os.write(originalFo.asBytes());
+        }
+
+        // 3. Reconnaissance Pass: Resolve coordinates on the REAL file first.
+        // This captures the "Type DNA" and stable indices while the project CP is active.
+        JavaSource originalJs = JavaSource.forFileObject(originalFo);
+        final Exception[] resolveError = new Exception[1];
+        originalJs.runUserActionTask(wc -> {
+            try {
+                wc.toPhase(JavaSource.Phase.RESOLVED);
+                for (CodeRefinementIntent intent : intents) {
+                    intent.resolve(wc);
+                }
+            } catch (Exception e) {
+                resolveError[0] = e;
+            }
+        }, true);
+        if (resolveError[0] != null) {
+            throw resolveError[0];
+        }
+
+        // 4. Create Classpath-Aware JavaSource for simulation
+        JavaSource simJs = JavaSource.create(cpInfo, simFo);
+
+        // --- STAGE 1: Clearance Pass ---
+        simJs.runModificationTask(wc -> {
             wc.toPhase(JavaSource.Phase.RESOLVED);
-            applyTo(wc);
+            applyTo(wc, true, cpInfo);
+        }).commit();
+
+        // --- STAGE 2: Reconstruction Pass ---
+        final List<LineComment> mapping = new ArrayList<>();
+        ModificationResult mRes = simJs.runModificationTask(wc -> {
+            wc.toPhase(JavaSource.Phase.RESOLVED);
+            applyTo(wc, false, cpInfo);
+
+            // --- Coordinate Reconnaissance Pass ---
+            for (CodeRefinementIntent intent : intents) {
+                String resultingFqn = intent.getResultingMemberFqn();
+                if (resultingFqn != null && intent.getReason() != null && !intent.getReason().isBlank()) {
+                    Tree found = JavaSourceUtils.findTree(wc, resultingFqn);
+                    if (found != null) {
+                        long pos = wc.getTrees().getSourcePositions().getStartPosition(wc.getCompilationUnit(), found);
+                        long line = wc.getCompilationUnit().getLineMap().getLineNumber(pos);
+                        mapping.add(new LineComment((int) line, intent.getReason()));
+                    }
+                }
+            }
         });
 
-        // 3. Extract the resulting source string
-        String ret = mRes.getResultingSource(realFo);
+        this.calculatedComments = mapping;
+        String ret = mRes.getResultingSource(simFo);
         return ret;
     }
 
     /**
-     * Authoritatively applies all intents in this batch to the provided working
-     * copy using a single-shot atomic rewrite strategy.
+     * Authoritatively applies the batch to the provided working copy.
      *
-     * @param wc The working copy to modify.
-     * @throws Exception if any intent application fails.
+     * @param wc The working copy.
+     * @param clearance If true, only deletes targets. If false, only
+     * inserts/updates replacements.
      */
-    public void applyTo(WorkingCopy wc) throws Exception {
-        log.info("[V3-STRATEGY] Starting batch application. Intents: {}", intents.size());
-        
-        // Accumulate changes by parent type to ensure atomic rewrites
+    public void applyTo(WorkingCopy wc, boolean clearance, ClasspathInfo cpInfo) throws Exception {
+        log.info("[V2-STRATEGY] Starting application of {} intents (Clearance={}).", intents.size(), clearance);
         Map<Tree, List<Tree>> modifiedMembers = new LinkedHashMap<>();
 
-        for (CodeRefinementIntent intent : intents) {
-            log.info("Processing intent: {}", intent.getClass().getSimpleName());
-            intent.apply(wc, modifiedMembers, optimize);
+        // Sort intents to prevent index-shift corruption during simulation passes.
+        List<CodeRefinementIntent> sortedIntents = new ArrayList<>(intents);
+        if (clearance) {
+            // Sort by resolved index descending: remove from bottom-to-top so indices remain stable.
+            sortedIntents.sort((a, b) -> Integer.compare(b.getResolvedIndex(), a.getResolvedIndex()));
         }
 
-        // Perform single-shot atomic rewrites for each modified container
+        for (CodeRefinementIntent intent : sortedIntents) {
+            intent.apply(wc, modifiedMembers, optimize, clearance, cpInfo);
+        }
+
         TreeMaker make = wc.getTreeMaker();
         for (Map.Entry<Tree, List<Tree>> entry : modifiedMembers.entrySet()) {
             Tree parent = entry.getKey();
             List<Tree> members = entry.getValue();
 
             if (parent instanceof ClassTree ct) {
-                log.info("Commiting rewrite for ClassTree: {} (Members: {})", ct.getSimpleName(), members.size());
-                wc.rewrite(ct, rebuildClassTree(make, ct, members));
+                wc.rewrite(ct, BatchCodeRefiner.rebuildClassTree(make, ct, members));
             } else if (parent instanceof CompilationUnitTree cut) {
-                log.info("Commiting rewrite for CompilationUnitTree");
                 CompilationUnitTree updated = make.CompilationUnit(cut.getPackage(), cut.getImports(), (List<? extends Tree>) members, cut.getSourceFile());
                 wc.rewrite(cut, updated);
             }
@@ -131,191 +180,23 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
     }
 
     /**
-     * Internal utility to find a member in the working copy context.
-     * 
-     * @param wc WorkingCopy
-     * @param memberFqn Member FQN
-     * @return The leaf Tree node or null.
-     */
-    public static Tree findMemberInWorkingCopy(WorkingCopy wc, String memberFqn) {
-        Tree found = JavaSourceUtils.findTree(wc, memberFqn);
-        if (found == null) {
-            return null;
-        }
-        TreePath path = TreePath.getPath(wc.getCompilationUnit(), found);
-        return path != null ? path.getLeaf() : null;
-    }
-
-    /**
-     * Internal utility to find the index of a specific tree node within a list 
-     * of members based on source positions.
-     */
-    public static int findMemberIndex(WorkingCopy wc, List<? extends Tree> members, Tree target) {
-        if (wc == null || members == null || target == null) {
-            return -1;
-        }
-        SourcePositions sp = wc.getTrees().getSourcePositions();
-        CompilationUnitTree cut = wc.getCompilationUnit();
-        long targetStart = sp.getStartPosition(cut, target);
-        for (int i = 0; i < members.size(); i++) {
-            if (sp.getStartPosition(cut, members.get(i)) == targetStart) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Internal utility to parse a member declaration and optional body.
-     */
-    public static Tree parseMember(WorkingCopy wc, String declaration, String body) throws Exception {
-        if (declaration == null || declaration.isBlank()) {
-            throw new AgiToolException("Member declaration cannot be null or empty.");
-        }
-        String decl = declaration.trim();
-        boolean isStandaloneType = decl.startsWith("record ") || decl.contains(" record ") || decl.startsWith("class ") || decl.contains(" class ") || decl.startsWith("interface ") || decl.contains(" interface ") || decl.startsWith("enum ") || decl.contains(" enum ");
-        if (!decl.endsWith(";") && !decl.endsWith("}")) {
-            if (decl.contains("(") || isStandaloneType) {
-                String b = (body == null) ? "{}" : (body.trim().startsWith("{") ? body : "{" + body + "}");
-                decl += " " + b;
-            } else {
-                decl += ";";
-            }
-        }
-        final String finalDecl = decl;
-        String dummyClassName = isStandaloneType ? "DummyType" : "__Dummy";
-        FileObject tempFo = FileUtil.createMemoryFileSystem().getRoot().createData(dummyClassName, "java");
-        String dummyCode = isStandaloneType ? finalDecl : "class " + dummyClassName + " { " + finalDecl + " }";
-        try (OutputStream os = tempFo.getOutputStream()) {
-            os.write(dummyCode.getBytes());
-        }
-        JavaSource js = JavaSource.forFileObject(tempFo);
-        final Tree[] result = new Tree[1];
-        js.runUserActionTask(innerWc -> {
-            innerWc.toPhase(JavaSource.Phase.PARSED);
-            CompilationUnitTree cut = innerWc.getCompilationUnit();
-            if (!cut.getTypeDecls().isEmpty()) {
-                Tree t = null;
-                if (isStandaloneType) {
-                    t = cut.getTypeDecls().get(0);
-                } else {
-                    ClassTree ct = (ClassTree) cut.getTypeDecls().get(0);
-                    for (Tree member : ct.getMembers()) {
-                        if (member instanceof MethodTree mt && mt.getName().contentEquals("<init>") && !finalDecl.contains("<init>")) {
-                            if (ct.getMembers().size() > 1) {
-                                continue;
-                            }
-                        }
-                        t = member;
-                        break;
-                    }
-                }
-                if (t != null) {
-                    result[0] = wc.getTreeMaker().asNew(t);
-                }
-            }
-        }, true);
-        return result[0];
-    }
-
-    /**
-     * Resolves the insertion index relative to anchors.
-     */
-    public static int getInsertIndex(WorkingCopy wc, List<? extends Tree> members, RelativePosition position, String anchor) throws AgiToolException {
-        int anchorIdx = anchor != null ? JavaSourceUtils.findMemberIndex(wc, members, anchor) : -1;
-        if (anchor != null && anchorIdx == -1) {
-            throw new AgiToolException("Anchor member not found: " + anchor);
-        }
-        return switch (position) {
-            case START -> 0;
-            case END -> members.size();
-            case BEFORE -> anchorIdx;
-            case AFTER -> anchorIdx + 1;
-        };
-    }
-
-    /**
-     * Rebuilds a ClassTree container with a new list of members.
-     */
-    public static ClassTree rebuildClassTree(TreeMaker make, ClassTree ct, List<Tree> members) {
-        return switch (ct.getKind()) {
-            case INTERFACE ->
-                make.Interface(ct.getModifiers(), ct.getSimpleName(), ct.getTypeParameters(), (List<ExpressionTree>) (List<?>) ct.getImplementsClause(), (List<ExpressionTree>) (List<?>) ct.getPermitsClause(), members);
-            case ENUM ->
-                make.Enum(ct.getModifiers(), ct.getSimpleName(), (List<ExpressionTree>) (List<?>) ct.getImplementsClause(), members);
-            case ANNOTATION_TYPE ->
-                make.AnnotationType(ct.getModifiers(), ct.getSimpleName(), members);
-            case RECORD ->
-                // NOTE: NetBeans TreeMaker lacks make.Record. Using Class with bit 61 is the current workaround.
-                make.Class(ct.getModifiers(), ct.getSimpleName(), ct.getTypeParameters(), null, (List<ExpressionTree>) (List<?>) ct.getImplementsClause(), (List<ExpressionTree>) (List<?>) ct.getPermitsClause(), members);
-            default ->
-                make.Class(ct.getModifiers(), ct.getSimpleName(), ct.getTypeParameters(), ct.getExtendsClause(), (List<ExpressionTree>) (List<?>) ct.getImplementsClause(), (List<ExpressionTree>) (List<?>) ct.getPermitsClause(), members);
-        };
-    }
-
-    /**
-     * Clones a tree node into the current WorkingCopy context.
-     */
-    public static Tree cloneTree(TreeMaker make, Tree tree) {
-        if (tree instanceof ClassTree ct) {
-            return rebuildClassTree(make, ct, new ArrayList<>(ct.getMembers()));
-        } else if (tree instanceof MethodTree mt) {
-            return make.Method(mt.getModifiers(), mt.getName(), mt.getReturnType(), mt.getTypeParameters(), mt.getParameters(), mt.getThrows(), mt.getBody(), (AnnotationTree) mt.getDefaultValue());
-        } else if (tree instanceof VariableTree vt) {
-            return make.Variable(vt.getModifiers(), vt.getName(), vt.getType(), vt.getInitializer());
-        }
-        return tree;
-    }
-
-    /**
-     * Throws a detailed exception if a member is not found, providing candidate suggestions.
-     */
-    public static void throwMemberNotFound(WorkingCopy wc, String memberFqn) throws AgiToolException {
-        int paren = memberFqn.indexOf("(");
-        String namePart = paren != -1 ? memberFqn.substring(0, paren) : memberFqn;
-        int lastSeparator = Math.max(namePart.lastIndexOf("."), namePart.lastIndexOf("$"));
-        if (lastSeparator == -1) {
-            throw new AgiToolException("Member not found: " + memberFqn);
-        }
-
-        String parentFqn = namePart.substring(0, lastSeparator);
-        String name = namePart.substring(lastSeparator + 1);
-        TypeElement parent = wc.getElements().getTypeElement(parentFqn);
-        if (parent == null) {
-            throw new AgiToolException("Member not found: " + memberFqn + " (Parent class not found: " + parentFqn + ")");
-        }
-
-        List<String> candidates = new ArrayList<>();
-        for (Element e : parent.getEnclosedElements()) {
-            if (e.getSimpleName().contentEquals(name)) {
-                if (e instanceof ExecutableElement ee) {
-                    String params = ee.getParameters().stream()
-                            .map(p -> p.asType().toString().replaceAll("<.*>", ""))
-                            .collect(Collectors.joining(","));
-                    candidates.add(parentFqn + "." + (e.getKind() == javax.lang.model.element.ElementKind.CONSTRUCTOR ? "<init>" : name) + "(" + params + ")");
-                } else {
-                    candidates.add(parentFqn + "." + name);
-                }
-            }
-        }
-        StringBuilder sb = new StringBuilder("Member not found: ").append(memberFqn);
-        if (!candidates.isEmpty()) {
-            sb.append("\nDid you mean one of these canonical FQNs?\n");
-            candidates.forEach(c -> sb.append("- ").append(c).append("\n"));
-        }
-        throw new AgiToolException(sb.toString());
-    }
-
-    /**
      * {@inheritDoc}
-     * <p>
-     * Validates that the resource is in context and is a valid Java source.</p>
      */
     @Override
     public void validate(Agi agi) throws Exception {
         super.validate(agi);
+        if (resourceUuid == null) {
+            throw new AgiToolException("Resource uuid not provided");
+        }
+        captureOriginalContent(agi);
+
         if (intents == null || intents.isEmpty()) {
             throw new AgiToolException("Refinement batch must contain at least one intent.");
+        }
+
+        // Manual implementation of identity validation
+        if (java.util.Objects.equals(originalContent, calculateResultingContent(agi))) {
+            throw new AgiToolException("Update rejected: The resulting content is identical to the current file content on disk.");
         }
     }
 }

@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.tool.AgiToolException;
+import uno.anahata.asi.internal.TextUtils;
 
 /**
  * Represents a set of text replacement operations for a specific file. Extends
@@ -45,7 +46,7 @@ public class TextResourceReplacements extends AbstractTextResourceWrite {
 
     /** {@inheritDoc} */
     @Override
-    public String calculateResultingContent(Agi agi) throws Exception {
+    protected String doCalculateResultingContent(Agi agi) throws Exception {
         if (originalContent == null) {
             throw new AgiToolException("Logic Error: calculateResultingContent called before captureOriginalContent");
         }
@@ -58,10 +59,13 @@ public class TextResourceReplacements extends AbstractTextResourceWrite {
                 continue;
             }
 
-            // Create a regex that is lenient with whitespace and line endings
-            String regex = Stream.of(target.split("\\R", -1))
-                    .map(line -> "[ \\t]*" + Pattern.quote(line.trim()) + "[ \\t]*")
-                    .collect(Collectors.joining("\\R"));
+            // Normalize target to LF for regex building
+            String targetLF = target.replace("\r\n", "\n").replace("\r", "\n");
+
+            // Create a regex that matches the exact text but is lenient ONLY with line endings (\r\n vs \n)
+            String regex = Stream.of(targetLF.split("\\n", -1))
+                    .map(Pattern::quote)
+                    .collect(Collectors.joining("\\r?\\n"));
 
             Pattern pattern = Pattern.compile(regex);
             Matcher matcher = pattern.matcher(newContent);
@@ -88,16 +92,17 @@ public class TextResourceReplacements extends AbstractTextResourceWrite {
     /** {@inheritDoc} */
     @Override
     public void validate(Agi agi) throws Exception {
-        // Capture original content before subclass validation
-        captureOriginalContent(agi);
+        // 1. Authoritative state capture and locking check
+        validateStructuralState(agi);
 
         if (replacements == null || replacements.isEmpty()) {
              throw new AgiToolException("No replacements provided.");
         }
 
         String normalizedOriginal = normalizeForComparison(originalContent);
-
+        
         for (TextReplacement replacement : replacements) {
+            int replacementIndex = replacements.indexOf(replacement);
             String target = replacement.getTarget();
             if (target == null || target.isEmpty()) {
                 throw new AgiToolException("Replacement target cannot be null or empty.");
@@ -110,27 +115,36 @@ public class TextResourceReplacements extends AbstractTextResourceWrite {
             List<Integer> indexes = replacement.getOccurrenceIndexes();
             
             if (count != expected) {
-                throw new AgiToolException("Surgical Checksum Failed for target [" + target.substring(0, Math.min(20, target.length())) + "...]. "
+                throw new AgiToolException("Surgical Checksum Failed for replacement #"  + replacementIndex 
+                        + " \n-target: [" + StringUtils.abbreviateMiddle(target, "...", 108) + "...]. " 
+                        + " \n-replacement: [" + StringUtils.abbreviateMiddle(target, "...", 108) + "...]. " 
+                        + " \n-reason:" + replacement.getReason()
+                        + " \n-occurrendeIdexes:" + replacement.getOccurrenceIndexes()
                         + "Your 'totalOccurrences' was " + expected + " but I found " + count + " matches in the file. "
-                        + "Please re-read the file and verify the match count before retrying.");
+                        + "You have to provide the exact number of 'totalOccurences' in the file for each replacement.");
             }
 
             if (indexes != null) {
                 for (Integer idx : indexes) {
                     if (idx > count || idx <= 0) {
-                        throw new AgiToolException("Surgical Range Error: Requested occurrence index " + idx + " but only " + count + " occurrences found.");
+                        throw new AgiToolException("Surgical Checksum Failed for replacement #"  + replacementIndex 
+                        + " \n-target: [" + StringUtils.abbreviateMiddle(target, "...", 108) + "...]. " 
+                        + " \n-replacement: [" + StringUtils.abbreviateMiddle(target, "...", 108) + "...]. " 
+                        + " \n-reason:" + replacement.getReason()
+                        + " \n-occurrendeIdexes:" + replacement.getOccurrenceIndexes()
+                        + "\nSurgical Range Error: Requested occurrence index " + idx + " but only " + count + " occurrences found.");
                     }
                 }
             }
         }
         
-        // Finally call super.validate to check lastModified and perform identical check
-        super.validate(agi);
+        // 3. Final check for identical content
+        validateIdenticalContent(agi);
     }
 
     /**
-     * Normalizes a string for "semantic" comparison by standardizing line 
-     * endings and removing leading and trailing whitespace from all lines.
+     * Normalizes a string for comparison by standardizing line endings to LF.
+     * Whitespace is preserved exactly to prevent silent destruction of indentation.
      * 
      * @param s The string to normalize.
      * @return The normalized string.
@@ -139,11 +153,7 @@ public class TextResourceReplacements extends AbstractTextResourceWrite {
         if (s == null) {
             return null;
         }
-        // 1. Standardize line endings to LF
-        String result = s.replace("\r\n", "\n").replace("\r", "\n");
-        // 2. Remove leading and trailing whitespace from each line
-        return Stream.of(result.split("\\R", -1))
-                .map(String::trim)
-                .collect(Collectors.joining("\n"));
+        // Standardize line endings to LF
+        return s.replace("\r\n", "\n").replace("\r", "\n");
     }
 }

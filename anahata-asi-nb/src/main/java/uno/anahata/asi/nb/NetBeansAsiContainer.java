@@ -10,9 +10,10 @@ import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
-import uno.anahata.asi.agi.provider.AbstractAiProvider;
 import uno.anahata.asi.gemini.GeminiAiProvider;
 import uno.anahata.asi.nb.annotation.AnahataAnnotationProvider;
+import uno.anahata.asi.nb.tools.java.coderefiner.CodeRefinementBatch;
+import uno.anahata.asi.nb.ui.render.CodeRefinementBatchRenderer;
 import uno.anahata.asi.nb.ui.render.FullTextResourceUpdateRenderer;
 import uno.anahata.asi.nb.ui.render.TextResourceReplacementsRenderer;
 import uno.anahata.asi.nb.ui.render.TextResourceLineEditsRenderer;
@@ -22,9 +23,7 @@ import uno.anahata.asi.swing.AbstractSwingAsiContainer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
-import uno.anahata.asi.huggingface.HuggingFaceProvider;
-import uno.anahata.asi.modal.ModalProvider;
-import uno.anahata.asi.openai.OpenAiCompatibleProvider;
+import uno.anahata.asi.gemini.vertex.GeminiGoogleCloudExpressAIProvider;
 import uno.anahata.asi.openai.OpenAiProvider;
 import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
@@ -50,6 +49,8 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
         ParameterRendererFactory.register(FullTextResourceUpdate.class, FullTextResourceUpdateRenderer.class);        
         ParameterRendererFactory.register(TextResourceReplacements.class, TextResourceReplacementsRenderer.class);
         ParameterRendererFactory.register(TextResourceLineEdits.class, TextResourceLineEditsRenderer.class);
+        //ParameterRendererFactory.register(CodeRefinementBatchPolymorphic.class, CodeRefinementBatchRendererPolymorphic.class);
+        ParameterRendererFactory.register(CodeRefinementBatch.class, CodeRefinementBatchRenderer.class);
         
         // 2. Register the ElementHandle module for global JSON support in the IDE
         SchemaProvider.OBJECT_MAPPER.registerModule(new ElementHandleModule());
@@ -69,32 +70,35 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
     public NetBeansAsiContainer() {
         super("netbeans");
         
-        // Ensure Gemini is registered with stable UUID
-        AbstractAiProvider gemini = getProviderByClass(GeminiAiProvider.class);
-        if (gemini == null) {
-            registerProvider(new GeminiAiProvider());
-        } else if (!"Gemini".equals(gemini.getUuid())) {
-            log.info("Migrating legacy Gemini provider ({}) to stable ID", gemini.getUuid());
-            unregisterProvider(gemini.getUuid());
-            gemini.setUuid("Gemini");
-            gemini.setFolderName("Gemini");
-            registerProvider(gemini);
+        //AbstractAiProvider gemini = getProviderByClass(GeminiAiProvider.class);
+        if (getProvider("Gemini") == null) {
+            registerProvider(new GeminiAiProvider("Gemini", "Gemini", false));
         }
-        if (getProvider("Modal") == null) {
-            log.info("Registering Modal");
-            registerProvider(new ModalProvider());
+        
+        if (getProvider("GeminiEnterprise") == null) {
+            registerProvider(new GeminiAiProvider("GeminiEnterprise", "Gemini Enterprise", true));
         }
-
+        
+        if (getProvider("GeminiGCExpress") == null) {
+            registerProvider(new GeminiGoogleCloudExpressAIProvider());
+        }
+        
         if (getProvider("OpenAI") == null) {
             log.info("Registering OpenAI");
             registerProvider(new OpenAiProvider());
         }
-
+        
+        /*
+        if (getProvider("Modal") == null) {
+            log.info("Registering Modal");
+            registerProvider(new ModalProvider());
+        }
         
         if (getProvider("HuggingFace") == null) {
             log.info("Registering HF");
             registerProvider(new HuggingFaceProvider());
         }
+        */
         /*
         if (getProvider("Anahata") == null) {
             log.info("Registering Anahata");
@@ -116,20 +120,20 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
 
     @Override
     protected void focusUI(Agi agi) {
-        AgiTopComponent atc = findTopComponent(agi);
-        if (atc == null) {
-            atc = new AgiTopComponent(agi);
-        }
-        atc.open();
-        atc.requestActive();
+            AgiTopComponent atc = findTopComponent(agi);
+            if (atc == null) {
+                atc = new AgiTopComponent(agi);
+            }
+            atc.open();
+            atc.requestActive();
     }
 
     @Override
     protected void closeUI(Agi agi) {
-        AgiTopComponent atc = findTopComponent(agi);
-        if (atc != null) {
-            atc.close();
-        }
+            AgiTopComponent atc = findTopComponent(agi);
+            if (atc != null) {
+                atc.close();
+            }
     }
 
     @Override

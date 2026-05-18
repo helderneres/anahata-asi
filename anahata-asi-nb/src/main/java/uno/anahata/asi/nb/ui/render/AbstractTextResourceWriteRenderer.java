@@ -284,7 +284,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
             return false;
         }
         
-        log.info("pre flight validation for resource uuid {} {}", update.getResourceUuid(), update);
+        log.debug("pre flight validation for resource uuid {} {}", update.getResourceUuid(), update);
 
         // 1. Validation check
         if (!validatePreFlight()) {
@@ -302,6 +302,16 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         try {
             boolean isPending = status == ToolExecutionStatus.PENDING;
             boolean isExecuted = status == ToolExecutionStatus.EXECUTED;
+
+            // Ensure original content is captured if missing
+            // Crucial: Only capture from disk if the tool is PENDING to avoid grabbing the "After" state as "Original".
+            if (update.getOriginalContent() == null && isPending) {
+                try {
+                    update.captureOriginalContent(agiPanel.getAgi());
+                } catch (Exception e) {
+                    log.warn("Failed to capture historical baseline: {}", e.getMessage());
+                }
+            }
 
             String baseContent = update.getOriginalContent();
             String proposedContent;
@@ -550,7 +560,7 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         panel.add(topRow, BorderLayout.NORTH);
         
         // --- SURGICAL DASHBOARD (Split Layout) ---
-        JPanel dashboard = new JPanel(new MigLayout("fillx, insets 0 15 5 10", "[grow][grow]", "[]"));
+        JPanel dashboard = new JPanel(new MigLayout("fillx, insets 0 15 5 10","[grow, left][]", "[]"));
         dashboard.setOpaque(false);
 
         // 1. Left: Surgical Intent Panel
@@ -566,14 +576,14 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
         if (comments != null && !comments.isEmpty()) {
             StringBuilder sb = new StringBuilder("<html><div style='text-align: right;'>");
             for (LineComment lc : comments) {
-                sb.append("<i style='color: #888888; font-size: 9pt;'>Proposed Line ").append(lc.getLineNumber()).append(":</i> ")
-                  .append("<span style='color: #666666; font-size: 9pt;'>").append(lc.getComment()).append("</span><br>");
+sb.append("<i style='color: #888888; font-size: 10pt;'>Line ").append(lc.getLineNumber()).append(":</i> ")
+                  .append("<span style='color: #666666; font-size: 10pt;'>").append(lc.getComment()).append("</span><br>");
             }
             sb.append("</div></html>");
             
             JLabel commentsLabel = new JLabel(sb.toString());
             commentsLabel.setVerticalAlignment(JLabel.TOP);
-            dashboard.add(commentsLabel, "growx, aligny top, alignx right");
+dashboard.add(commentsLabel, "aligny top, alignx right");
         }
         
         if (dashboard.getComponentCount() > 0) {
@@ -602,11 +612,13 @@ public abstract class AbstractTextResourceWriteRenderer<T extends AbstractTextRe
 
     /**
      * Configures the textual tab by using the JEditorPane's reported preferred size.
+     * 
      * This method also disables internal vertical scrollbars to let the conversation
      * handle the vertical flow.
-     * 
+     * @deprecated NetBeans doesnwont report the correct height.
      * @return The preferred height, or -1 if components are missing.
      */
+    @Deprecated
     private int configureTextualTabWithEditorPrefHeight() {
         if (tabs == null || tabs.getTabCount() < 2) return -1;
         Component textualTab = tabs.getComponentAt(1);

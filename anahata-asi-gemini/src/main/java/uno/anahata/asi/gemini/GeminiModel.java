@@ -117,7 +117,7 @@ public class GeminiModel extends AbstractModel {
 
     @Override
     public int getMaxOutputTokens() {
-        return getGenaiModel().outputTokenLimit().orElse(0);
+        return getGenaiModel().outputTokenLimit().orElse(8192);
     }
 
     @Override
@@ -195,12 +195,12 @@ public class GeminiModel extends AbstractModel {
     public List<ServerTool> getAvailableServerTools() {
         List<ServerTool> tools = new ArrayList<>();
         tools.add(new ServerTool(GoogleSearch.class, "Google Search", "Search the web using Google."));
-        tools.add(new ServerTool(GoogleSearchRetrieval.class, "Google Search Retrieval", "Specialized retrieval tool powered by Google Search."));
+        //tools.add(new ServerTool(GoogleSearchRetrieval.class, "Google Search Retrieval", "Specialized retrieval tool powered by Google Search."));
         tools.add(new ServerTool(ToolCodeExecution.class, "Code Execution", "Enables the model to execute Python code as part of generation."));
-        tools.add(new ServerTool(GoogleMaps.class, "Google Maps", "Tool to support Google Maps in Model."));
-        tools.add(new ServerTool(EnterpriseWebSearch.class, "Enterprise Web Search", "Search the web using Enterprise Search."));
-        tools.add(new ServerTool(FileSearch.class, "File Search", "Search through uploaded files."));
-        tools.add(new ServerTool(ComputerUse.class, "Computer Use", "Enables the model to interact with a computer."));
+        //tools.add(new ServerTool(GoogleMaps.class, "Google Maps", "Tool to support Google Maps in Model."));
+        //tools.add(new ServerTool(EnterpriseWebSearch.class, "Enterprise Web Search", "Search the web using Enterprise Search."));
+        //tools.add(new ServerTool(FileSearch.class, "File Search", "Search through uploaded files."));
+        //tools.add(new ServerTool(ComputerUse.class, "Computer Use", "Enables the model to interact with a computer."));
         return tools;
     }
 
@@ -208,7 +208,7 @@ public class GeminiModel extends AbstractModel {
     public List<ServerTool> getDefaultServerTools() {
         return getAvailableServerTools().stream()
                 .filter(st -> st.getId().equals(GoogleSearch.class))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()); 
     }
 
     @Override
@@ -234,10 +234,11 @@ public class GeminiModel extends AbstractModel {
         RequestConfig config = request.config();
         List<AbstractMessage> history = request.history();
         boolean includePruned = config.isIncludePruned();
+        String currentProviderUuid = getProvider().getUuid();
 
         // 1-to-N Mapping: A single turn-holding ModelMessage expands into multiple API contents.
         List<Content> googleHistory = history.stream()
-                .map(msg -> new GeminiContentAdapter(msg, includePruned).toGoogle())
+                .map(msg -> new GeminiContentAdapter(msg, includePruned, currentProviderUuid).toGoogle())
                 .flatMap(List::stream)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(ArrayList::new));

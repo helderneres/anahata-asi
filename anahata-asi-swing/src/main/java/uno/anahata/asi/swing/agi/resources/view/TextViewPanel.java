@@ -1,8 +1,13 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.agi.resources.view;
 
+import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.GridBagConstraints;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -19,54 +24,86 @@ import uno.anahata.asi.swing.internal.SwingTask;
 /**
  * A specialized metadata panel for the {@link TextView}.
  * <p>
- * This panel provides integrated controls for the text viewport, including 
- * tailing, grep patterns, and line numbers. It reactively updates the 
- * model and triggers reloads when settings change.
+ * This panel provides integrated controls for the text viewport, including
+ * tailing, grep patterns, and line numbers. It reactively updates the model and
+ * triggers reloads when settings change.
  * </p>
- * 
+ *
  * @author anahata
  */
 @Slf4j
 public class TextViewPanel extends AbstractViewPanel<TextView> {
 
-    /** Toggle for enabling/disabling the tailing behavior (following the end of the file). */
+    /**
+     * Toggle for enabling/disabling the tailing behavior (following the end of
+     * the file).
+     */
     private final JCheckBox tailCheck;
-    /** Spinner to configure the number of lines to tail. */
+    /**
+     * Spinner to configure the number of lines to tail.
+     */
     private final JSpinner tailLinesSpinner;
-    /** Spinner for start character offset. */
+    /**
+     * Spinner for start character offset.
+     */
     private final JSpinner fromSpinner;
-    /** Spinner for page size. */
+    /**
+     * Spinner for page size.
+     */
     private final JSpinner sizeSpinner;
-    /** Field for entering a regex pattern to filter lines (grep). */
+    /**
+     * Field for entering a regex pattern to filter lines (grep).
+     */
     private final JTextField grepField;
-    /** Toggle for showing/hiding line numbers in the viewport. */
+    /**
+     * Toggle for showing/hiding line numbers in the viewport.
+     */
     private final JCheckBox lineNumbersCheck;
-    /** Label displaying real-time token metrics. */
+    /**
+     * Spinner to configure the maximum column width before wrapping/truncation.
+     */
+    private final JSpinner colWidthSpinner;
+    /**
+     * Label displaying real-time token metrics.
+     */
     private final JLabel tokenLabel;
+    /**
+     * Button to expand viewport to full resource size.
+     */
+    private final JButton expandButton;
+    /**
+     * Label displaying the viewport summary toString.
+     */
+    private final JLabel summaryLabel;
 
-    /** Guard flag to prevent feedback loops during UI synchronization. */
+    /**
+     * Guard flag to prevent feedback loops during UI synchronization.
+     */
     private boolean syncing = false;
 
     /**
      * Constructs a new TextViewPanel with integrated viewport controls.
+     *
      * @param agiPanel The parent session panel.
      */
     public TextViewPanel(AgiPanel agiPanel) {
         super(agiPanel);
+        setLayout(new BorderLayout());
         tailLinesSpinner = new JSpinner(new SpinnerNumberModel(100, 1, 10000, 50));
         tailLinesSpinner.setPreferredSize(new Dimension(70, 22));
         tailLinesSpinner.addChangeListener(e -> updateViewportSettings());
         tailLinesSpinner.setEnabled(false);
 
-        fromSpinner = new JSpinner(new SpinnerNumberModel(0L, 0L, Long.MAX_VALUE, 1024L));
-        fromSpinner.setPreferredSize(new Dimension(100, 22));
+        fromSpinner = new JSpinner(new SpinnerNumberModel(0, 0, Integer.MAX_VALUE, 4096));
+        fromSpinner.setPreferredSize(new Dimension(80, 22));
         fromSpinner.addChangeListener(e -> updateViewportSettings());
 
-        sizeSpinner = new JSpinner(new SpinnerNumberModel(65536, 1, 1024 * 1024, 4096));
-        sizeSpinner.setPreferredSize(new Dimension(80, 22));
+        sizeSpinner = new JSpinner(new SpinnerNumberModel(65536, 1, Integer.MAX_VALUE, 4096));
+        sizeSpinner.setPreferredSize(new Dimension(100, 22));
         sizeSpinner.addChangeListener(e -> updateViewportSettings());
 
-        tailCheck = new JCheckBox("Tail");
+        tailCheck = new JCheckBox("Tail (Follow end of resource)");
+        tailCheck.setOpaque(false);
         tailCheck.addActionListener(e -> {
             boolean tailing = tailCheck.isSelected();
             tailLinesSpinner.setEnabled(tailing);
@@ -75,50 +112,94 @@ public class TextViewPanel extends AbstractViewPanel<TextView> {
             updateViewportSettings();
         });
         grepField = new JTextField();
-        grepField.setPreferredSize(new Dimension(120, 22));
+        grepField.setPreferredSize(new Dimension(200, 22));
         grepField.getDocument().addDocumentListener(new AnyChangeDocumentListener(this::updateViewportSettings));
 
-        lineNumbersCheck = new JCheckBox("Line Numbers");
+        lineNumbersCheck = new JCheckBox("Inject Line Numbers");
+        lineNumbersCheck.setOpaque(false);
         lineNumbersCheck.addActionListener(e -> updateViewportSettings());
 
+        colWidthSpinner = new JSpinner(new SpinnerNumberModel(1024, 10, Integer.MAX_VALUE, 100));
+        colWidthSpinner.setPreferredSize(new Dimension(80, 22));
+        colWidthSpinner.addChangeListener(e -> updateViewportSettings());
+
         tokenLabel = new JLabel("Tokens: N/A");
+        summaryLabel = new JLabel("");
+        summaryLabel.setFont(summaryLabel.getFont().deriveFont(Font.ITALIC));
 
-        // Layout Assembly: Triple-row configuration for professional viewport management
-        JPanel controls = new JPanel(new java.awt.GridBagLayout());
+        expandButton = new JButton("Expand to fit full resource");
+        expandButton.addActionListener(e -> {
+            if (view != null) {
+                view.getViewport().expandToFit();
+                new SwingTask<Void>(agiPanel, "Refresh Viewport", () -> {
+                    view.getOwner().reloadIfNeeded();
+                    return null;
+                }, done -> refresh()).start();
+            }
+        });
+
+        // Layout Assembly: Vertical stack of rows
+        JPanel controls = new JPanel();
+        controls.setLayout(new BoxLayout(controls, BoxLayout.Y_AXIS));
         controls.setOpaque(false);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new java.awt.Insets(2, 0, 2, 8);
 
-        // Row 1: Pagination (Mutual exclusive with Tail)
-        gbc.gridy = 0; 
-        gbc.gridx = 0; controls.add(new JLabel("From:"), gbc);
-        gbc.gridx = 1; controls.add(fromSpinner, gbc);
-        gbc.gridx = 2; controls.add(new JLabel("Size:"), gbc);
-        gbc.gridx = 3; controls.add(sizeSpinner, gbc);
+        // Row 1: Metrics
+        JPanel metricsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        metricsRow.setOpaque(false);
+        metricsRow.add(tokenLabel);
+        controls.add(metricsRow);
 
-        // Row 2: Live Tailing
-        gbc.gridy = 1; 
-        gbc.gridx = 0; controls.add(tailCheck, gbc);
-        gbc.gridx = 1; controls.add(new JLabel("Lines:"), gbc);
-        gbc.gridx = 2; controls.add(tailLinesSpinner, gbc);
+        // Row 2: Pagination & Expand
+        JPanel paginationRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        paginationRow.setOpaque(false);
+        paginationRow.add(new JLabel("From (Char):"));
+        paginationRow.add(fromSpinner);
+        paginationRow.add(Box.createHorizontalStrut(10));
+        paginationRow.add(new JLabel("Size (Chars):"));
+        paginationRow.add(sizeSpinner);
+        paginationRow.add(Box.createHorizontalStrut(10));
+        paginationRow.add(expandButton);
+        controls.add(paginationRow);
 
-        // Row 3: Filtering & Display
-        gbc.gridy = 2; 
-        gbc.gridx = 0; controls.add(new JLabel("Grep pattern:"), gbc);
-        gbc.gridx = 1; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.HORIZONTAL;
-        controls.add(grepField, gbc);
-        gbc.gridx = 3; gbc.gridwidth = 1; gbc.fill = GridBagConstraints.NONE;
-        controls.add(lineNumbersCheck, gbc);
+        // Row 3: Line Numbers & Col Width
+        JPanel displayRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        displayRow.setOpaque(false);
+        displayRow.add(lineNumbersCheck);
+        displayRow.add(Box.createHorizontalStrut(10));
+        displayRow.add(new JLabel("Max Col Width:"));
+        displayRow.add(colWidthSpinner);
+        controls.add(displayRow);
 
-        addProperty("Viewport:", controls);
-        addProperty("Metrics:", tokenLabel);
+        // Row 4: Tailing
+        JPanel tailRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        tailRow.setOpaque(false);
+        tailRow.add(tailCheck);
+        tailRow.add(Box.createHorizontalStrut(10));
+        tailRow.add(new JLabel("Tailing Lines:"));
+        tailRow.add(tailLinesSpinner);
+        controls.add(tailRow);
+
+        // Row 5: Grep filtering
+        JPanel grepRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        grepRow.setOpaque(false);
+        grepRow.add(new JLabel("Grep pattern (Regex):"));
+        grepRow.add(grepField);
+        controls.add(grepRow);
+
+        // Row 6: Summary (Bottom)
+        JPanel footerRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        footerRow.setOpaque(false);
+        footerRow.add(summaryLabel);
+        controls.add(footerRow);
+
+        add(controls, BorderLayout.NORTH);
     }
 
-    /** 
-     * {@inheritDoc} 
-     * <p>Implementation details: Synchronizes the viewport controls with 
-     * the current TextView state and estimated token count.</p>
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Implementation details: Synchronizes the viewport controls with the
+     * current TextView state and estimated token count.</p>
      */
     @Override
     public void refresh() {
@@ -139,17 +220,21 @@ public class TextViewPanel extends AbstractViewPanel<TextView> {
             sizeSpinner.setEnabled(!tailing);
             grepField.setText(settings.getGrepPattern());
             lineNumbersCheck.setSelected(settings.isIncludeLineNumbers());
-            
-            int tokens = view.getTokenCount();
-            tokenLabel.setText("Estimated Tokens: " + tokens);
+            colWidthSpinner.setValue(settings.getColumnWidth());
+
+            tokenLabel.setText("Estimated Tokens: " + view.getTokenCount());
+            summaryLabel.setText(view.getViewport().toString());
+
+            // Enabled if content is cut off
+            expandButton.setEnabled(settings.getPageSizeInChars() < view.getViewport().getTotalChars() || settings.getStartChar() > 0);
         } finally {
             this.syncing = false;
         }
     }
 
     /**
-     * Authoritatively updates the underlying viewport settings and 
-     * triggers a background reload of the resource.
+     * Authoritatively updates the underlying viewport settings and triggers a
+     * background reload of the resource.
      */
     private void updateViewportSettings() {
         if (syncing || view == null) {
@@ -158,16 +243,16 @@ public class TextViewPanel extends AbstractViewPanel<TextView> {
 
         TextViewportSettings settings = view.getViewport().getSettings();
         settings.setTail(tailCheck.isSelected());
-        settings.setTailLines((Integer) tailLinesSpinner.getValue());
-        settings.setStartChar((Long) fromSpinner.getValue());
-        settings.setPageSizeInChars((Integer) sizeSpinner.getValue());
+        settings.setTailLines(((Number) tailLinesSpinner.getValue()).intValue());
+        settings.setStartChar(((Number) fromSpinner.getValue()).intValue());
+        settings.setPageSizeInChars(((Number) sizeSpinner.getValue()).intValue());
         settings.setGrepPattern(grepField.getText());
         settings.setIncludeLineNumbers(lineNumbersCheck.isSelected());
+        settings.setColumnWidth(((Number) colWidthSpinner.getValue()).intValue());
 
-        view.markDirty();
-        
         // Trigger background reload for immediate feedback in tabs
         new SwingTask<Void>(agiPanel, "Refresh Viewport", () -> {
+            view.markDirty();
             view.getOwner().reloadIfNeeded();
             return null;
         }).start();

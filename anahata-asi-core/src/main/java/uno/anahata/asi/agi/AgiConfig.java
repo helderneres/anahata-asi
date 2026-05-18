@@ -22,7 +22,7 @@ import uno.anahata.asi.toolkit.AsiContainer;
 import uno.anahata.asi.toolkit.Audio;
 import uno.anahata.asi.toolkit.History;
 import uno.anahata.asi.toolkit.Session;
-import uno.anahata.asi.toolkit.Java;
+import uno.anahata.asi.toolkit.java.Java;
 import uno.anahata.asi.toolkit.shell.Shell;
 
 /**
@@ -155,6 +155,10 @@ public class AgiConfig extends BasicPropertyChangeSource {
      * If true, thought parts are initially expanded in the UI.
      */
     private boolean expandThoughts = false;
+    /**
+     * Preference for expanding tool calls in the UI.
+     */
+    private ExpandToolsPreference expandTools = ExpandToolsPreference.NONE;
 
     /**
      * The maximum number of times to retry an API call on failure.
@@ -197,6 +201,16 @@ public class AgiConfig extends BasicPropertyChangeSource {
      * The default maximum depth a TextPart should be kept in context.
      */
     private int defaultTextPartMaxDepth = 108;
+
+    /**
+     * The default maximum depth a model code execution part should be kept in context.
+     */
+    private int defaultModelCodeExecutionMaxDepth = 8;
+
+    /**
+     * The default maximum depth a web search call part should be kept in context.
+     */
+    private int defaultWebSearchMaxDepth = 8;
 
     //</editor-fold>
     /**
@@ -241,6 +255,14 @@ public class AgiConfig extends BasicPropertyChangeSource {
         if (old != includeThoughts) {
             this.includeThoughts = includeThoughts;
             propertyChangeSupport.firePropertyChange("includeThoughts", old, includeThoughts);
+        }
+    }
+
+    public void setExpandTools(ExpandToolsPreference expandTools) {
+        ExpandToolsPreference old = this.expandTools;
+        if (old != expandTools) {
+            this.expandTools = expandTools;
+            propertyChangeSupport.firePropertyChange("expandTools", old, expandTools);
         }
     }
 
@@ -313,6 +335,22 @@ public class AgiConfig extends BasicPropertyChangeSource {
         if (old != defaultThoughtPartMaxDepth) {
             this.defaultThoughtPartMaxDepth = defaultThoughtPartMaxDepth;
             propertyChangeSupport.firePropertyChange("defaultThoughtPartMaxDepth", old, defaultThoughtPartMaxDepth);
+        }
+    }
+
+    public void setDefaultModelCodeExecutionMaxDepth(int defaultModelCodeExecutionMaxDepth) {
+        int old = this.defaultModelCodeExecutionMaxDepth;
+        if (old != defaultModelCodeExecutionMaxDepth) {
+            this.defaultModelCodeExecutionMaxDepth = defaultModelCodeExecutionMaxDepth;
+            propertyChangeSupport.firePropertyChange("defaultModelCodeExecutionMaxDepth", old, defaultModelCodeExecutionMaxDepth);
+        }
+    }
+
+    public void setDefaultWebSearchMaxDepth(int defaultWebSearchMaxDepth) {
+        int old = this.defaultWebSearchMaxDepth;
+        if (old != defaultWebSearchMaxDepth) {
+            this.defaultWebSearchMaxDepth = defaultWebSearchMaxDepth;
+            propertyChangeSupport.firePropertyChange("defaultWebSearchMaxDepth", old, defaultWebSearchMaxDepth);
         }
     }
 

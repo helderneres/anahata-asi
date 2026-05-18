@@ -216,6 +216,7 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         
         // Add expand/collapse logic to the response titled panel header
         if (responseTitledPanel.getComponentCount() > 0) {
+            responseTitledPanel.getComponent(0).setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
             responseTitledPanel.getComponent(0).addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
@@ -264,9 +265,9 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         });
 
         declineButton = new JButton("Decline", new CancelIcon(16));
-        declineButton.setToolTipText("Set status to FAILED");
+        declineButton.setToolTipText("Set status to DECLINED and collapses the tool call");
         declineButton.addActionListener(e -> {
-            getPart().getResponse().fail("Rejected by user");
+            getPart().getResponse().decline();
             getPart().setExpanded(false);
         });
                 ;

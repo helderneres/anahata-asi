@@ -55,6 +55,9 @@ public final class RequestConfigAdapter {
 
         GenerateContentConfig.Builder builder = GenerateContentConfig.builder();
         
+        builder.shouldReturnHttpResponse(false);
+        builder.clearHttpOptions();
+        
         if (!requestConfig.getSystemInstructions().isEmpty()) {
             List<Part> parts = new ArrayList<>();
             for (String si : requestConfig.getSystemInstructions()) {
@@ -116,7 +119,7 @@ public final class RequestConfigAdapter {
             List<FunctionDeclaration> declarations = new ArrayList<>();
             
             boolean useNativeSchemas = requestConfig.isUseNativeSchemas();
-            List<String> historyToolNames = new ArrayList<>();
+            
             for (AbstractTool<?, ?> tool : localTools) {
                 FunctionDeclaration fd = new GeminiFunctionDeclarationAdapter(tool, useNativeSchemas).toGoogle();
                 if (fd != null) {
@@ -126,9 +129,6 @@ public final class RequestConfigAdapter {
                     // but we log it for now. The tool itself should ideally hold its provider-specific count.
                     log.debug("Tool {}: {} tokens", tool.getName(), tokenCount);
                     declarations.add(fd);
-                    if (tool.getName().startsWith(History.class.getSimpleName())) {
-                        historyToolNames.add(fd.name().get());
-                    }
                 }
             }
 
@@ -138,13 +138,7 @@ public final class RequestConfigAdapter {
                 
                 FunctionCallingConfig.Builder fccb = FunctionCallingConfig.builder();
                 
-                if (/*requestConfig.isInjectInbandMetadata()*/false) {
-                    log.info("In-band Metadata injection enabled, only History tools are allowed: " + historyToolNames);
-                    fccb.allowedFunctionNames(historyToolNames);
-                    fccb.mode(FunctionCallingConfigMode.Known.ANY);
-                } else {
-                    fccb.mode(FunctionCallingConfigMode.Known.VALIDATED);
-                }
+                fccb.mode(FunctionCallingConfigMode.Known.AUTO);
                 
                 ToolConfig tc = ToolConfig.builder()
                                 .functionCallingConfig(fccb.build())
