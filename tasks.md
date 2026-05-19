@@ -3,39 +3,50 @@
 This file tracks the actionable tasks and tactical goals for the Anahata ASI (V2) project.
 
 ## 0. Zero Day Go Live: 
-- [ ] updateTextResource doesnt let you edit the right hand side of the diff
-- [ ] check ide logs work
 - [ ] make "cached data" in MediaView transient? possibly in text resources too?
-- [ ] Tool's turns to expire doesn't have a field in context details panel
+
+- [] ContextPanel -> 
+    - ResourcePanel shows the editors way below for Reformatter.java for example, may be related to resources that don't fit on the default viewport and the issue may occur after doing expand to fit viewport.
+
 - [ ] change all log.info to log.debug
 
+- [ ] enums in json schemas dont have description
+
+- [ ] recording audio on the microphon button default recording device leaves a dangling swing task and doesn't record
+
+- [ ] test playback lines work correctly
+
+- [ ] "add / remove to AGI Context for "files in a jar" causes double context menu item 
 
 ## 1. Have to do before Go Live: 
 - [ ] merge helders database branch
-- [ ] chatgpt responses api and chat completions api with files, images, audio on responses and completions
+- [ ] chatgpt responses api verified organisation/store/text reasoning
 - [ ] test one hf model with the chat completions api and put (Beta) 
-- [ ] test minimax provider
-- [ ] path parameter renderer in netbeans and resource param renderer?
     
 ## 2. Post Go Live (v1.1)
-- [ ] **Investigate editTextResource Diff limitations**: Investigate why in `editTextResource` we cannot edit the right-hand side of the diff or do cherry-picking.
+- [ ] **Preferences Panel**: 
+    [ ] Enabled / Disabled toolkits
+
+- [ ] **Context Panel**: 
+    [ ] prune / remove multiple messages
+    [ ] disable multiple toolkits at once
+    [ ] convert to diff based update events and add something to 
+- [ ] **Investigate editTextResource Diff limitations**: Investigate why in `editTextResource` no model can figure out the lines.
 - [ ] **[CORE] Generic "TOO LARGE" Response Handling**: Implement a mechanism to detect when a `JavaMethodToolResponse` (including logs, errors, and result) exceeds a safe token/size threshold. If too large, the status should be set to `TOO_LARGE` and the content truncated or replaced with a summary to prevent context window exhaustion.
-- [ ] Error highlighting and code folds on diff viewer and java tool
 - [ ] Rework system instructions to be more natural
 - [ ] **ContextPanel**: Still some flickers when i have a node selected in the tree and a resource changes or a message arrives the right hand side disappears
-- [x] **ContextPanel Message / part Details**: The messages are not like in the conversation view, the have a massive horizontal scrollbar, see if in the part viewer we can force it to show expanded without changing the expanded attribute on the model
 
 - [ ] **NetBeans Local History File System Integration **:
     - [ ] Local History integration via change messages.
     - [ ] Version Control with line numbers (text based glyph gutter)
 
-- [ ] See what it would take to do the "add / remove to AGI Context for "files in a jar"
 - [ ] Metabollic Donut Chart with click in to expand any section to an inner donut chart 
+
 - [ ] **Next-Gen Project Overview/Structure**: 
     Explore UML-like structural representations for Project Structure or including the TreePathHandle or a short version of the extends and implements clauses like e Throwable i so you can include what extends and what implements along with the class level types, check token costs
     Include maven phases similar to mavne action runner nb plugin
 
-- [ ] **Hierarchical Agent Management**:
+- [ ] **Improve Hierarchical Agent Management**:
     - [ ] **Subagent API**: Improve API for the model to spawn subagents with 
             - fine-grained control over `AgiConfig` `RequestConfig` and Tool permissions, 
             - something to approve pending tool calls as well and to simply send messages as the user or a sendContext

@@ -37,6 +37,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.internal.TextUtils;
 import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.agi.resource.handle.PathHandle;
@@ -84,7 +85,8 @@ public class Java extends AnahataToolkit {
             
     /**
      * The base compiler and classloader classpath. Extra entries can be
-     * provided at execution time.
+     * provided at execution time. This serves as the foundation for both 
+     * dynamic compilation and the child-first classloader logic.
      */
     public String defaultCompilerClasspath;
     
@@ -104,6 +106,7 @@ public class Java extends AnahataToolkit {
         registerParentFirstClass(getClass());
         registerParentFirstClass(ToolContext.class);
         registerParentFirstClass(Agi.class);
+        registerParentFirstClass(AgiConfig.class);
         registerParentFirstClass(ToolManager.class);
         registerParentFirstClass(AbstractToolkit.class);
         registerParentFirstClass(JavaObjectToolkit.class);
@@ -165,7 +168,7 @@ public class Java extends AnahataToolkit {
 
         sb.append("\n Multi-threading and Thread Safety:\n");
         //sb.append("The `log()`, `error()`, and `addAttachment()` methods rely on a thread-local context and will fail if called from a subthread or the EDT (Event Dispatch Thread).\n");
-        sb.append("- To access the context from another thread, capture it in a final variable: `final ToolContext ctx = getToolContext();` and use `ctx.log(...)`, `ctx.error(...)`, etc.\n");
+        sb.append("- To access the context from another thread, capture it in a final variable: `final ToolContext ctx = getToolContext();` and use `ctx.log(...)`, `ctx.error(...)`, `ctx.addAttachment(...)`, etc.\n");
 
         sb.append("\nAbout the attribute maps:"
                 + "\n- The Turn attribute map is for sharing data across tool calls within the same turn. (what in Servlet terms you could call 'request scoped'). Gets serialized."
@@ -173,7 +176,7 @@ public class Java extends AnahataToolkit {
                 + "\n The ASI Container map is shared across sessions (agis) in the current AsiContainer (a given JVM could be running multiple ASI Containers). Currently it does not get serialized."
                 + "\n The Application Map is a static field shared across all sessions (agis) of all ASI Containers running in this jvm\n");
 
-        sb.append("\nAbout attachments: at the time of this release only pdf, text and image attachments are supported, there seems to be an issue attaching audio files to a tools response, however you can always load audio files as managed resources.\n");
+        sb.append("\nAbout attachments: be careful attaching attachments as the supported mime types vary on a model basis .\n");
 
         sb.append("\n Example:\n");
         sb.append("```java\n");
@@ -222,8 +225,9 @@ public class Java extends AnahataToolkit {
     }
 
     /**
-     * The class the model should extend when generating Agi tools.
-     *
+     * The class the model should extend when generating Agi tools. 
+     * <p>In this base implementation, it returns {@link OnTheFlyAgiTool}, which 
+     * provides the necessary context anchors (log, error, etc.) for the script.</p>
      * @return the base AgiTool class.
      */
     protected Class<? extends ToolContext> getConcreteClassModelShouldExtend() {
@@ -258,7 +262,8 @@ public class Java extends AnahataToolkit {
     /**
      * Returns a token-efficient, pretty-printed version of the default
      * classpath.
-     *
+     * <p>Implementation note: This leverages lexical grouping and version 
+     * promotion to keep the classpath manifest small.</p>
      * @return The pretty-printed classpath string.
      */
     public String getPrettyPrintedDefaultClasspath() {
@@ -267,7 +272,6 @@ public class Java extends AnahataToolkit {
 
     /**
      * Gets the lazily-initialized classpath printer.
-     * 
      * @return The {@link VeryPrettyClassPathPrinter} instance.
      */
     protected final VeryPrettyClassPathPrinter getClasspathPrinter() {
@@ -280,7 +284,6 @@ public class Java extends AnahataToolkit {
 
     /**
      * Factory method to create the specialized classpath printer.
-     * 
      * @return A new {@link VeryPrettyClassPathPrinter} instance.
      */
     protected VeryPrettyClassPathPrinter createClassPathPrinter() {
@@ -289,6 +292,9 @@ public class Java extends AnahataToolkit {
 
     /**
      * {@inheritDoc}
+     * <p>Adds session/container map keys and the abbreviated classpath manifest 
+     * to the RAG message to provide the model with awareness of its persistent 
+     * state and available libraries.</p>
      */
     @Override
     public void populateMessage(RagMessage ragMessage) throws Exception {
@@ -302,8 +308,8 @@ public class Java extends AnahataToolkit {
 
     /**
      * Appends the signatures of all declared methods of a class to a
-     * StringBuilder.
-     *
+     * StringBuilder, filtering out standard Object methods and internal lambda/abstract 
+     * cruft.
      * @param sb The StringBuilder to append to.
      * @param clazz The class to inspect.
      */
@@ -529,8 +535,8 @@ public class Java extends AnahataToolkit {
 
     /**
      * A hook for subclasses to provide class bytes if the standard loading flow fails.
-     * Used by NbJava to bridge Multi-Release JAR classes into the loader.
-     * 
+     * <p>This is used by the NetBeans implementation (NbJava) to bridge 
+     * Multi-Release JAR classes into the memory-based loader.</p>
      * @param name The FQN of the class.
      * @return The class bytes, or null if not found.
      */
@@ -559,8 +565,8 @@ public class Java extends AnahataToolkit {
     )
     public Object compileAndExecute(
             @AgiToolParam(value = "Source code of the 'Anahata' class.", rendererId = "java") String sourceCode,
-            @AgiToolParam(value = "Compiler's additional classpath entries separated with File.pathSeparator. These will be first in the final compiler's and ClassLoader's classpath", required = false) String extraClassPath,
-            @AgiToolParam(value = "Compiler's options.", required = false) String[] compilerOptions) throws Exception {
+            @AgiToolParam(value = "Optional Compiler's additional classpath entries separated with File.pathSeparator. These will be first in the final compiler's classpath and the child-first set of the ClassLoader's classpath", required = false) String extraClassPath,
+            @AgiToolParam(value = "Optional Compiler's options.", required = false) String[] compilerOptions) throws Exception {
 
         log.info("executeJavaCode: \nsource={}", sourceCode);
         log.info("executeJavaCode: \nextraCompilerClassPath={}", extraClassPath);
@@ -633,8 +639,7 @@ public class Java extends AnahataToolkit {
 
     /**
      * Generates a token-efficient, hierarchical representation of all JVM
-     * system properties (excluding the classpath).
-     *
+     * system properties (excluding the classpath itself).
      * @return A formatted string of system properties.
      * @throws Exception if an error occurs.
      */
@@ -672,7 +677,6 @@ public class Java extends AnahataToolkit {
     /**
      * Recursively renders a system property node and its children into a
      * formatted string.
-     *
      * @param sb The StringBuilder to append to.
      * @param node The node to render.
      * @param indent The current indentation level.

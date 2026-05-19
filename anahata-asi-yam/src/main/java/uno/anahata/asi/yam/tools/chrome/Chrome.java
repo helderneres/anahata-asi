@@ -46,7 +46,8 @@ public class Chrome extends AbstractBrowser {
 
     /**
      * {@inheritDoc}
-     * <p>Initializes the toolkit, disabling it by default if it is in beta.</p>
+     * <p>Implementation details: Disables the toolkit by default to prevent 
+     * accidental drone spawns in environments without local browsers.</p>
      */
     @Override
     public void initialize() {
@@ -125,14 +126,18 @@ public class Chrome extends AbstractBrowser {
     }
 
     /**
-     * High-level tool to connect to the user's Chrome browser or launch a new headless drone.
-     *
-     * @param droneId A unique ID for this drone.
-     * @param profile An optional profile name to force.
-     * @param headless Whether to launch headless.
-     * @param dataDir Custom user data dir.
-     * @return A status message.
-     * @throws AgiToolException if the drone ID already exists.
+     * {@inheritDoc}
+     * <p>Implementation details: Scans the OS process table to find running 
+     * Chrome instances bound to the requested {@code dataDir}. If a matching 
+     * process is found in debug mode, it attaches to the existing port; 
+     * otherwise, it launches a fresh instance with a dynamic debug port.</p>
+     * @param droneId   A unique ID for this drone.
+     * @param profile   An optional profile name (e.g., 'Default', 'Profile 1').
+     * @param headless  Whether to launch in an invisible headless mode.
+     * @param dataDir   The path to the user data directory.
+     * @param binaryPath Optional absolute path to the chrome executable.
+     * @return A status message confirming the connection.
+     * @throws AgiToolException If the droneId is already in use.
      */
     @AgiTool("Connects to or launches a Chrome browser instance.")
     public String connect(
@@ -229,6 +234,12 @@ public class Chrome extends AbstractBrowser {
 
     /**
      * {@inheritDoc}
+     * <p>Implementation details: Iterates over all window handles and uses 
+     * the Chrome DevTools Protocol (CDP) {@code Target.getTargetInfo} command 
+     * to retrieve titles and URLs without forcing window focus. Falls back 
+     * to standard {@code switchTo().window()} if CDP fails.</p>
+     * @param droneId The ID of the drone to inspect.
+     * @return A list of strings describing each open tab.
      */
     @Override
     public List<String> listTabs(String droneId) {
@@ -362,6 +373,14 @@ public class Chrome extends AbstractBrowser {
         }
     }
 
+    /**
+     * Generates a human-readable markdown report of all active Chrome 
+     * processes on the host system. 
+     * <p>Uses {@link ProcessHandle} and OS-specific command line extraction 
+     * (via {@code /proc} on Linux or {@code wmic} on Windows) to identify 
+     * ports and data directories.</p>
+     * @return A markdown string containing process PIDs, modes, and command lines.
+     */
     private String getProcessReport() {
         StringBuilder sb = new StringBuilder("- **Running Chrome Processes**:\n");
         boolean foundRunning = false;
@@ -414,6 +433,14 @@ public class Chrome extends AbstractBrowser {
         return sb.toString();
     }
 
+    /**
+     * Attempts to resolve the full command line of a process. 
+     * <p>On Linux, this reads directly from {@code /proc/[pid]/cmdline} for 
+     * maximum fidelity. On other platforms or as a fallback, it uses 
+     * Shell-based queries.</p>
+     * @param p The process handle to inspect.
+     * @return The full command line string.
+     */
     private String getCommandLine(ProcessHandle p) {
         if (SystemUtils.IS_OS_UNIX) {
             try {

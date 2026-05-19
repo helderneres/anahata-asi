@@ -15,7 +15,9 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
+import uno.anahata.asi.agi.message.AbstractPart;
 import uno.anahata.asi.agi.message.ModelBlobPart;
+import uno.anahata.asi.agi.message.ModelTextPart;
 import uno.anahata.asi.agi.message.code.HostedCodeExecutionCallPart;
 import uno.anahata.asi.agi.message.code.HostedCodeExecutionResultPart;
 import uno.anahata.asi.agi.message.web.WebSearchCallPart;
@@ -37,14 +39,25 @@ merging and multimodal data harvesting.</p>
 @Setter
 public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
 
+    /**
+     * Internal Jackson mapper for stream event processing.
+     */
     private static final ObjectMapper API_MAPPER = new ObjectMapper();
 
-    /** Placeholder text used for reasoning items in stateless mode when no summary is available. */
+    /**
+     * Placeholder text used for reasoning items in stateless mode when no 
+     * summary is available.
+     */
     public static final String ENCRYPTED_REASONING_PLACEHOLDER = "(Encrypted Reasoning Chain)";
 
     /** The generation phase reported by the model (e.g., 'commentary', 'final_answer'). */
     private String phase;
 
+    /**
+     * Constructs a new OpenAiModelMessage bound to a specific session and model.
+     * @param agi The parent AGI session.
+     * @param modelId The ID of the model that generated this message.
+     */
     public OpenAiModelMessage(Agi agi, String modelId) {
         super(agi, modelId);
     }
@@ -54,7 +67,6 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
      * to the appropriate Anahata parts.
      * <p>This includes handling messages, reasoning chains, function calls, 
      * web searches, and code interpreter executions.</p>
-     * 
      * @param item The JSON node representing an OpenAI item.
      */
     @SneakyThrows
@@ -95,9 +107,24 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
                 }
             }
         } else if ("reasoning".equals(type)) {
-            // Stateless Reasoning: Capture the signature even if text is hidden
             String encrypted = item.path("encrypted_content").asText(null);
-            // Capture optional summary text
+            StringBuilder thoughtsText = new StringBuilder();
+            byte[] signature = null;
+            
+            JsonNode content = item.get("content");
+            if (content != null && content.isArray()) {
+                for (JsonNode block : content) {
+                    if ("thinking".equals(block.path("type").asText())) {
+                        thoughtsText.append(block.path("thinking").asText(""));
+                        String sig = block.path("signature").asText(null);
+                        if (sig != null) signature = sig.getBytes();
+                    } else if ("redacted_thinking".equals(block.path("type").asText())) {
+                        String data = block.path("data").asText(null);
+                        if (data != null) signature = data.getBytes();
+                    }
+                }
+            }
+            
             StringBuilder summaryText = new StringBuilder();
             JsonNode summary = item.get("summary");
             if (summary != null && summary.isArray()) {
@@ -107,11 +134,42 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
                     }
                 }
             }
-            if (encrypted != null) {
-                String label = summaryText.length() > 0 ? summaryText.toString().trim() : ENCRYPTED_REASONING_PLACEHOLDER;
-                // Store signature in a thought part.
-                TextPart tp = addTextPart(label, encrypted.getBytes(), true);
-                tp.setProviderId(id);
+            
+            ModelTextPart existingThought = null;
+            if (isStreaming()) {
+                 List<AbstractPart> parts = getParts();
+                 for (int i = parts.size() - 1; i >= 0; i--) {
+                     if (parts.get(i) instanceof ModelTextPart mtp && mtp.isThought()) {
+                         existingThought = mtp;
+                         break;
+                     }
+                 }
+            }
+
+            if (existingThought != null) {
+                existingThought.setProviderId(id);
+                if (signature != null) {
+                    existingThought.setThoughtSignature(signature);
+                } else if (encrypted != null) {
+                    existingThought.setThoughtSignature(encrypted.getBytes());
+                }
+                if (encrypted != null || signature == null) {
+                    String label = summaryText.length() > 0 ? summaryText.toString().trim() : ENCRYPTED_REASONING_PLACEHOLDER;
+                    existingThought.setText(label);
+                }
+            } else {
+                if (encrypted != null) {
+                    String label = summaryText.length() > 0 ? summaryText.toString().trim() : ENCRYPTED_REASONING_PLACEHOLDER;
+                    TextPart tp = addTextPart(label, encrypted.getBytes(), true);
+                    tp.setProviderId(id);
+                } else if (thoughtsText.length() > 0) {
+                    TextPart tp = addTextPart(thoughtsText.toString(), signature, true);
+                    tp.setProviderId(id);
+                } else if (signature != null) {
+                    String label = summaryText.length() > 0 ? summaryText.toString().trim() : ENCRYPTED_REASONING_PLACEHOLDER;
+                    TextPart tp = addTextPart(label, signature, true);
+                    tp.setProviderId(id);
+                }
             }
         } else if ("function_call".equals(type)) {
             String callId = item.path("call_id").asText();
@@ -199,6 +257,10 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
         }
     }
 
+    /**
+     * Extracts citations from OpenAI annotations and updates the grounding metadata.
+     * @param annotations The JSON array of annotations from the API.
+     */
     private void processCitations(JsonNode annotations) {
         List<GroundingSource> sources = new ArrayList<>();
         for (JsonNode ann : annotations) {
@@ -258,11 +320,102 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
     }
 
 
+    /**
+     * Handles a Server-Sent Event (SSE) from the OpenAI Responses API stream.
+     * <p>Routes deltas for real-time text and reasoning generation, and defers
+     * complex items (function calls, web searches) to the completion of the item
+     * where the full JSON structure is guaranteed to be intact.</p>
+     * @param eventNode The parsed JSON node of the stream event.
+     */
+    public void handleStreamEvent(JsonNode eventNode) {
+        String type = eventNode.path("type").asText();
+        
+        switch (type) {
+            case "response.output_text.delta":
+                appendContent(eventNode.path("delta").asText());
+                break;
+            case "response.reasoning_text.delta":
+                appendThoughts(eventNode.path("delta").asText());
+                break;
+            case "response.output_item.done":
+                JsonNode item = eventNode.path("item");
+                String itemType = item.path("type").asText();
+                if ("message".equals(itemType)) {
+                    // Text is already streamed via deltas, but we must harvest citations.
+                    JsonNode content = item.get("content");
+                    if (content != null && content.isArray()) {
+                        for (JsonNode partNode : content) {
+                            if ("output_text".equals(partNode.path("type").asText())) {
+                                JsonNode annotations = partNode.get("annotations");
+                                if (annotations != null && annotations.isArray()) {
+                                    processCitations(annotations);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // For tools, searches, and code execution, process the completed item seamlessly.
+                    processItem(item);
+                }
+                break;
+            case "response.done":
+                JsonNode response = eventNode.path("response");
+                if (response != null && response.has("usage")) {
+                    JsonNode usage = response.get("usage");
+                    if (usage != null && !usage.isNull()) {
+                        setBilledTokenCount(usage.path("output_tokens").asInt(0));
+                    }
+                }
+                if (response != null && response.has("status")) {
+                    String status = response.path("status").asText();
+                    if ("completed".equals(status)) {
+                        setFinishReason(FinishReason.STOP);
+                    } else if ("incomplete".equals(status)) {
+                        setFinishReason(FinishReason.MAX_TOKENS);
+                    }
+                }
+                break;
+        }
+    }
+
+    /**
+     * Appends text to the current active text part or creates a new one if needed.
+     * @param text The text delta to append.
+     */
+    public void appendContent(String text) {
+        List<AbstractPart> parts = getParts();
+        if (!parts.isEmpty() && parts.get(parts.size() - 1) instanceof ModelTextPart mtp && !mtp.isThought()) {
+            mtp.appendText(text);
+        } else {
+            addTextPart(text);
+        }
+    }
+
+    /**
+     * Appends text to the current active reasoning part or creates a new 
+     * thought part if needed.
+     * @param text The reasoning delta to append.
+     */
+    public void appendThoughts(String text) {
+        List<AbstractPart> parts = getParts();
+        if (!parts.isEmpty() && parts.get(parts.size() - 1) instanceof ModelTextPart mtp && mtp.isThought()) {
+            mtp.appendText(text);
+        } else {
+            addTextPart(text, null, true);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getFrom() {
         return getModelId();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getDevice() {
         return "OpenAI-Cloud";

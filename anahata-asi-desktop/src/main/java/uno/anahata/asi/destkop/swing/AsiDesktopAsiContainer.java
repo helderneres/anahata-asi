@@ -10,9 +10,11 @@ import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.gemini.GeminiAiProvider;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.agi.provider.AbstractAiProvider;
+import uno.anahata.asi.anthropic.AnthropicProvider;
 import uno.anahata.asi.gemini.vertex.GeminiGoogleCloudExpressAIProvider;
 import uno.anahata.asi.huggingface.HuggingFaceProvider;
+import uno.anahata.asi.minimax.MinimaxAnthropicProvider;
+import uno.anahata.asi.modal.ModalProvider;
 import uno.anahata.asi.openai.OpenAiProvider;
 import uno.anahata.asi.openai.compatible.OpenAiCompatibleProvider;
 import uno.anahata.asi.swing.AbstractSwingAsiContainer;
@@ -52,32 +54,16 @@ public class AsiDesktopAsiContainer extends AbstractSwingAsiContainer {
      */
     public AsiDesktopAsiContainer() {
         super("AsiDesktop");
-
-        if (getProvider("MiniMaxOpenAI") == null) {
+        
+        
+        
+        if (getProvider("Anahata") == null) {
             log.info("Registering Anahata");
             registerProvider(new OpenAiCompatibleProvider(
-                    "MiniMaxOpenAI", "Minimax (OpenAI)", "https://api.minimax.io/v1", "Minimax (OpenAI)", "https://platform.minimax.io/user-center/basic-information/interface-key"));
+                    "Anahata", "Anahata (no SSL)", "http://a.anahata.uno:1234/v1", "Anahata", "https://discord.com/invite/gwGWWxPUXE"));
         }
         
-        // Ensure Gemini is registered with stable UUID
-        //AbstractAiProvider gemini = getProviderByClass(GeminiAiProvider.class);
-        if (getProvider("GeminiGCExpress") == null) {
-            registerProvider(new GeminiGoogleCloudExpressAIProvider());
-        }
-
-        if (getProvider("Gemni") == null) {
-            registerProvider(new GeminiAiProvider("Gemini", "Gemini AI Studio", false));
-        }
-
-        if (getProvider("GeminiVertex") == null) {
-            registerProvider(new GeminiAiProvider("GeminiVertex", "Gemini Vertex AI", true));
-        }
-
-        if (getProvider("OpenAI") == null) {
-            log.info("Registering OpenAI");
-            registerProvider(new OpenAiProvider());
-        }
-
+                /*
         /*
         if (getProvider("Z_1") == null) {
             registerProvider(new OpenAiCompatibleProvider(                    
@@ -88,22 +74,18 @@ public class AsiDesktopAsiContainer extends AbstractSwingAsiContainer {
             registerProvider(new OpenAiCompatibleProvider(                    
                     "Z_2", "Z Coding (OpenAI)", "https://api.z.ai/api/coding/paas/v4", "Z"));
         }
-         */
-        if (getProvider("Modal") == null) {
-            log.info("Registering Modal");
-            registerProvider(new uno.anahata.asi.modal.ModalProvider());
-        }
+         
+         
+        if (getProvider("MinimaxOpenAI") == null) {
+            log.info("Registering MiniMaxOpenAI");
+            String folder = AbstractAsiContainer.getWorkDirSubDir("Minimax").toString();
+            OpenAiCompatibleProvider provider = new OpenAiCompatibleProvider(
+                    "MinimaxOpenAI", "Minimax (OpenAI)", "https://api.minimax.io/v1", folder, "https://platform.minimax.io/user-center/basic-information/interface-key");
+            registerProvider(provider);
+        }*/
+        
+        
 
-        if (getProvider("HuggingFace") == null) {
-            log.info("Registering HF");
-            registerProvider(new HuggingFaceProvider());
-        }
-
-        if (getProvider("Anahata") == null) {
-            log.info("Registering Anahata");
-            registerProvider(new OpenAiCompatibleProvider(
-                    "Anahata", "Anahata (no SSL)", "http://a.anahata.uno:1234/v1", "Anahata", "https://discord.com/invite/gwGWWxPUXE"));
-        }
 
     }
 

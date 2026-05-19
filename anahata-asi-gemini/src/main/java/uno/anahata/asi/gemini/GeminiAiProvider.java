@@ -4,6 +4,7 @@ package uno.anahata.asi.gemini;
 import com.google.genai.Chat;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.HttpOptions;
 import com.google.genai.types.ListModelsConfig;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,8 +28,15 @@ import uno.anahata.asi.agi.provider.TokenizerType;
 @Slf4j
 public class GeminiAiProvider extends AbstractAiProvider {
 
+    /**
+     * The native Google GenAI client instance. transient to prevent serialization.
+     */
     private transient Client client;
 
+    /**
+     * Whether this provider is configured to use Google Cloud Vertex AI 
+     * instead of the standard AI Studio endpoint.
+     */
     @Setter
     private boolean vertex = false;
 
@@ -59,10 +67,13 @@ public class GeminiAiProvider extends AbstractAiProvider {
                 String nextKey = getNextKey();
                 log.info("Got api key from " + getUuid() + " " + StringUtils.abbreviate(nextKey, 8));
                 if (nextKey != null) {
-                    client = Client.builder()
+                    Client.Builder builder = Client.builder()
                             .vertexAI(vertex)
-                            .apiKey(nextKey)
-                            .build();
+                            .apiKey(nextKey);
+                    if (getBaseUrl() != null && !getBaseUrl().isBlank()) {
+                        builder.httpOptions(HttpOptions.builder().baseUrl(getBaseUrl()).build());
+                    }
+                    client = builder.build();
                 } else {
                     throw new IllegalStateException("Could not load an API key for Gemini. Check " + getKeysFilePath());
                 }
@@ -70,17 +81,14 @@ public class GeminiAiProvider extends AbstractAiProvider {
                 client = Client.builder()
                             .vertexAI(vertex)
                             .build();
-            }
-            
+                }            
 
         }
         return client;
     }
 
     /**
-     * Returns the api key being used by the current genai Client
-     *
-     * @return the api key in use
+     * {@inheritDoc}
      */
     @Override
     public String getCurrentApiKey() {
