@@ -92,9 +92,22 @@ public class OpenAiCompatibleResponse extends Response<OpenAiCompatibleModelMess
         this.rawHistoryJson = historyJson;
         JsonNode root = JacksonUtils.parse(jsonResponse, JsonNode.class);
         JsonNode responseNode = root.has("response") ? root.get("response") : root;
-        this.id = responseNode.path("id").asText(null);
+        
+        JsonNode usage = null;
+        if (responseNode.isArray()) {
+            this.id = responseNode.size() > 0 ? responseNode.get(0).path("id").asText(null) : null;
+            for (int i = responseNode.size() - 1; i >= 0; i--) {
+                if (responseNode.get(i).has("usage") && !responseNode.get(i).get("usage").isNull()) {
+                    usage = responseNode.get(i).get("usage");
+                    break;
+                }
+            }
+        } else {
+            this.id = responseNode.path("id").asText(null);
+            usage = responseNode.get("usage");
+        }
+
         // 1. Usage
-        JsonNode usage = responseNode.get("usage");
         if (usage != null) {
             int thoughts = usage.path("reasoning_tokens").asInt();
             if (thoughts == 0 && usage.has("completion_tokens_details")) {
@@ -111,17 +124,30 @@ public class OpenAiCompatibleResponse extends Response<OpenAiCompatibleModelMess
             this.usageMetadata = ResponseUsageMetadata.builder().build();
         }
         // 2. Display JSON Clean-up (remove echoed input/tools from display rawJson)
-        ObjectNode displayNode = responseNode.deepCopy();
-        displayNode.remove("tools");
-        displayNode.remove("instructions");
-        displayNode.remove("input");
-        displayNode.remove("messages");
-        displayNode.remove("prompt");
-        this.rawJson = displayNode.toPrettyString();
+        JsonNode displayNode = responseNode.deepCopy();
+        if (displayNode.isObject()) {
+            ObjectNode objNode = (ObjectNode) displayNode;
+            objNode.remove("tools");
+            objNode.remove("instructions");
+            objNode.remove("input");
+            objNode.remove("messages");
+            objNode.remove("prompt");
+            this.rawJson = objNode.toPrettyString();
+        } else {
+            this.rawJson = displayNode.toPrettyString();
+        }
         // 3. Candidates
         parseCandidates(agi, modelId, model, responseNode);
     }
 
+    /**
+     * Internal utility to parse the 'choices' or 'output' array from the 
+     * API response.
+     * @param agi The parent session.
+     * @param modelId The model ID.
+     * @param model The model instance.
+     * @param responseNode The root response JSON node.
+     */
     private void parseCandidates(Agi agi, String modelId, OpenAiCompatibleModel model, JsonNode responseNode) {
         if (responseNode.has("choices")) {
             JsonNode choices = responseNode.get("choices");
@@ -150,7 +176,8 @@ public class OpenAiCompatibleResponse extends Response<OpenAiCompatibleModelMess
     
     /**
      * {@inheritDoc}
-     * <p>OpenAI does not provide standard prompt feedback in the completion response; returns empty.</p>
+     * <p>OpenAI does not provide standard prompt feedback in the completion 
+     * response; returns empty.</p>
      */
     @Override
     public Optional<String> getPromptFeedback() {

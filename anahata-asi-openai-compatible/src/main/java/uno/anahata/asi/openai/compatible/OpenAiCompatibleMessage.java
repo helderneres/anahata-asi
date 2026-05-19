@@ -19,13 +19,24 @@ import uno.anahata.asi.internal.JacksonUtils;
 public class OpenAiCompatibleMessage extends OpenAiCompatibleModelMessage {
 
     /**
-     * Buffers for accumulating streaming tool call arguments, keyed by their
-     * index in the 'choices' array.
+     * Buffers for accumulating streaming tool call arguments, keyed by their 
+     * index in the 'tool_calls' array.
      */
     private transient Map<Integer, StringBuilder> callArgsBuffers;
+    /**
+     * Maps tool call indices to their stable API-provided unique IDs.
+     */
     private transient Map<Integer, String> callIds;
+    /**
+     * Maps tool call indices to the requested function name.
+     */
     private transient Map<Integer, String> callNames;
 
+    /**
+     * Constructs a new, empty compatible message for streaming.
+     * @param agi The parent session.
+     * @param modelId The model ID.
+     */
     public OpenAiCompatibleMessage(Agi agi, String modelId) {
         super(agi, modelId);
         this.callArgsBuffers = new HashMap<>();
@@ -35,6 +46,13 @@ public class OpenAiCompatibleMessage extends OpenAiCompatibleModelMessage {
 
     /**
      * Constructs a message from a final (non-streaming) choice node.
+     * @param agi The parent session.
+     * @param modelId The model ID.
+     * @param choiceNode The 'choice' node from the chat completion response.
+     * @param response The parent response object.
+     * @param reasoningStyle The strategy for thought extraction.
+     * @param reasoningFieldName The field for thoughts (if using FIELD style).
+     * @param reasoningTags The tags for thoughts (if using TAGS style).
      */
     public OpenAiCompatibleMessage(Agi agi, String modelId, JsonNode choiceNode, OpenAiCompatibleResponse response,
             OpenAiCompatibleReasoningStyle reasoningStyle, String reasoningFieldName, List<String> reasoningTags) {
@@ -68,6 +86,14 @@ public class OpenAiCompatibleMessage extends OpenAiCompatibleModelMessage {
             reasoningFieldName = "reasoning_content";
         }
 
+        if (reasoningStyle == OpenAiCompatibleReasoningStyle.NONE
+                && messageNode.has("content") && !messageNode.get("content").isNull()
+                && messageNode.get("content").asText().contains("<think>")) {
+            log.info("Auto-detected TAGS reasoning style with '<think>' for model {}", getModelId());
+            reasoningStyle = OpenAiCompatibleReasoningStyle.TAGS;
+            reasoningTags = List.of("<think>", "</think>");
+        }
+
         // 1. Reasoning Content (FIELD style)
         if (reasoningStyle == OpenAiCompatibleReasoningStyle.FIELD && reasoningFieldName != null
                 && messageNode.has(reasoningFieldName) && !messageNode.get(reasoningFieldName).isNull()) {
@@ -99,6 +125,9 @@ public class OpenAiCompatibleMessage extends OpenAiCompatibleModelMessage {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateToolCall(JsonNode callNode) {
         if (callArgsBuffers == null) callArgsBuffers = new HashMap<>();
@@ -107,6 +136,11 @@ public class OpenAiCompatibleMessage extends OpenAiCompatibleModelMessage {
         
         String callId = callNode.path("id").asText(null);
         int index = callNode.path("index").asInt(-1);
+        
+        if (index == -1 && callId != null) {
+            index = callIds.size();
+        }
+        
         JsonNode funcNode = callNode.get("function");
 
         if (callId != null) {

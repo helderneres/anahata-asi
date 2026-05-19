@@ -47,8 +47,17 @@ import uno.anahata.asi.openai.compatible.adapter.OpenAiCompatibleResponseAdapter
 @Setter
 public class OpenAiCompatibleModel extends AbstractModel {
 
+    /**
+     * The provider instance managing this model.
+     */
     private final OpenAiCompatibleProvider provider;
+    /**
+     * The unique identifier for the model (e.g., 'gpt-4o', 'claude-3-5-sonnet').
+     */
     private final String modelId;
+    /**
+     * The user-friendly name of the model.
+     */
     private final String displayName;
     private String version = "";
     private int maxInputTokens = 200000;
@@ -96,46 +105,73 @@ public class OpenAiCompatibleModel extends AbstractModel {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getDescription() {
         return modelId;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<String> getSupportedActions() {
         return List.of("chat/completions");
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getRawDescription() {
         return "<html><b>Model ID:</b> " + modelId + "</html>";
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsFunctionCalling() {
         return supportsFunctionCalling;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsContentGeneration() {
         return supportsContentGeneration;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsBatchEmbeddings() {
         return supportsBatchEmbeddings;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsEmbeddings() {
         return supportsEmbeddings;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsCachedContent() {
         return supportsCachedContent;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<String> getSupportedResponseModalities() {
         String lowerId = modelId.toLowerCase();
@@ -145,26 +181,41 @@ public class OpenAiCompatibleModel extends AbstractModel {
         return List.of("TEXT");
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<ServerTool> getAvailableServerTools() {
         return Collections.emptyList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<ServerTool> getDefaultServerTools() {
         return Collections.emptyList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Float getDefaultTemperature() {
         return 0.7f;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Integer getDefaultTopK() {
         return null;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Float getDefaultTopP() {
         return 0.95f;
@@ -426,6 +477,14 @@ public class OpenAiCompatibleModel extends AbstractModel {
             log.info("Auto-detected FIELD reasoning style with field 'reasoning_content' for model {}", modelId);
             this.reasoningStyle = OpenAiCompatibleReasoningStyle.FIELD;
             this.reasoningFieldName = "reasoning_content";
+        }
+
+        if (reasoningStyle == OpenAiCompatibleReasoningStyle.NONE
+                && delta.has("content") && !delta.get("content").isNull()
+                && delta.get("content").asText().contains("<think>")) {
+            log.info("Auto-detected TAGS reasoning style with '<think>' for model {}", modelId);
+            this.reasoningStyle = OpenAiCompatibleReasoningStyle.TAGS;
+            this.reasoningTags = List.of("<think>", "</think>");
         }
 
         if (reasoningStyle == OpenAiCompatibleReasoningStyle.FIELD && reasoningFieldName != null && delta.has(reasoningFieldName) && !delta.get(reasoningFieldName).isNull()) {

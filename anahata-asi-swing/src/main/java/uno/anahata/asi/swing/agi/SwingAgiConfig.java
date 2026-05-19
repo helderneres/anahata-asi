@@ -13,14 +13,12 @@ import uno.anahata.asi.agi.message.Role;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
 import uno.anahata.asi.agi.tool.ToolPermission;
 import uno.anahata.asi.agi.status.AgiStatus;
-import uno.anahata.asi.swing.agi.message.part.tool.param.FullTextFileCreateRenderer;
-import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
 import uno.anahata.asi.swing.icons.IconProvider;
 import uno.anahata.asi.swing.toolkit.Screens;
 import uno.anahata.asi.swing.toolkit.SwingJava;
 import uno.anahata.asi.toolkit.java.Java;
-import uno.anahata.asi.toolkit.resources.text.FullTextFileCreate;
-import uno.anahata.asi.yam.tools.Chrome;
+import uno.anahata.asi.yam.tools.chrome.Chrome;
+import uno.anahata.asi.yam.tools.firefox.Firefox;
 import uno.anahata.asi.yam.tools.Radio;
 import uno.anahata.asi.yam.tools.Speech;
 
@@ -32,9 +30,6 @@ import uno.anahata.asi.yam.tools.Speech;
 @Getter @Setter
 public class SwingAgiConfig extends AgiConfig {
     
-    static {
-        ParameterRendererFactory.register(FullTextFileCreate.class, FullTextFileCreateRenderer.class);
-    }
     
     /** 
      * The provider for context-related icons, used to visually distinguish between 
@@ -61,6 +56,8 @@ public class SwingAgiConfig extends AgiConfig {
         getToolClasses().add(Radio.class);
         getToolClasses().add(Speech.class);
         getToolClasses().add(Chrome.class);
+        getToolClasses().add(Firefox.class);
+        //getToolClasses().add(OldChrome.class);
         getToolClasses().add(Screens.class);
     }
 

@@ -12,12 +12,11 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Insets;
-import java.awt.Rectangle;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -34,7 +33,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import org.jdesktop.swingx.JXTitledPanel;
@@ -50,6 +48,7 @@ import uno.anahata.asi.agi.tool.ToolPermission;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.SwingAgiConfig;
 import uno.anahata.asi.swing.agi.SwingAgiConfig.UITheme;
+import uno.anahata.asi.swing.components.AdjustingTabPane;
 import uno.anahata.asi.swing.components.CodeHyperlink;
 import uno.anahata.asi.swing.icons.CancelIcon;
 import uno.anahata.asi.swing.icons.DeleteIcon;
@@ -149,6 +148,13 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         String prop = evt.getPropertyName();
         if ("tokenCount".equals(prop)) {
             updateHeaderInfoText();
+        } else if ("expanded".equals(prop)) {
+            if (resultsTabbedPane != null) {
+                AbstractToolResponse<?> response = getPart().getResponse();
+                resultsTabbedPane.setVisible(response.isExpanded());
+                revalidate();
+                repaint();
+            }
         } else {
             render();
         }
@@ -189,8 +195,7 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         getCentralContainer().add(argsContainer, "push, grow, wrap");
         
         // --- Response Panel (Middle) ---
-        resultsTabbedPane = new JTabbedPane();
-        resultsTabbedPane.addChangeListener(e -> adjustTabbedPaneHeight(resultsTabbedPane));
+        resultsTabbedPane = new AdjustingTabPane(150);
         
         UITheme theme = agiConfig.getTheme();
         outputArea = createTextArea(theme.getToolOutputFg(), theme.getToolOutputBg());
@@ -216,6 +221,7 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         
         // Add expand/collapse logic to the response titled panel header
         if (responseTitledPanel.getComponentCount() > 0) {
+            responseTitledPanel.getComponent(0).setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
             responseTitledPanel.getComponent(0).addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
@@ -311,8 +317,7 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         List<AbstractToolParameter<?>> parameters = (List) tool.getParameters();
 
         if (argsTabbedPane == null) {
-            argsTabbedPane = new JTabbedPane();
-            argsTabbedPane.addChangeListener(e -> adjustTabbedPaneHeight(argsTabbedPane));
+            argsTabbedPane = new AdjustingTabPane(150);
             argsContainer.removeAll();
             argsContainer.add(argsTabbedPane, BorderLayout.CENTER);
         }
@@ -329,9 +334,6 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
                 renderer = ParameterRendererFactory.create(agiPanel, call, paramName, value, rendererId);
                 argRenderers.put(paramName, renderer);
                 renderer.render();
-                
-                // Trigger initial height adjustment
-                SwingUtilities.invokeLater(() -> adjustTabbedPaneHeight(argsTabbedPane));
             } else {
                 // Update existing
                 renderer.updateContent(value);
@@ -360,9 +362,6 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         }
         
         argsContainer.setVisible(!parameters.isEmpty());
-        if (argsTabbedPane != null && argsTabbedPane.getTabCount() > 0) {
-            SwingUtilities.invokeLater(() -> adjustTabbedPaneHeight(argsTabbedPane));
-        }
     }
 
     /**
@@ -382,7 +381,7 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         }
         
         StringBuilder logsBuilder = new StringBuilder();
-        for (String log : response.getLogs()) {
+        for (String log : new ArrayList<>(response.getLogs())) {//wrapping into arraylist to avoid cme
             logsBuilder.append("• ").append(log).append("\n");
         }
         String logs = logsBuilder.toString();
@@ -424,7 +423,6 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
             if (resultsTabbedPane.getSelectedIndex() == -1) {
                 resultsTabbedPane.setSelectedIndex(0);
             }
-            SwingUtilities.invokeLater(() -> adjustTabbedPaneHeight(resultsTabbedPane));
         }
     }
     
@@ -552,48 +550,6 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
                 getPart().setExpanded(false);
             }
         }).start();
-    }
-
-    /**
-     * Authoritatively adjusts the height of the tabbed pane by leveraging the 
-     * selected component's preferred size.
-     * <p>
-     * <b>Geometric Accuracy:</b> Since high-fidelity viewers now report their 
-     * true content height when vertical scrolling is disabled, this method 
-     * ensures a perfect fit without magic offsets or hacks.
-     * </p>
-     */
-    private void adjustTabbedPaneHeight(JTabbedPane tabbedPane) {
-        int selectedIndex = tabbedPane.getSelectedIndex();
-        if (selectedIndex != -1) {
-            Component selected = tabbedPane.getComponentAt(selectedIndex);
-            // AUTHORITATIVE SIZING: The viewer now handles its own content-aware preferred height.
-            Dimension prefSize = selected.getPreferredSize();
-            
-            // Calculate exact UI overhead (tab header + insets)
-            Insets insets = tabbedPane.getInsets();
-            Rectangle tabBounds = tabbedPane.getBoundsAt(selectedIndex);
-            int tabAreaHeight = (tabBounds != null) ? tabBounds.height : 30;
-            
-            int targetHeight = prefSize.height + insets.top + insets.bottom + tabAreaHeight + 5; 
-            
-            Dimension currentPref = tabbedPane.getPreferredSize();
-            if (currentPref.height != targetHeight) {
-                int width = tabbedPane.getWidth() > 0 ? tabbedPane.getWidth() : currentPref.width;
-                tabbedPane.setPreferredSize(new Dimension(width, targetHeight));
-                
-                // Authoritative layout push
-                tabbedPane.revalidate();
-                tabbedPane.repaint();
-                getCentralContainer().revalidate();
-                
-                // Signal conversation to update scrollbars
-                SwingUtilities.invokeLater(() -> {
-                    agiPanel.getConversationPanel().revalidate();
-                    agiPanel.getConversationPanel().repaint();
-                });
-            }
-        }
     }
 
     /** 

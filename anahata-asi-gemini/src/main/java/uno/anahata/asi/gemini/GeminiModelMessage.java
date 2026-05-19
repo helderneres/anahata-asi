@@ -3,6 +3,8 @@ package uno.anahata.asi.gemini;
 
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Citation;
+import com.google.genai.types.CodeExecutionResult;
+import com.google.genai.types.ExecutableCode;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.Part;
 import java.util.List;
@@ -15,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.agi.message.AbstractPart;
+import uno.anahata.asi.agi.message.code.HostedCodeExecutionCallPart;
+import uno.anahata.asi.agi.message.code.HostedCodeExecutionResultPart;
 import uno.anahata.asi.agi.provider.FinishReason;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.message.web.GroundingMetadata;
@@ -96,8 +100,8 @@ public class GeminiModelMessage extends AbstractModelMessage<GeminiResponse> {
 
     /**
      * Converts a Google GenAI Part to an Anahata AbstractPart within the context of this message.
-     * This method encapsulates the logic previously in PartAdapter and FunctionCallAdapter.
-     *
+     * <p>Implementation details: This method encapsulates the logic previously in PartAdapter 
+     * and FunctionCallAdapter, handling text, thoughts, tool calls, and multimodal data.</p>
      * @param googlePart The Google part to convert.
      * @return The corresponding Anahata AbstractPart, or null if unsupported.
      */
@@ -118,6 +122,31 @@ public class GeminiModelMessage extends AbstractModelMessage<GeminiResponse> {
             toolCall.setThoughtSignature(thoughtSignature); // Directly set, no cast needed
             return toolCall;
         }
+        
+        if (googlePart.executableCode().isPresent()) {
+            ExecutableCode code = googlePart.executableCode().get();
+            String source = code.code().orElse("");
+            String lang = code.language().map(l -> l.knownEnum().name().toLowerCase()).orElse("python");
+            var ret = new HostedCodeExecutionCallPart(this, source, lang, thoughtSignature);
+            ret.setProviderId(code.id().get());
+            return ret;
+        }
+        
+        if (googlePart.codeExecutionResult().isPresent()) {
+            CodeExecutionResult result = googlePart.codeExecutionResult().get();
+            String output = result.output().orElse("");
+            var ret = new HostedCodeExecutionResultPart(this, output, thoughtSignature);
+            ret.setProviderId(result.id().get());
+            //try to set up the parent child relationship based on matching ids
+            for (AbstractPart p: getParts(true)) {
+                if (p instanceof HostedCodeExecutionCallPart c) {
+                    if (Objects.equals(c.getProviderId(), ret.getProviderId())) {
+                        ret.setParentCall(c);
+                    }
+                }
+            }
+            return ret;
+        }
         if (googlePart.inlineData().isPresent()) {
             com.google.genai.types.Blob googleBlob = googlePart.inlineData().get();
             return addBlobPart(googleBlob.mimeType().orElse("application/octet-stream"), googleBlob.data().orElse(new byte[0]), thoughtSignature);
@@ -128,7 +157,6 @@ public class GeminiModelMessage extends AbstractModelMessage<GeminiResponse> {
 
     /**
      * Converts a Google GenAI FunctionCall to an Anahata AbstractToolCall.
-     *
      * @param googleFc The FunctionCall received from the Google API.
      * @return A new AbstractToolCall.
      */
@@ -143,7 +171,6 @@ public class GeminiModelMessage extends AbstractModelMessage<GeminiResponse> {
     
     /**
      * Converts Google's GroundingMetadata to Anahata's domain model.
-     * 
      * @param gm The Google GroundingMetadata object.
      * @return The Anahata GroundingMetadata object.
      */
@@ -181,7 +208,6 @@ public class GeminiModelMessage extends AbstractModelMessage<GeminiResponse> {
 
     /**
      * Maps a Google GenAI FinishReason to the Anahata FinishReason enum.
-     * 
      * @param fr The Google FinishReason object.
      * @return The corresponding Anahata FinishReason.
      */

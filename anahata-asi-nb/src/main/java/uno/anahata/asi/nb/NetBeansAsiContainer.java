@@ -10,7 +10,6 @@ import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
-import uno.anahata.asi.agi.provider.AbstractAiProvider;
 import uno.anahata.asi.gemini.GeminiAiProvider;
 import uno.anahata.asi.nb.annotation.AnahataAnnotationProvider;
 import uno.anahata.asi.nb.tools.java.coderefiner.CodeRefinementBatch;
@@ -24,8 +23,11 @@ import uno.anahata.asi.swing.AbstractSwingAsiContainer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
-import uno.anahata.asi.huggingface.HuggingFaceProvider;
-import uno.anahata.asi.modal.ModalProvider;
+import uno.anahata.asi.gemini.vertex.GeminiGoogleCloudExpressAIProvider;
+import uno.anahata.asi.minimax.MinimaxAnthropicProvider;
+import uno.anahata.asi.nb.ui.render.JavaCodeParameterRenderer;
+import uno.anahata.asi.openai.OpenAiProvider;
+import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
 import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
@@ -46,12 +48,32 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
     static {
         log.info("Performing global NetBeans environment configuration...");
         
+        org.netbeans.api.editor.EditorRegistry.addPropertyChangeListener((java.beans.PropertyChangeEvent evt) -> {
+            log.debug("EditorRegistry event: {}", evt.getPropertyName());
+            java.util.List<? extends javax.swing.text.JTextComponent> list = org.netbeans.api.editor.EditorRegistry.componentList();
+            int count = 0;
+            for (int i = 0; i < list.size(); i++) {
+                javax.swing.text.JTextComponent c = list.get(i);
+                if (c != null && c.getClass().getName().equals("javax.swing.JEditorPane")) {
+                    count++;
+                }
+            }
+            log.debug("EditorRegistry tracked JEditorPanes: {}", count);
+            for (int i = 0; i < list.size(); i++) {
+                javax.swing.text.JTextComponent c = list.get(i);
+                if (c != null && c.getClass().getName().equals("javax.swing.JEditorPane")) {
+                    log.info("  [{}] {}@{}", i, c.getClass().getName(), Integer.toHexString(System.identityHashCode(c)));
+                }
+            }
+        });
+        
         // 1. Register specialized parameter renderers for file operations
         ParameterRendererFactory.register(FullTextResourceUpdate.class, FullTextResourceUpdateRenderer.class);        
         ParameterRendererFactory.register(TextResourceReplacements.class, TextResourceReplacementsRenderer.class);
         ParameterRendererFactory.register(TextResourceLineEdits.class, TextResourceLineEditsRenderer.class);
         //ParameterRendererFactory.register(CodeRefinementBatchPolymorphic.class, CodeRefinementBatchRendererPolymorphic.class);
         ParameterRendererFactory.register(CodeRefinementBatch.class, CodeRefinementBatchRenderer.class);
+        ParameterRendererFactory.registerById("java", JavaCodeParameterRenderer.class);
         
         // 2. Register the ElementHandle module for global JSON support in the IDE
         SchemaProvider.OBJECT_MAPPER.registerModule(new ElementHandleModule());
@@ -70,40 +92,6 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
      */
     public NetBeansAsiContainer() {
         super("netbeans");
-        
-        // Ensure Gemini is registered with stable UUID
-        AbstractAiProvider gemini = getProviderByClass(GeminiAiProvider.class);
-        
-        if (gemini == null) {
-            registerProvider(new GeminiAiProvider());
-        } else if (!"Gemini".equals(gemini.getUuid())) {
-            log.info("Migrating legacy Gemini provider ({}) to stable ID", gemini.getUuid());
-            unregisterProvider(gemini.getUuid());
-            gemini.setUuid("Gemini");
-            gemini.setFolderName("Gemini");
-            registerProvider(gemini);
-        }
-        /*
-        if (getProvider("OpenAI") == null) {
-            log.info("Registering OpenAI");
-            registerProvider(new OpenAiProvider());
-        }*/
-        
-        if (getProvider("Modal") == null) {
-            log.info("Registering Modal");
-            registerProvider(new ModalProvider());
-        }
-        
-        if (getProvider("HuggingFace") == null) {
-            log.info("Registering HF");
-            registerProvider(new HuggingFaceProvider());
-        }
-        /*
-        if (getProvider("Anahata") == null) {
-            log.info("Registering Anahata");
-            registerProvider(new OpenAiCompatibleProvider(                    
-                    "Anahata", "Anahata (no SSL)", "http://a.anahata.uno:1234/v1", "Anahata", "https://discord.com/invite/gwGWWxPUXE"));
-        }*/
     }
 
     /**
@@ -119,24 +107,24 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
 
     @Override
     protected void focusUI(Agi agi) {
-        AgiTopComponent atc = findTopComponent(agi);
-        if (atc == null) {
-            atc = new AgiTopComponent(agi);
-        }
-        atc.open();
-        atc.requestActive();
+            AgiTopComponent atc = findTopComponent(agi);
+            if (atc == null) {
+                atc = new AgiTopComponent(agi);
+            }
+            atc.open();
+            atc.requestActive();
     }
 
     @Override
     protected void closeUI(Agi agi) {
-        AgiTopComponent atc = findTopComponent(agi);
-        if (atc != null) {
-            atc.close();
-        }
+            AgiTopComponent atc = findTopComponent(agi);
+            if (atc != null) {
+                atc.close();
+            }
     }
 
     @Override
-    public Object getUI(Agi agi) {
+    public AgiPanel getUI(Agi agi) {
         AgiTopComponent atc = findTopComponent(agi);
         return atc != null ? atc.getAgiPanel() : null;
     }

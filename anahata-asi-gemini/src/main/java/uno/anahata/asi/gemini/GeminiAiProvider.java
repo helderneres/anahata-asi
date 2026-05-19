@@ -1,12 +1,18 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.gemini;
 
+import com.google.genai.Chat;
 import com.google.genai.Client;
+import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.HttpOptions;
 import com.google.genai.types.ListModelsConfig;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import uno.anahata.asi.agi.provider.AbstractAiProvider;
 import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.agi.provider.TokenizerType;
@@ -19,15 +25,34 @@ import uno.anahata.asi.agi.provider.TokenizerType;
  * @author anahata-gemini-pro-2.5
  */
 @Getter
+@Slf4j
 public class GeminiAiProvider extends AbstractAiProvider {
 
+    /**
+     * The native Google GenAI client instance. transient to prevent serialization.
+     */
     private transient Client client;
 
-    public GeminiAiProvider() {
-        super("Gemini");
-        setDisplayName("Gemini-genai");
+    /**
+     * Whether this provider is configured to use Google Cloud Vertex AI 
+     * instead of the standard AI Studio endpoint.
+     */
+    @Setter
+    private boolean vertex = false;
+
+    /**
+     * Craetes a new Gemini Provider using the Official Google Genai Java SDK.
+     *
+     * @param uuid registration id
+     * @param displayName
+     * @param vertex if true will point to vertex express.
+     */
+    public GeminiAiProvider(String uuid, String displayName, boolean vertex) {
+        super(uuid);
+        this.vertex = vertex;
+        setDisplayName(displayName);
         setTokenizerType(TokenizerType.GEMINI);
-        setKeysAcquisitionUri("https://aistudio.google.com/app/apikey");
+        setKeysAcquisitionUri(vertex ? "https://console.cloud.google.com/agent-platform/overview" : "https://aistudio.google.com/app/apikey");
     }
 
     /**
@@ -37,22 +62,33 @@ public class GeminiAiProvider extends AbstractAiProvider {
      */
     public synchronized Client getClient() {
         if (client == null) {
-            String nextKey = getNextKey();
-            if (nextKey != null) {
-                client = Client.builder()
-                        .apiKey(nextKey)
-                        .build();
+
+            if (isApiKeyRequired()) {
+                String nextKey = getNextKey();
+                log.info("Got api key from " + getUuid() + " " + StringUtils.abbreviate(nextKey, 8));
+                if (nextKey != null) {
+                    Client.Builder builder = Client.builder()
+                            .vertexAI(vertex)
+                            .apiKey(nextKey);
+                    if (getBaseUrl() != null && !getBaseUrl().isBlank()) {
+                        builder.httpOptions(HttpOptions.builder().baseUrl(getBaseUrl()).build());
+                    }
+                    client = builder.build();
+                } else {
+                    throw new IllegalStateException("Could not load an API key for Gemini. Check " + getKeysFilePath());
+                }
             } else {
-                throw new IllegalStateException("Could not load an API key for Gemini. Check " + getKeysFilePath());
-            }
+                client = Client.builder()
+                            .vertexAI(vertex)
+                            .build();
+                }            
 
         }
         return client;
     }
 
     /**
-     * Returns the api key being used by the current genai Client
-     * @return the api key in use
+     * {@inheritDoc}
      */
     @Override
     public String getCurrentApiKey() {
@@ -62,8 +98,8 @@ public class GeminiAiProvider extends AbstractAiProvider {
     /**
      * {@inheritDoc}
      * <p>
-     * Implementation details: Nullifies the internal Gemini client. This forces 
-     * the provider to rotate to the next API key in the pool and reconstruct 
+     * Implementation details: Nullifies the internal Gemini client. This forces
+     * the provider to rotate to the next API key in the pool and reconstruct
      * the client on the very next generation request.
      * </p>
      */
@@ -75,8 +111,8 @@ public class GeminiAiProvider extends AbstractAiProvider {
     /**
      * {@inheritDoc}
      * <p>
-     * Implementation details: Synchronously fetches the list of available 
-     * Generative Models from the Google GenAI service. Each native model is 
+     * Implementation details: Synchronously fetches the list of available
+     * Generative Models from the Google GenAI service. Each native model is
      * wrapped in a {@link GeminiModel} adapter.
      * </p>
      */
@@ -87,7 +123,6 @@ public class GeminiAiProvider extends AbstractAiProvider {
                 .map(model -> (AbstractModel) new GeminiModel(this, model))
                 .collect(Collectors.toList());
     }
-
 
     /**
      * {@inheritDoc}
@@ -104,6 +139,16 @@ public class GeminiAiProvider extends AbstractAiProvider {
                 + "# You can put comments after each key using '//'.\n"
                 + "\n"
                 + "AIzaSyB1C2D3E4F5G6H7I8J9K0L1M2N3O4P5Q6R // main_key\n"
-                + "AIzaSyA9B8C7D6E5F4G3H2I1J0K9L8M7N6O5P4Q // backup_key";
+                + "AIzaSyA9B8C7D6E5F4G3H2I1J0K9L8M7N6O5P4Q // backup_key"
+                + "AIzaSyB1C2D3E4F5G6H7I8J9K0L1M2N3O4P5Q6R // secodary_backup_key\n";
     }
+    
+    /*
+
+    public static void main(String[] args) {
+        Client c = new GeminiAiProvider(true).getClient();
+        Chat chat = c.chats.create("gemini-3-flash-preview");
+        GenerateContentResponse resp = chat.sendMessage("hi");
+        System.out.println(resp);
+    }*/
 }

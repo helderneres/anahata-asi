@@ -7,6 +7,7 @@ import java.util.List;
 import uno.anahata.asi.agi.message.AbstractMessage;
 import uno.anahata.asi.agi.message.AbstractPart;
 import uno.anahata.asi.swing.agi.AgiPanel;
+import uno.anahata.asi.internal.TokenizerUtils;
 
 /**
  * A context tree node representing a single message in the conversation.
@@ -86,18 +87,24 @@ public class MessageNode extends AbstractContextNode<AbstractMessage> {
      */
     @Override
     protected void calculateLocalTokens() {
-        // Message tokens are aggregated from PartNodes
+        this.historyTokens = userObject.shouldCreateMetadata() ? TokenizerUtils.countTokens(userObject.createMetadataHeader()) : 0;
     }
 
     /**
      * {@inheritDoc}
      * <p>
      * Implementation details: Updates the status label based on whether the
-     * message has been effectively pruned from the context window.
+     * message is pinned, effectively pruned from the context window, or active.
      * </p>
      */
     @Override
     protected void updateStatus() {
-        this.status = userObject.isEffectivelyPruned() ? "Pruned" : "Active";
+        if (userObject.isAllPinned()) {
+            this.status = "All Pinned";
+        } else if (userObject.isAnyPinned()) {
+            this.status = "Some Pinned";    
+        } else {
+            this.status = userObject.isEffectivelyPruned() ? "Pruned" : "Active";
+        }
     }
 }

@@ -86,6 +86,19 @@ public abstract class AbstractPartPanel<T extends AbstractPart> extends JXTitled
     /** Label for the thought signature, if present. */
     private JLabel thoughtSignatureLabel;
 
+    /** Flag to force the panel and its content to be visible and expanded regardless of state. */
+    private boolean forceExpanded = false;
+
+    /**
+     * Sets the forceExpanded flag, if true, the part will be expanded regardless of the expanded attribute of the AbstractPart.
+     * @param forceExpanded the new value
+     */
+    public void setForceExpanded(boolean forceExpanded) {
+        this.forceExpanded = forceExpanded;
+        updateContentVisibility();
+        updateVisibility();
+    }
+
     /**
      * Constructs a new AbstractPartPanel.
      *
@@ -162,7 +175,9 @@ public abstract class AbstractPartPanel<T extends AbstractPart> extends JXTitled
 
         // 4. Expand/Collapse Logic on Header Click
         if (getComponentCount() > 0) {
-            getComponent(0).addMouseListener(new MouseAdapter() {
+            Component header = getComponent(0);
+            header.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+            header.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     toggleExpanded();
@@ -322,6 +337,11 @@ public abstract class AbstractPartPanel<T extends AbstractPart> extends JXTitled
         // Fix: Handle null rawText to avoid "null" string in summary
         String summary = (rawText == null || rawText.isEmpty()) ? "" : TextUtils.formatValue(rawText);
         
+        // Strip HTML tags entirely to prevent raw tags from cluttering the header
+        summary = summary.replaceAll("<[^>]*>", "");
+        // Escape remaining < and > just in case
+        summary = summary.replace("<", "&lt;").replace(">", "&gt;");
+        
         //log.info("Updating header info text for part: {}", summary);
 
         StringBuilder sb = new StringBuilder("<html>");
@@ -370,7 +390,7 @@ public abstract class AbstractPartPanel<T extends AbstractPart> extends JXTitled
      */
     protected void updateContentVisibility() {
         boolean isEffectivelyPruned = part.isEffectivelyPruned();
-        boolean shouldShowContent = (!isEffectivelyPruned || agiConfig.isShowPruned()) && part.isExpanded();
+        boolean shouldShowContent = forceExpanded || ((!isEffectivelyPruned || agiConfig.isShowPruned()) && part.isExpanded());
         getContentContainer().setVisible(shouldShowContent);
     }
 
@@ -381,6 +401,6 @@ public abstract class AbstractPartPanel<T extends AbstractPart> extends JXTitled
      */
     protected void updateVisibility() {
         boolean isEffectivelyPruned = part.isEffectivelyPruned();
-        setVisible(!isEffectivelyPruned || agiConfig.isShowPruned());
+        setVisible(forceExpanded || !isEffectivelyPruned || agiConfig.isShowPruned());
     }
 }

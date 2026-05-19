@@ -17,6 +17,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.border.TitledBorder;
@@ -195,15 +196,15 @@ public class ResourcePanel extends ScrollablePanel {
         });
         identityTab.add(providingBox, cc.xyw(1, 7, 3));
 
-        metadataTabs.addTab("Identity", identityTab);
+        metadataTabs.addTab("Identity", createHScrollPane(identityTab));
 
         handleSectorContainer = new JPanel(new BorderLayout());
         handleSectorContainer.setOpaque(false);
-        metadataTabs.addTab("Handle", handleSectorContainer);
+        metadataTabs.addTab("Handle", createHScrollPane(handleSectorContainer));
 
         viewSectorContainer = new JPanel(new BorderLayout());
         viewSectorContainer.setOpaque(false);
-        metadataTabs.addTab("View", viewSectorContainer);
+        metadataTabs.addTab("View", createHScrollPane(viewSectorContainer));
 
         // 3. CONTENT TABS (Capabilities, Model perspective (RAG))
         contentTabs = new AdjustingTabPane(350);
@@ -241,7 +242,25 @@ public class ResourcePanel extends ScrollablePanel {
         ));
         f.setOpaque(true);
         f.setBackground(UIManager.getColor("TextField.inactiveBackground"));
+        f.setMinimumSize(new Dimension(50, 22));
+        f.setPreferredSize(new Dimension(150, 22));
         return f;
+    }
+
+    /**
+     * Creates a horizontal scroll pane for metadata tabs to prevent layout overflow.
+     * 
+     * @param comp The component to wrap.
+     * @return The configured JScrollPane.
+     */
+    private JScrollPane createHScrollPane(JComponent comp) {
+        JScrollPane sp = new JScrollPane(comp);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        sp.setOpaque(false);
+        sp.getViewport().setOpaque(false);
+        sp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        sp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        return sp;
     }
 
     /**
@@ -411,20 +430,39 @@ public class ResourcePanel extends ScrollablePanel {
      * @return The rendered model perspective component.
      */
     private JComponent createModelPerspectiveComponent() {
-        RagMessage rawMsg = new RagMessage(agiPanel.getAgi());
-        try {
-            rawMsg.addTextPart(currentResource.getHeader());
-            if (currentResource.getContextPosition() == ContextPosition.SYSTEM_INSTRUCTIONS) {
-                currentResource.getSystemInstructions().forEach(rawMsg::addTextPart);
-            } else {
-                currentResource.populateMessage(rawMsg);
-            }
-        } catch (Exception e) {
-            rawMsg.addTextPart("**Error generating perspective:**\n" + ExceptionUtils.getStackTrace(e));
-        }
+        JPanel container = new JPanel(new BorderLayout());
+        JLabel loadingLabel = new JLabel("Generating Model Perspective...", SwingConstants.CENTER);
+        loadingLabel.setFont(loadingLabel.getFont().deriveFont(Font.ITALIC, 16f));
+        container.add(loadingLabel, BorderLayout.CENTER);
 
-        RagMessagePanel panel = new RagMessagePanel(agiPanel, rawMsg, false, false);
-        panel.render();
-        return panel;
+        // Snapshot current resource for thread safety
+        final Resource resourceSnapshot = currentResource;
+
+        new SwingTask<RagMessage>(agiPanel, "Model Perspective: " + resourceSnapshot.getName(), () -> {
+            RagMessage rawMsg = new RagMessage(agiPanel.getAgi());
+            try {
+                rawMsg.addTextPart(resourceSnapshot.getHeader());
+                if (resourceSnapshot.getContextPosition() == ContextPosition.SYSTEM_INSTRUCTIONS) {
+                    resourceSnapshot.getSystemInstructions().forEach(rawMsg::addTextPart);
+                } else {
+                    resourceSnapshot.populateMessage(rawMsg);
+                }
+            } catch (Exception e) {
+                rawMsg.addTextPart("**Error generating perspective:**\n" + ExceptionUtils.getStackTrace(e));
+            }
+            return rawMsg;
+        }, rawMsg -> {
+            if (currentResource != resourceSnapshot) {
+                return; // Abort if resource changed
+            }
+            RagMessagePanel panel = new RagMessagePanel(agiPanel, rawMsg, false, false);
+            panel.render();
+            container.removeAll();
+            container.add(panel, BorderLayout.CENTER);
+            container.revalidate();
+            container.repaint();
+        }).start();
+
+        return container;
     }
 }

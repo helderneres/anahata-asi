@@ -18,13 +18,13 @@ import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.spi.AbstractToolResponse;
 
 /**
- * An object-oriented adapter that converts a single Anahata AbstractMessage into one
- * or more native Google GenAI Content objects, injecting in-band metadata headers 
- * for improved model self-awareness.
+ * An object-oriented adapter that converts a single Anahata AbstractMessage
+ * into one or more native Google GenAI Content objects, injecting in-band
+ * metadata headers for improved model self-awareness.
  * <p>
- * In the V2 simplified architecture, this adapter performs a 1-to-N mapping for 
- * ModelMessages: it synthesizes the required 'model' (calls) and 'tool' (responses) 
- * API messages from a single turn-holding ModelMessage.
+ * In the V2 simplified architecture, this adapter performs a 1-to-N mapping for
+ * ModelMessages: it synthesizes the required 'model' (calls) and 'tool'
+ * (responses) API messages from a single turn-holding ModelMessage.
  * </p>
  *
  * @author anahata
@@ -32,35 +32,60 @@ import uno.anahata.asi.agi.tool.spi.AbstractToolResponse;
 @RequiredArgsConstructor
 public class GeminiContentAdapter {
 
+    /**
+     * The Anahata message instance to be converted.
+     */
     private final AbstractMessage anahataMessage;
+    
+    /**
+     * Whether to include parts marked as effectively pruned in the output payload.
+     */
     private final boolean includePruned;
+    
+    /**
+     * The UUID of the provider for which the payload is being prepared. 
+     * Used to ensure thought signatures are only replayed to the originating provider.
+     */
+    private final String targetProviderUuid;
 
     /**
-     * Performs the conversion from the Anahata message to a list of Google GenAI Content objects.
-     * @return A list of Content objects, or an empty list if no content is visible.
+     * Performs the conversion from the Anahata message to a list of Google
+     * GenAI Content objects.
+     *
+     * @return A list of Content objects, or an empty list if no content is
+     * visible.
      */
     public List<Content> toGoogle() {
         Role role = anahataMessage.getRole();
         List<Content> results = new ArrayList<>();
-        
+
         if (role == Role.USER) {
             Content userContent = toGoogleUser();
-            if (userContent != null) results.add(userContent);
+            if (userContent != null) {
+                results.add(userContent);
+            }
         } else if (role == Role.MODEL) {
             results.addAll(toGoogleModel());
         }
-        
+
         return results;
     }
 
     /**
-     * 
-     * @return 
+     * Determines if in-band metadata (headers) should be injected into the 
+     * parts based on session configuration and message state.
+     * @return True if injection is enabled and allowed for this message.
      */
     private boolean shouldInjectInbandMetadata() {
-        return anahataMessage.getAgi().getRequestConfig().isInjectInbandMetadata()&& anahataMessage.shouldCreateMetadata();
+        return anahataMessage.getAgi().getRequestConfig().isInjectInbandMetadata() && anahataMessage.shouldCreateMetadata();
     }
 
+    /**
+     * Converts a user-role message into a native Google Content object.
+     * <p>Implementation details: Injects a turn-level metadata header and then 
+     * processes individual parts with interleaved part-level metadata.</p>
+     * @return The user content or null if empty.
+     */
     private Content toGoogleUser() {
         Content.Builder builder = Content.builder().role("user");
         List<Part> googleParts = new ArrayList<>();
@@ -84,9 +109,11 @@ public class GeminiContentAdapter {
     }
 
     /**
-     * Synthesizes the model message into potentially two API messages: 
-     * 1. A 'model' role content containing text and tool calls.
-     * 2. A 'tool' role content containing tool responses (if executed).
+     * Synthesizes a model-role message into multiple API messages.
+     * <p>Implementation details: Produces a 'model' role message containing the 
+     * model's generated content (text/calls) and an optional 'tool' role message 
+     * containing the execution results of any triggered tools.</p>
+     * @return A list of synthesized Content objects.
      */
     private List<Content> toGoogleModel() {
         List<Content> synthesized = new ArrayList<>();
@@ -141,8 +168,10 @@ public class GeminiContentAdapter {
     }
 
     /**
-     * Adds an Anahata part to the Google GenAI list, automatically injecting 
-     * metadata headers and handling pruned placeholder hints.
+     * Adds a single Anahata part to the Google parts list, handling 
+     * metadata injection and pruned content replacement.
+     * @param googleParts The target list for native parts.
+     * @param part        The Anahata part to process.
      */
     private void addPartWithMetadata(List<Part> googleParts, AbstractPart part) {
         boolean isEffectivelyPruned = part.isEffectivelyPruned();
@@ -153,7 +182,7 @@ public class GeminiContentAdapter {
             // message allows it. The AbstractPart itself now handles the 
             // rich "Ghost" hint when effectively pruned.
             Part.Builder headerBuilder = createMetadataPartBuilder(part.createMetadataHeader());
-            
+
             // If we are NOT going to include the actual part (because it's pruned), 
             // the metadata header must take responsibility for carrying the 
             // thought signature if one exists.
@@ -162,12 +191,21 @@ public class GeminiContentAdapter {
                 //does it really make sense?
                 //headerBuilder.thoughtSignature(ts.getThoughtSignature());
             }
-            
+
             googleParts.add(headerBuilder.build());
-        }
+        } 
 
         if (shouldIncludeContent) {
-            Part googlePart = new GeminiPartAdapter(part).toGoogle();
+            boolean includeThoughtSignature = true;
+            if (anahataMessage instanceof AbstractModelMessage<?> amm) {
+                // If we know the source provider and it's different from the current one, 
+                // we don't replay the signature as it might be invalid/incompatible.
+                if (amm.getProviderUuid() != null && targetProviderUuid != null) {
+                    includeThoughtSignature = Objects.equals(amm.getProviderUuid(), targetProviderUuid);
+                }
+            }
+
+            Part googlePart = new GeminiPartAdapter(part, includeThoughtSignature).toGoogle();
             if (googlePart != null) {
                 part.setTokenCount(TokenizerUtils.countTokens(googlePart.toJson()));
                 googleParts.add(googlePart);
@@ -175,12 +213,22 @@ public class GeminiContentAdapter {
         }
     }
 
+    /**
+     * Creates a builder for a metadata part containing the specified text.
+     * @param text The metadata header text.
+     * @return A Part.Builder.
+     */
     private Part.Builder createMetadataPartBuilder(String text) {
         return Part.builder()
                 .text(text);
-                //.thought(true);
+        //.thought(true);
     }
 
+    /**
+     * Creates a native metadata part.
+     * @param text The metadata header text.
+     * @return A native Part.
+     */
     private Part createMetadataPart(String text) {
         return createMetadataPartBuilder(text).build();
     }

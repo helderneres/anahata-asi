@@ -17,21 +17,34 @@ import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.agi.provider.TokenizerType;
 
 /**
- * Clean-room provider for OpenAI, strictly utilizing the modern Responses API (/v1/responses).
- * 
- * <p>This provider is designed for native agentic workflows, supporting built-in 
- * tools and stateful item-based history. It completely bypasses the legacy 
- * Chat Completions infrastructure.</p>
- * 
+ * Clean-room provider for OpenAI, strictly utilizing the modern Responses API
+ * (/v1/responses).
+ * <p>
+ * This provider is designed for native agentic workflows, supporting built-in
+ * tools and stateful item-based history. It handles model discovery and API key
+ * management for the OpenAI platform.</p>
+ *
  * @author anahata
  */
 @Slf4j
 @Getter
 public class OpenAiProvider extends AbstractAiProvider {
 
+    /**
+     * Internal Jackson mapper for OpenAI API JSON processing.
+     */
     private static final ObjectMapper API_MAPPER = new ObjectMapper();
+    /**
+     * The HTTP client used for all communication with the OpenAI API.
+     * <p>Marked as transient to prevent serialization of the networking stack.</p>
+     */
     private transient HttpClient httpClient;
 
+    /**
+     * Lazy-initializes and returns the HTTP client for this provider.
+     * <p>Ensures standard timeouts and redirect policies are applied.</p>
+     * @return The active HTTP client.
+     */
     public synchronized HttpClient getHttpClient() {
         if (httpClient == null) {
             httpClient = HttpClient.newBuilder()
@@ -42,6 +55,10 @@ public class OpenAiProvider extends AbstractAiProvider {
         return httpClient;
     }
 
+    /**
+     * Constructs a new OpenAiProvider with the 'OpenAI' UUID and 
+     * standard tokenizer settings.
+     */
     public OpenAiProvider() {
         super("OpenAI");
         setDisplayName("OpenAI (Responses)");
@@ -49,6 +66,15 @@ public class OpenAiProvider extends AbstractAiProvider {
         setKeysAcquisitionUri("https://platform.openai.com/api-keys");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Implementation details: Executes a GET request to the {@code /models} 
+     * endpoint of the configured {@link #getBaseUrl()}. Discovered models are 
+     * filtered to include only those supported by the Responses API (gpt-4o and 
+     * successor generations).
+     * </p>
+     */
     @Override
     public List<? extends AbstractModel> listModels() {
         log.info("Fetching OpenAI models...");
@@ -59,7 +85,7 @@ public class OpenAiProvider extends AbstractAiProvider {
             }
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://api.openai.com/v1/models"))
+                    .uri(URI.create(getBaseUrl() + "/models"))
                     .header("Authorization", "Bearer " + apiKey)
                     .GET()
                     .build();
@@ -74,7 +100,7 @@ public class OpenAiProvider extends AbstractAiProvider {
             JsonNode root = API_MAPPER.readTree(response.body());
             JsonNode data = root.get("data");
             List<OpenAiModel> models = new ArrayList<>();
-            
+
             if (data != null && data.isArray()) {
                 for (JsonNode modelNode : data) {
                     String id = modelNode.get("id").asText();
@@ -92,6 +118,21 @@ public class OpenAiProvider extends AbstractAiProvider {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Determines if an HTTP status code or response body indicates a transient 
+     * failure that should trigger a retry or rotation.
+     * </p>
+     */
+    public boolean isRetryable(int statusCode, String responseBody) {
+        return statusCode == 429 || statusCode == 503 || statusCode == 500 || statusCode == 499 || statusCode == 408;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>Provides a template for the OpenAI {@code api_keys.txt} file.</p>
+     */
     @Override
     public String getApiKeyHint() {
         return "# OpenAI API Key Configuration\n"

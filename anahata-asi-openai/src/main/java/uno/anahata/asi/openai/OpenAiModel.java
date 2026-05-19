@@ -9,12 +9,13 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.message.AbstractMessage;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.agi.provider.AbstractModel;
@@ -29,124 +30,191 @@ import uno.anahata.asi.agi.tool.spi.AbstractTool;
 import uno.anahata.asi.agi.tool.spi.AbstractToolParameter;
 
 /**
- * Native implementation for OpenAI models using the Responses API (/v1/responses).
- * 
- * <p>This implementation performs "Partitioned Construction" of the request payload
- * by assembling the full API body and then extracting the Identity (Config) 
- * and Memory (History) JSON strings from it for UI visibility.</p>
- * 
+ * Native implementation for OpenAI models using the Responses API
+ * (/v1/responses).
+ * <p>
+ * This implementation performs "Partitioned Construction" of the request
+ * payload by assembling the full API body and then extracting the Identity
+ * (Config) and Memory (History) JSON strings from it for UI visibility.
+ * Supports built-in hosted tools like Web Search and Code Interpreter.</p>
  * @author anahata
  */
 @Slf4j
 @SuppressWarnings("unchecked")
+@Getter
 public class OpenAiModel extends AbstractModel {
 
+    /**
+     * Internal mapper for Responses API JSON operations.
+     */
     private static final ObjectMapper API_MAPPER = new ObjectMapper();
+    /**
+     * The parent provider for this model.
+     */
     private final OpenAiProvider provider;
+    /**
+     * The unique identifier for the OpenAI model (e.g., 'gpt-4o').
+     */
     private final String modelId;
+    /**
+     * The human-readable name for the model.
+     */
     private final String displayName;
 
+    /**
+     * Constructs a new OpenAiModel from an API model node.
+     * @param provider The parent provider.
+     * @param node The JSON node containing model metadata.
+     */
     public OpenAiModel(OpenAiProvider provider, JsonNode node) {
         this.provider = provider;
         this.modelId = node.get("id").asText();
         this.displayName = node.path("name").asText(modelId);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Implementation details: Returns the display name or model ID.</p>
+     */
     @Override
-    public OpenAiProvider getProvider() {
-        return provider;
-    }
-
-    @Override
-    public String getModelId() {
-        return modelId;
-    }
-
-    @Override
-    public String getDisplayName() {
+    public String getDescription() {
         return displayName;
     }
 
-    @Override
-    public String getDescription() {
-        return modelId;
-    }
-
+    /**
+     * {@inheritDoc}
+     * <p>Implementation details: Always returns null as Responses API models 
+     * use the base ID for versioning.</p>
+     */
     @Override
     public String getVersion() {
         return null;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int getMaxInputTokens() {
         return 1050000;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int getMaxOutputTokens() {
         return 128000;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<String> getSupportedActions() {
         return List.of("generateContent");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Returns a high-density HTML summary of the model and its specialized 
+     * Responses API provider.</p>
+     */
     @Override
     public String getRawDescription() {
         return "<html><b>Model ID:</b> " + modelId + "<br><b>Provider:</b> OpenAI Responses API</html>";
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsFunctionCalling() {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsContentGeneration() {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsBatchEmbeddings() {
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsEmbeddings() {
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isSupportsCachedContent() {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<String> getSupportedResponseModalities() {
         return List.of("TEXT", "IMAGE", "AUDIO");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Implementation details: Provides 'web_search' and 'code_interpreter' 
+     * as native server-side tools.</p>
+     */
     @Override
     public List<ServerTool> getAvailableServerTools() {
-        return Collections.emptyList();
+        List<ServerTool> tools = new ArrayList<>();
+        tools.add(new ServerTool("web_search", "Web Search", "Search the web using OpenAI's built-in tool."));
+        tools.add(new ServerTool("code_interpreter", "Code Interpreter", "Execute Python code in a secure sandbox."));
+        return tools;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<ServerTool> getDefaultServerTools() {
-        return Collections.emptyList();
+        return getAvailableServerTools().stream()
+                .filter(st -> "web_search".equals(st.getId()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Float getDefaultTemperature() {
         return null;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Integer getDefaultTopK() {
         return null;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Float getDefaultTopP() {
         return null;
@@ -155,14 +223,24 @@ public class OpenAiModel extends AbstractModel {
     /**
      * Record holding the three distinct partitions of a request payload.
      */
-    public record PreparedPayload(String fullPayload, String configJson, String historyJson) {}
+    public record PreparedPayload(String fullPayload, String configJson, String historyJson) {
 
+    }
+
+    /**
+     * Assembles the full OpenAI Responses API payload and extracts partitions 
+     * for UI visibility.
+     * @param request The generation request.
+     * @param stream Whether to enable SSE streaming.
+     * @return The prepared payload partitions.
+     */
     @SneakyThrows
-    private PreparedPayload preparePayload(GenerationRequest request) {
+    private PreparedPayload preparePayload(GenerationRequest request, boolean stream) {
         ObjectNode root = API_MAPPER.createObjectNode();
         root.put("model", modelId);
         root.put("store", false); // Stateless ASI mode
-        
+        if (stream) root.put("stream", true);
+
         ArrayNode include = root.putArray("include");
         include.add("reasoning.encrypted_content");
 
@@ -170,12 +248,18 @@ public class OpenAiModel extends AbstractModel {
         ThinkingLevel level = request.config().getThinkingLevel();
         if (level != null && level != ThinkingLevel.THINKING_LEVEL_UNSPECIFIED) {
             String effort = switch (level) {
-                case NONE -> "none";
-                case MINIMAL, LOW -> "low";
-                case MEDIUM -> "medium";
-                case HIGH -> "high";
-                case XHIGH -> "xhigh";
-                default -> null;
+                case NONE ->
+                    "none";
+                case MINIMAL, LOW ->
+                    "low";
+                case MEDIUM ->
+                    "medium";
+                case HIGH ->
+                    "high";
+                case XHIGH ->
+                    "xhigh";
+                default ->
+                    null;
             };
             if (effort != null) {
                 ObjectNode reasoning = root.putObject("reasoning");
@@ -191,9 +275,9 @@ public class OpenAiModel extends AbstractModel {
             root.put("instructions", String.join("\n\n", si));
         }
 
-        // Tools
+        // Tools (Local and Hosted)
+        ArrayNode toolsArray = root.putArray("tools");
         if (request.config().getLocalTools() != null && !request.config().getLocalTools().isEmpty()) {
-            ArrayNode toolsArray = root.putArray("tools");
             Map<uno.anahata.asi.agi.tool.spi.AbstractToolkit, List<AbstractTool>> grouped = (Map) request.config().getLocalTools().stream()
                     .collect(java.util.stream.Collectors.groupingBy(AbstractTool::getToolkit));
 
@@ -209,7 +293,28 @@ public class OpenAiModel extends AbstractModel {
                 }
             }
         }
-        
+
+        // Hosted Server Tools
+        if (request.config().isServerToolsEnabled()) {
+            for (ServerTool st : request.config().getEnabledServerTools()) {
+                if ("web_search".equals(st.getId())) {
+                    toolsArray.addObject().put("type", "web_search");
+                    include.add("web_search_call.results");
+                    include.add("web_search_call.action.sources");
+                } else if ("code_interpreter".equals(st.getId())) {
+                    ObjectNode ciTool = toolsArray.addObject();
+                    ciTool.put("type", "code_interpreter");
+                    ciTool.putObject("container").put("type", "auto");
+                    include.add("code_interpreter_call.outputs");
+                }
+            }
+        }
+
+        // If no tools added, remove the array to keep the payload clean
+        if (toolsArray.isEmpty()) {
+            root.remove("tools");
+        }
+
         // 2. Memory / History
         ArrayNode input = root.putArray("input");
         boolean includePruned = request.config().isIncludePruned();
@@ -228,10 +333,16 @@ public class OpenAiModel extends AbstractModel {
         return new PreparedPayload(root.toString(), configNode.toPrettyString(), historyJson);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Executes a synchronous content generation request using the Responses API.
+     * Performs automated partitioning of the request for clear history and 
+     * configuration separation in the UI.</p>
+     */
     @Override
     @SneakyThrows
     public Response generateContent(GenerationRequest request) {
-        PreparedPayload prepared = preparePayload(request);
+        PreparedPayload prepared = preparePayload(request, false);
         String apiKey = provider.getCurrentKey();
 
         System.out.println("--- Request Config JSON (SI & Tools) ---");
@@ -260,46 +371,129 @@ public class OpenAiModel extends AbstractModel {
             throw new RuntimeException("OpenAI API error: " + httpResponse.statusCode() + " - " + httpResponse.body());
         }
 
-        return new OpenAiResponse(prepared.configJson(), prepared.historyJson(), 
+        return new OpenAiResponse(prepared.configJson(), prepared.historyJson(),
                 request.config().getAgi(), modelId, httpResponse.body());
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Executes an asynchronous content generation request using the Responses API 
+     * with Server-Sent Events (SSE). Streams text and reasoning in real-time, and 
+     * seamlessly processes tool calls upon item completion.</p>
+     */
     @Override
     public void generateContentStream(GenerationRequest request, StreamObserver<Response<? extends AbstractModelMessage>> observer) {
-        throw new UnsupportedOperationException("Streaming not yet implemented in clean-room.");
+        Agi agi = request.config().getAgi();
+        PreparedPayload prepared = preparePayload(request, true);
+        
+        log.info("Executing OpenAI streaming request to Responses API");
+        try {
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.openai.com/v1/responses"))
+                    .header("Authorization", "Bearer " + provider.getCurrentKey())
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "text/event-stream")
+                    .POST(HttpRequest.BodyPublishers.ofString(prepared.fullPayload()))
+                    .build();
+                    
+            java.net.http.HttpClient client = provider.getHttpClient(); {
+                OpenAiModelMessage targetMessage = new OpenAiModelMessage(agi, getModelId());
+                List<OpenAiModelMessage> targets = List.of(targetMessage);
+                java.util.concurrent.atomic.AtomicBoolean started = new java.util.concurrent.atomic.AtomicBoolean(false);
+                
+                HttpResponse<java.util.stream.Stream<String>> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofLines());
+                if (response.statusCode() != 200) {
+                    String errorMsg = "No error body";
+                    try (java.util.stream.Stream<String> bodyStream = response.body()) {
+                        errorMsg = bodyStream.collect(java.util.stream.Collectors.joining("\n"));
+                    }
+                    if (provider.isRetryable(response.statusCode(), errorMsg)) {
+                        provider.hokusPocus();
+                        observer.onError(new RetryableApiException(provider.getCurrentKey(), "Stream Error (" + response.statusCode() + "): " + errorMsg, null));
+                    } else {
+                        observer.onError(new RuntimeException("Stream Error (" + response.statusCode() + "): " + errorMsg));
+                    }
+                    return;
+                }
+                
+                try (java.util.stream.Stream<String> lines = response.body()) {
+                    java.util.Iterator<String> it = lines.iterator();
+                    
+                    while (it.hasNext()) {
+                        String line = it.next();
+                        if (line == null || line.isBlank()) continue;
+                        
+                        if (line.startsWith("data: ")) {
+                            String data = line.substring(6).trim();
+                            if ("[DONE]".equals(data)) {
+                                break;
+                            }
+                            
+                            if (!started.get()) {
+                                observer.onStart((List) targets);
+                                started.set(true);
+                            }
+                            
+                            try {
+                                JsonNode chunk = uno.anahata.asi.internal.JacksonUtils.parse(data, JsonNode.class);
+                                targetMessage.handleStreamEvent(chunk);
+                                targetMessage.appendRawJson(data);
+                                
+                                OpenAiResponse chunkResponse = new OpenAiResponse(prepared.configJson(), prepared.historyJson(), data);
+                                observer.onNext(chunkResponse);
+                                
+                            } catch (Exception e) {
+                                log.error("Failed to parse OpenAI stream chunk: {}", data, e);
+                            }
+                        }
+                    }
+                }
+                targetMessage.setStreaming(false);
+                observer.onComplete();
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to execute OpenAI stream", e);
+            observer.onError(e);
+        }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Translates Anahata tool definitions into the OpenAI 'function' 
+     * specification format.</p>
+     */
     @Override
     @SneakyThrows
     public String getToolDeclarationJson(AbstractTool<?, ?> tool, RequestConfig config) {
         Map<String, Object> decl = new HashMap<>();
         decl.put("type", "function");
-        
+
         String fullName = tool.getName();
         String simpleName = fullName.contains(".") ? fullName.substring(fullName.lastIndexOf(".") + 1) : fullName;
         decl.put("name", simpleName);
         decl.put("description", tool.getDescription());
-        
+
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("type", "object");
-        
+
         Map<String, Object> properties = new HashMap<>();
         List<String> required = new ArrayList<>();
-        
+
         for (AbstractToolParameter param : tool.getParameters()) {
             properties.put(param.getName(), API_MAPPER.readTree(param.getJsonSchema()));
             if (param.isRequired()) {
                 required.add(param.getName());
             }
         }
-        
+
         parameters.put("properties", properties);
         parameters.put("required", required);
         parameters.put("additionalProperties", false);
-        
+
         decl.put("parameters", parameters);
         decl.put("strict", false);
-        
+
         return API_MAPPER.writeValueAsString(decl);
     }
 }

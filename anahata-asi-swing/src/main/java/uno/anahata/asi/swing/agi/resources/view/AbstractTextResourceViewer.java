@@ -8,10 +8,8 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Insets;
-import java.awt.event.MouseWheelListener;
-import java.io.IOException;
+import java.awt.Point;
 import javax.swing.BorderFactory;
-import javax.swing.event.ChangeListener;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -27,6 +25,7 @@ import uno.anahata.asi.swing.icons.RestartIcon;
 import uno.anahata.asi.swing.icons.CancelIcon;
 import uno.anahata.asi.swing.icons.CopyIcon;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
+import uno.anahata.asi.swing.internal.SwingTask;
 import uno.anahata.asi.swing.internal.SwingUtils;
 
 /**
@@ -178,6 +177,23 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         // INITIALIZATION SIGNAL: Force the card layout to show the initial state.
         setEditing(false);
         
+        // Add global Ctrl+S binding for saving without exiting edit mode
+        javax.swing.InputMap im = getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        javax.swing.ActionMap am = getActionMap();
+        im.put(javax.swing.KeyStroke.getKeyStroke("control S"), "saveAction");
+        am.put("saveAction", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (editing && saveAction != null) {
+                    String newContent = getEditorContent();
+                    if (newContent != null) {
+                        saveAction.save(newContent);
+                        // Do NOT call setEditing(false) to allow continuous editing
+                    }
+                }
+            }
+        });
+        
         syncWithResource();
     }
 
@@ -295,12 +311,12 @@ public abstract class AbstractTextResourceViewer extends JPanel {
             if (!verticalScrollEnabled && scroll.getViewport().getView() != null) {
                 // IDEMPOTENT SCROLL LOCK
                 if (scroll.getViewport().getClientProperty("atrv.scroll.lock") == null) {
-                    scroll.getViewport().setViewPosition(new java.awt.Point(scroll.getViewport().getViewPosition().x, 0));
+                    scroll.getViewport().setViewPosition(new Point(scroll.getViewport().getViewPosition().x, 0));
                     scroll.getViewport().addChangeListener(e -> {
                         if (!verticalScrollEnabled) {
-                            java.awt.Point pos = scroll.getViewport().getViewPosition();
+                            Point pos = scroll.getViewport().getViewPosition();
                             if (pos.y != 0) {
-                                scroll.getViewport().setViewPosition(new java.awt.Point(pos.x, 0));
+                                scroll.getViewport().setViewPosition(new Point(pos.x, 0));
                             }
                         }
                     });
@@ -329,54 +345,6 @@ public abstract class AbstractTextResourceViewer extends JPanel {
      * @return The JScrollPane instance.
      */
     public abstract JScrollPane getScrollPane();
-
-    /** 
-     * {@inheritDoc} 
-     * <p>
-     * Implementation details:
-     * Calculates the required height based on the viewport content and 
-     * the integrated control strip. This ensures that "passthrough" components 
-     * (like chat snippets) expand to show their full content without internal 
-     * scrolling.
-     * </p>
-     */
-    @Override
-    public Dimension getPreferredSize() {
-        Dimension ps = super.getPreferredSize();
-        if (!verticalScrollEnabled) {
-            JScrollPane scroll = getScrollPane();
-            if (scroll != null && scroll.getViewport().getView() != null) {
-                Component view = scroll.getViewport().getView();
-                Dimension viewPS = view.getPreferredSize();
-                
-                int h = viewPS.height;
-                
-                // Authoritative Width Sension: detect if horizontal scrollbar is needed
-                int availableWidth = getWidth();
-                if (availableWidth <= 0 && getParent() != null) {
-                    availableWidth = getParent().getWidth();
-                }
-                
-                if (availableWidth > 0 && viewPS.width > availableWidth) {
-                    h += scroll.getHorizontalScrollBar().getPreferredSize().height;
-                }
-                
-                if (controlStrip.isVisible()) {
-                    h += controlStrip.getPreferredSize().height;
-                }
-                
-                // Add insets of the viewer itself
-                Insets insets = getInsets();
-                h += insets.top + insets.bottom;
-                
-                // Add 5px safety buffer for line height rounding
-                h += 5; 
-                
-                return new Dimension(ps.width, h);
-            }
-        }
-        return ps;
-    }
 
     /**
      * Creates the read-only preview component for displaying processed resource content.
@@ -433,23 +401,27 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         }
         
         this.syncing = true;
-        try {
-            // AUTHORITATIVE RESOLUTION: Always pull the full raw content for the User View.
+        new SwingTask<>(agiPanel, "Loading Content", () -> {
+            return resource.asText();
+        }, text -> {
             try {
-                updatePreviewContent(resource.asText());
-            } catch (IOException e) {
-                log.error("Failed to synchronize content from resource: {}", resource.getName(), e);
+                updatePreviewContent(text);
+                if (!verticalScrollEnabled) {
+                    SwingUtilities.invokeLater(this::configureScrollBehavior);
+                }
+            } finally {
+                this.syncing = false;
             }
-
-            // HEIGHT SINGULARITY: Re-trigger scroll configuration whenever content changes in 
-            // passthrough mode. We wrap in invokeLater to ensure the text component has 
-            // updated its own preferred size calculation after the text was set.
-            if (!verticalScrollEnabled) {
-                SwingUtilities.invokeLater(this::configureScrollBehavior);
+        }, error -> {
+            try {
+                log.error("Failed to synchronize content from resource: {}", resource.getName(), error);
+                updatePreviewContent("Error loading content: " + error.getMessage());
+                if (!verticalScrollEnabled) {
+                    SwingUtilities.invokeLater(this::configureScrollBehavior);
+                }
+            } finally {
+                this.syncing = false;
             }
-
-        } finally {
-            this.syncing = false;
-        }
+        }, false).start();
     }
 }
