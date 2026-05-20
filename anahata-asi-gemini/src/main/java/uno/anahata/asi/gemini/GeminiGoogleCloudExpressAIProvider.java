@@ -1,24 +1,12 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.gemini.vertex;
+package uno.anahata.asi.gemini;
 
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.genai.Chat;
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.ListModelsConfig;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.agi.provider.AbstractAiProvider;
 import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.agi.provider.TokenizerType;
-import uno.anahata.asi.gemini.GeminiAiProvider;
-import uno.anahata.asi.gemini.GeminiModel;
 import java.util.ArrayList;
-import uno.anahata.asi.gemini.HardcodedGeminiModel;
 
 /**
  * The concrete implementation of the {@code AbstractAgiProvider} for the Google
@@ -38,6 +26,7 @@ public class GeminiGoogleCloudExpressAIProvider extends GeminiAiProvider {
      */
     public GeminiGoogleCloudExpressAIProvider() {
         super("GeminiGCExpress", "Google Cloud Express Mode", true);
+        setDescription("Google Vertex AI Express Mode. 90 days free trial on pro models 2M tokens context window.");
         setTokenizerType(TokenizerType.GEMINI);
         setKeysAcquisitionUri("https://console.cloud.google.com/expressmode");
     }
@@ -53,7 +42,9 @@ public class GeminiGoogleCloudExpressAIProvider extends GeminiAiProvider {
     public List<? extends AbstractModel> listModels() {
         List<HardcodedGeminiModel> manifest = new ArrayList<>();
         
-        manifest.add(createModel("gemini-3.1-pro-preview", "Gemini 3.1 Pro (Preview)", "v3.1", 2097152, 8192));
+        manifest.add(createModel("gemini-3.1-pro-preview", "Gemini 3.1 Pro (Preview)", "v3.1", 2097152, 65000));        
+        manifest.add(createModel("gemini-3.5-flash", "Gemini 3.5 Flash", "v3.5", 1048576, 65000));
+        
         manifest.add(createModel("gemini-3.1-flash-image-preview", "Gemini 3.1 Flash Image (Preview)", "v3.1", 1048576, 8192));
         manifest.add(createModel("gemini-3-pro-preview", "Gemini 3 Pro (Preview)", "v3", 2097152, 8192));
         manifest.add(createModel("gemini-3-flash-preview", "Gemini 3 Flash (Preview)", "v3", 1048576, 8192));

@@ -25,9 +25,9 @@ import uno.anahata.asi.swing.toolkit.SwingJava;
 import uno.anahata.asi.nb.tools.services.database.Database;
 
 /**
- * NetBeans-specific agi configuration. It replaces the core {@link Files}
- * toolkit with the IDE-integrated {@link NbFiles} and adds NetBeans-specific
- * toolkits like {@link Maven}, {@link Projects}, and {@link CodeModel}.
+ * NetBeans-specific agi configuration.
+ * It replaces the core {@link Files} toolkit with the IDE-integrated {@code NbFiles}
+ * and adds NetBeans-specific toolkits like {@link Maven}, {@link Projects}, and {@link CodeModel}.
  * <p>
  * It also configures the {@link NetBeansIconProvider} to display authentic IDE
  * icons in the context hierarchy.
@@ -47,7 +47,7 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
         getToolClasses().add(CodeModel.class);
         getToolClasses().add(CodeRefiner.class);
         getToolClasses().add(BatchCodeRefiner.class);
-        getToolClasses().add(Javadocs.class);
+        //getToolClasses().add(Javadocs.class);
         getToolClasses().add(IDE.class);
         getToolClasses().add(Editor.class);
         getToolClasses().add(Hints.class);

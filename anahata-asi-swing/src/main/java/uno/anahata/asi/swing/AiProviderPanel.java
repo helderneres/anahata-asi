@@ -32,13 +32,17 @@ import net.miginfocom.swing.MigLayout;
 import org.jdesktop.swingx.prompt.PromptSupport;
 import uno.anahata.asi.agi.provider.AbstractAiProvider;
 import uno.anahata.asi.agi.provider.TokenizerType;
-import uno.anahata.asi.openai.compatible.OpenAiCompatibleProvider;
+import uno.anahata.asi.openai.compatible.OpenAiChatCompletionsProvider;
+import javax.swing.Icon;
 import javax.swing.JFileChooser;
 import javax.swing.JTabbedPane;
 import uno.anahata.asi.anthropic.AnthropicProvider;
+import uno.anahata.asi.openai.OpenAiResponsesProvider;
+import uno.anahata.asi.gemini.GeminiAiProvider;
 import uno.anahata.asi.swing.icons.PulseIcon;
 import uno.anahata.asi.swing.icons.DeleteIcon;
 import uno.anahata.asi.swing.icons.ExternalIcon;
+import uno.anahata.asi.swing.icons.IconUtils;
 import uno.anahata.asi.swing.internal.AnyChangeDocumentListener;
 import uno.anahata.asi.swing.internal.SwingTask;
 
@@ -102,6 +106,8 @@ public class AiProviderPanel extends ScrollablePanel {
 
     private final JTextArea allowedModelsArea;
 
+    private JCheckBox vertexCheck;
+
     /**
      * Toggle for forcing HTTP/1.1 on OpenAI-compatible providers.
      */
@@ -163,7 +169,15 @@ public class AiProviderPanel extends ScrollablePanel {
         JButton removeBtn = new JButton(new DeleteIcon(16));
         removeBtn.setToolTipText("Remove Provider");
         removeBtn.addActionListener(e -> removeCallback.run());
-        add(removeBtn, "span 3, right, wrap");
+        
+        JPanel headerLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        headerLeft.setOpaque(false);
+        Icon providerIcon = IconUtils.getIcon("aiproviders/" + provider.getClass().getName() + ".png", 32, 32);
+        if (providerIcon != null) {
+            headerLeft.add(new JLabel(providerIcon));
+        }
+        add(headerLeft, "span 2, left");
+        add(removeBtn, "right, wrap");
 
         add(new JLabel("UUID:"));
         JLabel uuidLabel = new JLabel(provider.getUuid());
@@ -280,13 +294,32 @@ public class AiProviderPanel extends ScrollablePanel {
         baseUrlField = new JTextField(provider.getBaseUrl());
         add(baseUrlField, "span 2, wrap");
 
+        if (provider instanceof GeminiAiProvider gemini) {
+            add(new JLabel("Use Vertex AI:"), "gaptop 5");
+            vertexCheck = new JCheckBox("", gemini.isVertex());
+            vertexCheck.setOpaque(false);
+            vertexCheck.setToolTipText("Use Google Cloud Vertex AI endpoint instead of the standard Google AI Studio.");
+            add(vertexCheck, "span 2, wrap");
+        }
+
         if (provider instanceof AnthropicProvider anthropic) {
             add(new JLabel("Anthropic Version:"));
             anthropicVersionField = new JTextField(anthropic.getAnthropicVersion());
             add(anthropicVersionField, "span 2, wrap");
         }
 
-        if (provider instanceof OpenAiCompatibleProvider oai) {
+        if (provider instanceof OpenAiResponsesProvider nativeOai) {
+            add(new JLabel("Verified Organization:"), "gaptop 5");
+            JCheckBox verifiedCheck = new JCheckBox("", nativeOai.isVerifiedOrganization());
+            verifiedCheck.setOpaque(false);
+            verifiedCheck.setToolTipText("Enable if your API key belongs to a verified OpenAI organization. Allows stateful API calls and plain-text reasoning summaries.");
+            verifiedCheck.addActionListener(e -> {
+                nativeOai.setVerifiedOrganization(verifiedCheck.isSelected());
+            });
+            add(verifiedCheck, "span 2, wrap");
+        }
+
+        if (provider instanceof OpenAiChatCompletionsProvider oai) {
             add(new JLabel("Custom Headers:"), "top, gaptop 5");
             customHeadersArea = new JTextArea(3, 20);
             customHeadersArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
@@ -451,11 +484,15 @@ public class AiProviderPanel extends ScrollablePanel {
             provider.setBaseUrl(baseUrlField.getText().trim());
         }
 
-        if (provider instanceof uno.anahata.asi.anthropic.AnthropicProvider anthropic && anthropicVersionField != null) {
+        if (provider instanceof GeminiAiProvider gemini && vertexCheck != null) {
+            gemini.setVertex(vertexCheck.isSelected());
+        }
+
+        if (provider instanceof AnthropicProvider anthropic && anthropicVersionField != null) {
             anthropic.setAnthropicVersion(anthropicVersionField.getText().trim());
         }
 
-        if (provider instanceof OpenAiCompatibleProvider oai) {
+        if (provider instanceof OpenAiChatCompletionsProvider oai) {
             oai.setPreferHttp11(preferHttp11Check.isSelected());
             if (customHeadersArea != null) {
                 Map<String, String> headers = new HashMap<>();

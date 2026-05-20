@@ -41,6 +41,13 @@ public class GeminiAiProvider extends AbstractAiProvider {
     private boolean vertex = false;
 
     /**
+     * Creates a new Gemini Provider with default settings.
+     */
+    public GeminiAiProvider() {
+        this(java.util.UUID.randomUUID().toString(), "Google Gemini", false);
+    }
+
+    /**
      * Craetes a new Gemini Provider using the Official Google Genai Java SDK.
      *
      * @param uuid registration id
@@ -51,6 +58,7 @@ public class GeminiAiProvider extends AbstractAiProvider {
         super(uuid);
         this.vertex = vertex;
         setDisplayName(displayName);
+        setDescription(vertex ? "Official Google Cloud Vertex AI client." : "Official Google Gemini API client supporting Flash, Pro, and Ultra.");
         setTokenizerType(TokenizerType.GEMINI);
         setKeysAcquisitionUri(vertex ? "https://console.cloud.google.com/agent-platform/overview" : "https://aistudio.google.com/app/apikey");
     }
@@ -91,7 +99,7 @@ public class GeminiAiProvider extends AbstractAiProvider {
      * {@inheritDoc}
      */
     @Override
-    public String getCurrentApiKey() {
+    public String getCurrentKey() {
         return getClient().apiKey();
     }
 

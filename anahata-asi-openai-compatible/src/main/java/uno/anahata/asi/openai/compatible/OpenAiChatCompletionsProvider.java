@@ -34,7 +34,7 @@ import uno.anahata.asi.agi.provider.TokenizerType;
 @Getter
 @Setter
 @Slf4j
-public class OpenAiCompatibleProvider extends AbstractAiProvider {
+public class OpenAiChatCompletionsProvider extends AbstractAiProvider {
 
     /**
      * Optional custom HTTP headers to be sent with every request. Essential for
@@ -57,9 +57,10 @@ public class OpenAiCompatibleProvider extends AbstractAiProvider {
      * deserialization.
      * </p>
      */
-    public OpenAiCompatibleProvider() {
+    public OpenAiChatCompletionsProvider() {
         super();
         setDisplayName("OpenAI Compatible (Universal)");
+        setDescription("Universal OpenAI-compatible client for Groq, DeepSeek, Ollama, etc.");
         setTokenizerType(TokenizerType.CL100K_BASE);
         setKeysAcquisitionUri("https://platform.openai.com/api-keys");
         this.customHeaders = new HashMap<>();
@@ -71,7 +72,7 @@ public class OpenAiCompatibleProvider extends AbstractAiProvider {
      * @param displayName The user-facing name.
      * @param baseUrl The API endpoint URL.
      */
-    public OpenAiCompatibleProvider(String uuid, String displayName, String baseUrl) {
+    public OpenAiChatCompletionsProvider(String uuid, String displayName, String baseUrl) {
         this(uuid, displayName, baseUrl, null, null);
     }
 
@@ -83,12 +84,13 @@ public class OpenAiCompatibleProvider extends AbstractAiProvider {
      * @param folderName The custom folder name for configuration and key storage.
      * @param apiKeyAdquisitionUri The URI where users can obtain API keys for this provider.
      */
-    public OpenAiCompatibleProvider(String uuid, String displayName, String baseUrl, String folderName, String apiKeyAdquisitionUri) {
+    public OpenAiChatCompletionsProvider(String uuid, String displayName, String baseUrl, String folderName, String apiKeyAdquisitionUri) {
         super(uuid);
         setDisplayName(displayName);
         setBaseUrl(baseUrl);
         setKeysAcquisitionUri(apiKeyAdquisitionUri);
         setFolderName(folderName);
+        setDescription("Universal OpenAI-compatible client for Groq, DeepSeek, Ollama, etc.");
         setTokenizerType(TokenizerType.CL100K_BASE);
     }
 
@@ -128,7 +130,7 @@ public class OpenAiCompatibleProvider extends AbstractAiProvider {
                 .timeout(Duration.ofSeconds(120));
 
         if (super.isApiKeyRequired()) {
-            String apiKey = getCurrentApiKey();
+            String apiKey = getCurrentKey();
             if (apiKey != null && !apiKey.isBlank()) {
                 builder.header("Authorization", "Bearer " + apiKey);
             } else {
@@ -141,21 +143,15 @@ public class OpenAiCompatibleProvider extends AbstractAiProvider {
     }
 
     /**
-     * {@inheritDoc}
+     * Determines if an HTTP status code or response body indicates a transient 
+     * failure that should trigger a retry or rotation.
      * <p>
-     * Implementation details: Retrieves the next available API key from the
-     * provider's key rotation pool.
+     * Checks for common OpenAI-compatible error codes (429, 503, 500, 499, 408).
      * </p>
-     */
-    @Override
-    public String getCurrentApiKey() {
-        return getNextKey();
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>Implementation details: Checks for common OpenAI-compatible error codes 
-     * (429, 503, 500, 499, 408).</p>
+     * 
+     * @param statusCode The HTTP status code.
+     * @param responseBody The raw response body.
+     * @return true if retryable, false otherwise.
      */
     public boolean isRetryable(int statusCode, String responseBody) {
         return statusCode == 429 || statusCode == 503 || statusCode == 500 || statusCode == 499 || statusCode == 408;
@@ -171,7 +167,7 @@ public class OpenAiCompatibleProvider extends AbstractAiProvider {
      * {@inheritDoc}
      * <p>
      * Implementation details: Performs a GET request to the {@code /models}
-     * endpoint of the configured {@link #getBaseUrl()}. Parses the standard OpenAI
+     * endpoint of the configured {@code getBaseUrl()}. Parses the standard OpenAI
      * list-response and wraps each ID in an {@link OpenAiCompatibleModel} instance.
      * </p>
      */
