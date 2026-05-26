@@ -4,6 +4,8 @@ package uno.anahata.asi.openai;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -57,7 +59,7 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
      * Tracks the association between tool calls and their parent reasoning chains.
      * This is required for OpenAI's strict referential integrity.
      */
-    private final Map<AbstractToolCall<?, ?>, ModelTextPart> toolThoughts = new java.util.LinkedHashMap<>();
+    private final Map<AbstractToolCall<?, ?>, ModelTextPart> toolThoughts = new LinkedHashMap<>();
 
     /**
      * Transient tracker for the most recently parsed reasoning item.
@@ -265,7 +267,7 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
                      } else if ("image".equals(outType)) {
                          String b64 = out.path("image").path("data").asText(null);
                          if (b64 != null) {
-                             ModelBlobPart mbp = addBlobPart("image/png", java.util.Base64.getDecoder().decode(b64), null);
+                             ModelBlobPart mbp = addBlobPart("image/png", Base64.getDecoder().decode(b64), null);
                              mbp.setProviderId(id);
                              mbp.setParentCall(callPart);
                          }
@@ -347,7 +349,7 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
      */
     public void handleStreamEvent(JsonNode eventNode) {
         String type = eventNode.path("type").asText();
-        
+
         switch (type) {
             case "response.output_text.delta":
                 appendContent(eventNode.path("delta").asText());
@@ -360,7 +362,6 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
                 JsonNode item = eventNode.path("item");
                 String itemType = item.path("type").asText();
                 if ("message".equals(itemType)) {
-                    // Text is already streamed via deltas, but we must harvest citations.
                     JsonNode content = item.get("content");
                     if (content != null && content.isArray()) {
                         for (JsonNode partNode : content) {
@@ -373,7 +374,6 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
                         }
                     }
                 } else {
-                    // For tools, searches, and code execution, process the completed item seamlessly.
                     processItem(item);
                 }
                 break;
@@ -382,7 +382,8 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
                 if (response != null && response.has("usage")) {
                     JsonNode usage = response.get("usage");
                     if (usage != null && !usage.isNull()) {
-                        setBilledTokenCount(usage.path("output_tokens").asInt(0));
+                        setBilledCompletionTokens(usage.path("output_tokens").asInt(0));
+                        setBilledPromptTokens(usage.path("input_tokens").asInt(0));
                     }
                 }
                 if (response != null && response.has("status")) {

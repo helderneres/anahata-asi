@@ -7,8 +7,11 @@ import com.google.genai.types.Candidate;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponsePromptFeedback;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
+import com.google.genai.types.ModalityTokenCount;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -75,33 +78,28 @@ public class GeminiResponse extends Response<GeminiModelMessage> {
     public GeminiResponse(String requestConfigJson, String historyJson, Agi agi, String modelId, GenerateContentResponse genaiResponse) {
         this.rawRequestConfigJson = requestConfigJson;
         this.rawHistoryJson = historyJson;
-        this.genaiResponse = genaiResponse;        
+        this.genaiResponse = genaiResponse;
         this.rawJson = genaiResponse.toJson();
         this.modelVersion = genaiResponse.modelVersion().orElse(modelId);
-        
-        // --- 1. Convert Usage Metadata ---
+
         this.usageMetadata = genaiResponse.usageMetadata()
             .map(this::convertUsageMetadata)
-            .orElse(ResponseUsageMetadata.builder().build()); // Default empty metadata
+            .orElse(ResponseUsageMetadata.builder().build());
 
-        // --- 2. Convert Candidates ---
         List<Candidate> googleCandidates = genaiResponse.candidates().orElse(Collections.emptyList());
         this.candidates = googleCandidates.stream()
             .map(candidate -> {
                 GeminiModelMessage msg = new GeminiModelMessage(agi, modelVersion, candidate, this);
-                // Fallback: If candidate doesn't have its own token count and there's only one candidate,
-                // use the total candidatesTokenCount from usageMetadata.
                 if (msg.getTokenCount(false) <= 0 && googleCandidates.size() == 1) {
-                    msg.setBilledTokenCount(usageMetadata.getCandidatesTokenCount());
+                    msg.setBilledPromptTokens(usageMetadata.getPromptTokenCount());
+                    msg.setBilledCompletionTokens(usageMetadata.getCandidatesTokenCount());
                 }
                 return msg;
             })
             .collect(Collectors.toList());
 
-        // --- 3. Convert Prompt Feedback ---
         this.promptFeedback = genaiResponse.promptFeedback()
             .flatMap(GenerateContentResponsePromptFeedback::blockReasonMessage);
-        
     }
 
     /**
@@ -109,7 +107,17 @@ public class GeminiResponse extends Response<GeminiModelMessage> {
      * @param genaiUsage The native usage metadata.
      * @return The V2 {@code ResponseUsageMetadata}.
      */
-    private ResponseUsageMetadata convertUsageMetadata(GenerateContentResponseUsageMetadata genaiUsage) {
+        private ResponseUsageMetadata convertUsageMetadata(GenerateContentResponseUsageMetadata genaiUsage) {
+        Map<String, Integer> details = new HashMap<>();
+        if (genaiUsage.promptTokensDetails().isPresent()) {
+            for (ModalityTokenCount mtc : genaiUsage.promptTokensDetails().get()) {
+                String modality = mtc.modality().map(m -> m.knownEnum().name()).orElse("");
+                int count = mtc.tokenCount().orElse(0);
+                if (!modality.isEmpty() && count > 0) {
+                    details.put(modality, count);
+                }
+            }
+        }
         return ResponseUsageMetadata.builder()
             .promptTokenCount(genaiUsage.promptTokenCount().orElse(0))
             .candidatesTokenCount(genaiUsage.candidatesTokenCount().orElse(0))
@@ -117,6 +125,7 @@ public class GeminiResponse extends Response<GeminiModelMessage> {
             .thoughtsTokenCount(genaiUsage.thoughtsTokenCount().orElse(0))
             .toolUsePromptTokenCount(genaiUsage.toolUsePromptTokenCount().orElse(0))
             .totalTokenCount(genaiUsage.totalTokenCount().orElse(0))
+            .promptTokensDetails(details)
             .rawJson(genaiUsage.toJson())
             .build();
     }

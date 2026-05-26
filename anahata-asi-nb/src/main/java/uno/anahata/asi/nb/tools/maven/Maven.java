@@ -11,8 +11,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
@@ -41,7 +41,6 @@ import org.netbeans.modules.maven.indexer.api.NBVersionInfo;
 import org.netbeans.modules.maven.indexer.api.QueryField;
 import org.netbeans.modules.maven.indexer.api.RepositoryPreferences;
 import org.netbeans.modules.maven.indexer.api.RepositoryQueries;
-import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.execution.ExecutionEngine;
 import org.openide.execution.ExecutorTask;
 import org.openide.filesystems.FileObject;
@@ -52,6 +51,7 @@ import org.openide.util.NbPreferences;
 import uno.anahata.asi.agi.message.RagMessage;
 import org.openide.util.Task;
 import org.openide.util.TaskListener;
+import org.openide.windows.IOProvider;
 import uno.anahata.asi.nb.tools.project.Projects;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.nb.util.TeeInputOutput;
@@ -260,16 +260,14 @@ public class Maven extends AnahataToolkit {
     //<editor-fold defaultstate="collapsed" desc="From MavenPom.java">
     /**
      * The definitive 'super-tool' for adding a Maven dependency.
-     * <p>
-     * This tool follows a safe, multi-phase process:
+     * <p>This tool follows a safe, multi-phase process:</p>
      * <ol>
      *   <li><b>Pre-flight:</b> Verifies artifact existence in remote repositories.</li>
      *   <li><b>Modification:</b> Atomically adds the dependency to the project's {@code pom.xml}.</li>
      *   <li><b>Resolution:</b> Runs {@code dependency:resolve} to ensure transitive dependencies are satisfied.</li>
      *   <li><b>Background:</b> Triggers asynchronous download of sources and javadocs.</li>
      * </ol>
-     * Finally, it triggers a NetBeans project reload to reflect changes in the IDE.
-     * </p>
+     * <p>Finally, it triggers a NetBeans project reload to reflect changes in the IDE.</p>
      * 
      * @param projectPath The absolute path of the project to modify.
      * @param groupId The groupId of the dependency.
@@ -493,7 +491,7 @@ public class Maven extends AnahataToolkit {
     
     /**
      * Executes a list of Maven goals on a Project synchronously.
-     * @param projectId The ID of the project to run the goals on.
+     * @param projectPath The ID of the project to run the goals on.
      * @param goals A list of Maven goals to execute.
      * @param profiles A list of profiles to activate.
      * @param properties A map of properties to set.
@@ -504,14 +502,14 @@ public class Maven extends AnahataToolkit {
      */
     @AgiTool(value = "Executes a list of Maven goals on a Project synchronously (waits for the build to finish), capturing the last " + MAX_OUTPUT_LINES + " lines of the output.")
     public MavenBuildResult runGoals(
-            @AgiToolParam("The ID of the project to run the goals on.") String projectId,
+            @AgiToolParam("The full path of the project to run the goals on.") String projectPath,
             @AgiToolParam("A list of Maven goals to execute (e.g., ['clean', 'install']).") List<String> goals,
             @AgiToolParam("A list of profiles to activate.") List<String> profiles,
             @AgiToolParam("A map of properties to set.") Map<String, String> properties,
             @AgiToolParam("A list of additional Maven options.") List<String> options,
             @AgiToolParam("The maximum time to wait for the build to complete, in milliseconds.") Long timeout) throws Exception {
 
-        Project project = Projects.findOpenProject(projectId);
+        Project project = Projects.findOpenProject(projectPath);
         
         long effectiveTimeout = timeout != null ? timeout : DEFAULT_TIMEOUT_MS;
         
@@ -540,7 +538,7 @@ public class Maven extends AnahataToolkit {
             properties.forEach(config::setProperty);
         }
 
-        TeeInputOutput teeIO = new TeeInputOutput(org.openide.windows.IOProvider.getDefault().getIO(config.getTaskDisplayName(), true));
+        TeeInputOutput teeIO = new TeeInputOutput(IOProvider.getDefault().getIO(config.getTaskDisplayName(), true));
         MavenCommandLineExecutor executor = new MavenCommandLineExecutor(config, teeIO, null);
 
         LOG.info("Executing Maven build via ExecutionEngine to avoid RunUtils deadlock...");
@@ -672,32 +670,31 @@ public class Maven extends AnahataToolkit {
     
     /**
      * Downloads all missing dependencies artifacts for a given Maven project.
-     * @param projectId The ID of the project to download dependencies for.
+     * @param projectPath The absolute path of the project to download dependencies for.
      * @param classifiers A list of classifiers to download.
      * @return a message indicating the result of the operation.
-     * @throws Exception if an error occurs.
+     * @throws java.lang.Exception if an error occurs.
      */
     @AgiTool("Downloads all missing dependencies artifacts (e.g., 'sources', 'javadoc') for a given Maven project's dependencies.")
-    public String downloadProjectDependencies(
-            @AgiToolParam("The ID of the project to download dependencies for.") String projectId,
-            @AgiToolParam("A list of classifiers to download (e.g., ['sources', 'javadoc']).") List<String> classifiers) throws Exception {
-        
-        Project project = Projects.findOpenProject(projectId);
+        public String downloadProjectDependencies(
+                @AgiToolParam("The absolute path of the project to download dependencies for.") String projectPath,
+                @AgiToolParam("A list of classifiers to download (e.g., ['sources', 'javadoc']).") List<String> classifiers) throws Exception {
+        Project project = Projects.findOpenProject(projectPath);
         NbMavenProject nbMavenProject = project.getLookup().lookup(NbMavenProject.class);
         if (nbMavenProject == null) {
-            throw new IllegalStateException("Project '" + projectId + "' is not a Maven project or could not be found.");
+            throw new IllegalStateException("Project '" + projectPath + "' is not a Maven project or could not be found.");
         }
-        
+
         MavenEmbedder onlineEmbedder = EmbedderFactory.getOnlineEmbedder();
-        java.util.Set<Artifact> artifacts = nbMavenProject.getMavenProject().getArtifacts();
+        Set<Artifact> artifacts = nbMavenProject.getMavenProject().getArtifacts();
         int totalSuccessCount = 0;
         int totalFailCount = 0;
         StringBuilder errors = new StringBuilder();
-        
+
         for (String classifier : classifiers) {
             int successCount = 0;
             int failCount = 0;
-            
+
             for (Artifact art : artifacts) {
                 if (downloadArtifact(onlineEmbedder, nbMavenProject, art, classifier, errors)) {
                     successCount++;
@@ -710,50 +707,49 @@ public class Maven extends AnahataToolkit {
         }
 
         NbMavenProject.fireMavenProjectReload(project);
-        
+
         String artifactTypeNames = classifiers.stream()
                 .map(c -> c.substring(0, 1).toUpperCase() + c.substring(1))
                 .collect(Collectors.joining(" and "));
-        
-        return buildResultString(artifactTypeNames, "Project", projectId, totalSuccessCount, totalFailCount, errors);
+
+        return buildResultString(artifactTypeNames, "Project", projectPath, totalSuccessCount, totalFailCount, errors);
     }
 
     /**
      * Downloads a specific classified artifact for a single dependency.
-     * @param projectId The ID of the project to use for repository context.
-     * @param groupId The groupId of the dependency.
-     * @param artifactId The artifactId of the dependency.
+     * @param type The type of the dependency.
      * @param version The version of the dependency.
      * @param classifier The classifier of the artifact to download.
-     * @param type The type of the dependency.
+     * @param artifactId The artifactId of the dependency.
+     * @param groupId The groupId of the dependency.
+     * @param projectPath The absolute path of the project to use for repository context.
      * @return true on success, false on failure.
-     * @throws Exception if an error occurs.
+     * @throws java.lang.Exception if an error occurs.
      */
     @AgiTool("Downloads a specific classified artifact (e.g., 'sources', 'javadoc', or the main artifact if classifier is null) for a single dependency. This can be used to verify an artifact exists before adding it to a POM. Returns true on success, false on failure.")
-    public boolean downloadDependencyArtifact(
-            @AgiToolParam("The ID of the project to use for repository context.") String projectId,
-            @AgiToolParam("The groupId of the dependency.") String groupId,
-            @AgiToolParam("The artifactId of the dependency.") String artifactId,
-            @AgiToolParam("The version of the dependency (e.g., 'LATEST', '1.0.0').") String version,
-            @AgiToolParam("The classifier of the artifact to download (e.g., 'sources', 'javadoc'). Use null for the main artifact.") String classifier,
-            @AgiToolParam("The type of the dependency (e.g., 'test-jar'). If null, defaults to 'jar'.") String type) throws Exception {
-        
-        Project project = Projects.findOpenProject(projectId);
+        public boolean downloadDependencyArtifact(
+                @AgiToolParam("The absolute path of the project to use for repository context.") String projectPath,
+                @AgiToolParam("The groupId of the dependency.") String groupId,
+                @AgiToolParam("The artifactId of the dependency.") String artifactId,
+                @AgiToolParam("The version of the dependency (e.g., 'LATEST', '1.0.0').") String version,
+                @AgiToolParam("The classifier of the artifact to download (e.g., 'sources', 'javadoc'). Use null for the main artifact.") String classifier,
+                @AgiToolParam("The type of the dependency (e.g., 'test-jar'). If null, defaults to 'jar'.") String type) throws Exception {
+        Project project = Projects.findOpenProject(projectPath);
         NbMavenProject nbMavenProject = project.getLookup().lookup(NbMavenProject.class);
         if (nbMavenProject == null) {
-            throw new IllegalStateException("Project '" + projectId + "' is not a Maven project or could not be found.");
+            throw new IllegalStateException("Project '" + projectPath + "' is not a Maven project or could not be found.");
         }
-        
+
         MavenEmbedder embedder = EmbedderFactory.getOnlineEmbedder();
-        
+
         Artifact temporaryArtifact = embedder.createArtifactWithClassifier(
-                groupId, 
-                artifactId, 
-                version, 
-                type != null ? type : "jar", 
+                groupId,
+                artifactId,
+                version,
+                type != null ? type : "jar",
                 classifier
         );
-        
+
         return downloadArtifact(embedder, nbMavenProject, temporaryArtifact, classifier, new StringBuilder());
     }
     

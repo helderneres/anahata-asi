@@ -1,6 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.agi.message;
 
+import java.util.Objects;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -9,6 +10,7 @@ import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.internal.TextUtils;
 import uno.anahata.asi.internal.TokenizerUtils;
 import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
+import uno.anahata.asi.agi.provider.AbstractModel;
 
 /**
  * The foundational component of an {@link AbstractMessage}, representing a 
@@ -61,10 +63,10 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
     private Integer maxDepth = null;
 
     /**
-     * The number of tokens this part consumes in the context window.
-     * This value is typically set by the AI provider or estimated during part creation.
+     * The cached token count of this part under the currently selected model.
+     * A value of null indicates that the token cost needs to be lazily recalculated.
      */
-    private int tokenCount;
+    private Integer tokenCount = null;
 
     /**
      * Persistent UI state indicating if this part's panel is expanded in the conversation view.
@@ -101,7 +103,7 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
      */
     public void setPruningState(PruningState pruningState, String reason) {
         PruningState oldState = this.pruningState;
-        if (oldState == pruningState && java.util.Objects.equals(this.prunedReason, reason)) {
+        if (oldState == pruningState && Objects.equals(this.prunedReason, reason)) {
             return;
         }
         this.pruningState = pruningState;
@@ -115,14 +117,40 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
      * @param tokenCount The new token count.
      */
     public void setTokenCount(int tokenCount) {
-        int oldTokenCount = this.tokenCount;
-        if (oldTokenCount == tokenCount) {
+        Integer oldTokenCount = this.tokenCount;
+        if (oldTokenCount != null && oldTokenCount == tokenCount) {
             return;
         }
         this.tokenCount = tokenCount;
-        propertyChangeSupport.firePropertyChange("tokenCount", oldTokenCount, tokenCount);
+        propertyChangeSupport.firePropertyChange("tokenCount", oldTokenCount != null ? oldTokenCount : 0, tokenCount);
     }
 
+    /**
+     * Retrieves the cached token count for this part.
+     * If the value has not yet been calculated (is null), it triggers an on-the-fly
+     * calculation using the active model's tokenizer.
+     * @return The calculated token count, or 0 if no model is active.
+     */
+    public int getTokenCount() {
+        if (tokenCount == null) {
+            calculateTokenCount();
+        }
+        return tokenCount != null ? tokenCount : 0;
+    }
+
+    /**
+     * Performs the lazy, model-specific token calculation for this part.
+     * This is implemented by subclasses to perform the actual calculation.
+     */
+    protected abstract void calculateTokenCount();
+
+    /**
+     * Resets the cached token count, forcing a lazy, background recalculation
+     * on the next call to getTokenCount().
+     */
+    public void resetTokenCount() {
+        this.tokenCount = null;
+    }
     /**
      * Sets the expanded state and fires a property change event.
      * 
@@ -316,7 +344,8 @@ public abstract class AbstractPart extends BasicPropertyChangeSource {
      * @return The token count of the metadata header.
      */
     public int getMetadataTokenCount() {
-        return TokenizerUtils.countTokens(createMetadataHeader());
+        AbstractModel model = getAgi() != null ? getAgi().getSelectedModel() : null;
+        return model != null ? model.countTokens(createMetadataHeader()) : 0;
     }
 
     /**

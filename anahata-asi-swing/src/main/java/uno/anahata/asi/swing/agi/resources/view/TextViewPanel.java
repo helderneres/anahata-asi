@@ -202,34 +202,34 @@ public class TextViewPanel extends AbstractViewPanel<TextView> {
      * current TextView state and estimated token count.</p>
      */
     @Override
-    public void refresh() {
+        public void refresh() {
         if (view == null) {
-            return;
-        }
+                    return;
+                }
 
-        this.syncing = true;
-        try {
-            TextViewportSettings settings = view.getViewport().getSettings();
-            boolean tailing = settings.isTail();
-            tailCheck.setSelected(tailing);
-            tailLinesSpinner.setValue(settings.getTailLines());
-            tailLinesSpinner.setEnabled(tailing);
-            fromSpinner.setValue(settings.getStartChar());
-            fromSpinner.setEnabled(!tailing);
-            sizeSpinner.setValue(settings.getPageSizeInChars());
-            sizeSpinner.setEnabled(!tailing);
-            grepField.setText(settings.getGrepPattern());
-            lineNumbersCheck.setSelected(settings.isIncludeLineNumbers());
-            colWidthSpinner.setValue(settings.getColumnWidth());
+                this.syncing = true;
+                try {
+                    TextViewportSettings settings = view.getViewport().getSettings();
+                    boolean tailing = settings.isTail();
+                    tailCheck.setSelected(tailing);
+                    tailLinesSpinner.setValue(settings.getTailLines());
+                    tailLinesSpinner.setEnabled(tailing);
+                    fromSpinner.setValue(settings.getStartChar());
+                    fromSpinner.setEnabled(!tailing);
+                    sizeSpinner.setValue(settings.getPageSizeInChars());
+                    sizeSpinner.setEnabled(!tailing);
+                    grepField.setText(settings.getGrepPattern());
+                    lineNumbersCheck.setSelected(settings.isIncludeLineNumbers());
+                    colWidthSpinner.setValue(settings.getColumnWidth());
 
-            tokenLabel.setText("Estimated Tokens: " + view.getTokenCount());
-            summaryLabel.setText(view.getViewport().toString());
+                    tokenLabel.setText("Estimated Tokens: " + view.getTokenCount());
+                    summaryLabel.setText(view.getViewport().toString());
 
-            // Enabled if content is cut off
-            expandButton.setEnabled(settings.getPageSizeInChars() < view.getViewport().getTotalChars() || settings.getStartChar() > 0);
-        } finally {
-            this.syncing = false;
-        }
+                    // Enabled if content is cut off
+                    expandButton.setEnabled(settings.getPageSizeInChars() < view.getViewport().getTotalChars() || settings.getStartChar() > 0);
+                } finally {
+                    this.syncing = false;
+                }
     }
 
     /**

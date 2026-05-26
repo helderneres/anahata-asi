@@ -9,6 +9,7 @@ import uno.anahata.asi.swing.agi.message.part.AbstractPartPanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -221,7 +222,7 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         
         // Add expand/collapse logic to the response titled panel header
         if (responseTitledPanel.getComponentCount() > 0) {
-            responseTitledPanel.getComponent(0).setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+            responseTitledPanel.getComponent(0).setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             responseTitledPanel.getComponent(0).addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
@@ -310,6 +311,8 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
 
     /**
      * Renders the parameter arguments using the appropriate renderers.
+     * @param call The tool call execution context.
+     * @param response The tool response context.
      */
     private void renderArguments(AbstractToolCall<?, ?> call, AbstractToolResponse<?> response) {
         Map<String, Object> effectiveArgs = call.getEffectiveArgs();
@@ -366,6 +369,7 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
 
     /**
      * Renders the execution results (output, logs, errors, attachments).
+     * @param response The tool response context.
      */
     private void renderResults(AbstractToolResponse<?> response) {
         // 1. Prepare content
@@ -428,6 +432,10 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
     
     /**
      * Synchronizes a tab's presence and position within the resultsTabbedPane.
+     * @param rank The ordering rank of the tab.
+     * @param visible True to ensure the tab is visible, false to hide it.
+     * @param title The text title of the tab.
+     * @param comp The tab component to synchronize.
      */
     private void syncTab(Component comp, String title, boolean visible, int rank) {
         int currentIndex = resultsTabbedPane.indexOfComponent(comp);
@@ -455,6 +463,8 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
 
     /**
      * Returns the sort rank for result tabs.
+     * @param comp The tab component.
+     * @return The sort rank.
      */
     private int getRank(Component comp) {
         if (comp == outputScrollPane) return 0;
@@ -466,6 +476,8 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
 
     /**
      * Updates the status and action buttons based on tool execution state.
+     * @param response The tool response context.
+     * @param call The tool call context.
      */
     private void updateControls(AbstractToolCall<?, ?> call, AbstractToolResponse<?> response) {
         ToolPermission tp = call.getTool().getPermission();
@@ -520,6 +532,9 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
 
     /**
      * Helper to create a styled text area for tool results.
+     * @param bg The background color (may be null for transparent).
+     * @param fg The foreground color.
+     * @return A styled JTextArea.
      */
     private JTextArea createTextArea(Color fg, Color bg) {
         JTextArea area = new JTextArea();

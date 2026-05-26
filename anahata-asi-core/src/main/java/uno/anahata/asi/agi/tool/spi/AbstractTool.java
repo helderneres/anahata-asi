@@ -6,6 +6,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -14,6 +15,7 @@ import uno.anahata.asi.internal.TokenizerUtils;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
 
 import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
+import uno.anahata.asi.agi.provider.AbstractModel;
 
 /**
  * The abstract base class for a tool, now generic on its Parameter and Call types.
@@ -26,6 +28,7 @@ import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
 @Slf4j
 public abstract class AbstractTool<P extends AbstractToolParameter, C extends AbstractToolCall> extends BasicPropertyChangeSource {
     
+    private Integer tokenCount = null;
     /** The fully qualified name of the tool, e.g., "LocalFiles.readFile". This is immutable. */
     @NonNull
     protected final String name;
@@ -39,9 +42,14 @@ public abstract class AbstractTool<P extends AbstractToolParameter, C extends Ab
     /** The user's configured preference for this tool, determining its execution behavior. */
     protected ToolPermission permission;
     
+    /**
+     * Sets the user's execution permission preference for this tool and fires a property change event.
+     *
+     * @param permission The new permission level to apply.
+     */
     public void setPermission(ToolPermission permission) {
         ToolPermission old = this.permission;
-        if (java.util.Objects.equals(old, permission)) {
+        if (Objects.equals(old, permission)) {
             return;
         }
         this.permission = permission;
@@ -85,6 +93,16 @@ public abstract class AbstractTool<P extends AbstractToolParameter, C extends Ab
     }
     
     /**
+     * Convenience method to resolve the currently selected model from the parent session.
+     * @return The active AbstractModel, or null if no session is active or no model is selected.
+     */
+    public AbstractModel getSelectedModel() {
+        if (toolkit != null && toolkit.getToolManager() != null && toolkit.getToolManager().getAgi() != null) {
+            return toolkit.getToolManager().getAgi().getSelectedModel();
+        }
+        return null;
+    }
+    /**
      * Factory method to create a tool-specific call object from raw model data.
      * @param message the model message the call will belong to.
      * @param id The call ID.
@@ -100,22 +118,39 @@ public abstract class AbstractTool<P extends AbstractToolParameter, C extends Ab
     public abstract Type getResponseType();
     
     /**
-     * Calculates the total token count of this tool on-the-fly.
+     * Calculates the total token count of this tool on-the-fly using the active model.
      * The count is a provider-agnostic approximation of the token overhead,
      * calculated by summing the tokens in its description, response schema,
      * and all of its parameters.
-     *
+     * This value is cached to prevent redundant calculations during Context Window transitions.
      * @return The total token count.
      */
     public int getTokenCount() {
-        int totalTokens = 0;
-        totalTokens += TokenizerUtils.countTokens(description);
-        totalTokens += TokenizerUtils.countTokens(responseJsonSchema);
-
-        for (AbstractToolParameter<?> param : parameters) {
-            totalTokens += param.getTokenCount();
+        if (tokenCount != null) {
+            return tokenCount;
         }
 
-        return totalTokens;
+        AbstractModel model = getSelectedModel();
+        if (model == null) {
+            return 0;
+        }
+
+        int total = 0;
+        total += model.countTokens(description);
+        total += model.countTokens(responseJsonSchema);
+
+        for (AbstractToolParameter<?> param : parameters) {
+            total += param.getTokenCount(model);
+        }
+
+        this.tokenCount = total;
+        return total;
+    }
+
+    /**
+     * Resets the cached token count, forcing a recalculation on the next query.
+     */
+    public void resetTokenCount() {
+        this.tokenCount = null;
     }
 }

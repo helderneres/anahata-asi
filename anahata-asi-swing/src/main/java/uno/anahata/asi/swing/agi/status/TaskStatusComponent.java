@@ -4,7 +4,7 @@ package uno.anahata.asi.swing.agi.status;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Font;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
@@ -44,8 +44,17 @@ public class TaskStatusComponent extends JPanel {
      * The container to monitor.
      */
     private final AbstractAsiContainer container;
+    /**
+     * The visual indeterminate progress bar display.
+     */
     private final JProgressBar progressBar;
+    /**
+     * Button allowing rapid cancelation of the newest background activity.
+     */
     private final JButton quickKillButton;
+    /**
+     * Binds activeTasks list updates to our EDT redraw loop.
+     */
     private final EdtPropertyChangeListener taskListener;
 
     /**
@@ -117,6 +126,9 @@ public class TaskStatusComponent extends JPanel {
         refresh();
     }
 
+    /**
+     * Queries active tasks from the registry and syncs layout visibility and summaries.
+     */
     private void refresh() {
         List<SwingTask<?>> allTasks = SwingTaskManager.getInstance().getActiveTasks();
         List<SwingTask<?>> activeTasks = allTasks.stream()
@@ -140,7 +152,7 @@ public class TaskStatusComponent extends JPanel {
             progressBar.setString(summary);
 
             // Wire quick-kill button to latest task
-            for (java.awt.event.ActionListener al : quickKillButton.getActionListeners()) {
+            for (ActionListener al : quickKillButton.getActionListeners()) {
                 quickKillButton.removeActionListener(al);
             }
             quickKillButton.addActionListener(e -> latest.cancel(true));

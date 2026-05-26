@@ -5,21 +5,13 @@ package uno.anahata.asi.swing.agi.message;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.FlowLayout;
-import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
 import lombok.NonNull;
-import uno.anahata.asi.internal.JacksonUtils;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
-import uno.anahata.asi.agi.message.AbstractPart;
 import uno.anahata.asi.agi.provider.FinishReason;
-import uno.anahata.asi.agi.message.ModelBlobPart;
-import uno.anahata.asi.agi.message.ModelTextPart;
-import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.components.CodeHyperlink;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
@@ -50,34 +42,35 @@ public class ModelMessagePanel extends AbstractMessagePanel<AbstractModelMessage
      */
     public ModelMessagePanel(@NonNull AgiPanel agiPanel, @NonNull AbstractModelMessage message) {
         super(agiPanel, message);
-        
+
         // 1. Initialize footer components once
         this.footerActionsPanel = new JPanel(new BorderLayout());
         this.footerActionsPanel.setOpaque(false);
         this.footerActionsPanel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
-        
+
         this.finishLabel = new JLabel();
         this.finishLabel.setFont(this.finishLabel.getFont().deriveFont(11f));
         this.finishLabel.setForeground(new Color(120, 120, 120));
         this.footerActionsPanel.add(this.finishLabel, BorderLayout.WEST);
-        
+
         // Use a lazy supplier for the JSON content and title.
         // CodeHyperlink handles pretty-printing internally for "json" language.
-        this.jsonLink = new CodeHyperlink("Json", 
-                () -> "Model Message #" + message.getSequentialId(), 
-                () -> message.getRawJson(), 
+        this.jsonLink = new CodeHyperlink("Json",
+                () -> "Model Message #" + message.getSequentialId(),
+                () -> message.getRawJson(),
                 "json");
         this.footerActionsPanel.add(this.jsonLink, BorderLayout.EAST);
-        
+
         // Add the actions panel to the footer container immediately.
         footerContainer.add(footerActionsPanel);
-        
+
         // 2. Setup reactive listeners for specific property updates
         new EdtPropertyChangeListener(this, message, "rawJson", evt -> updateRawJsonVisibility());
-        new EdtPropertyChangeListener(this, message, "billedTokenCount", evt -> updateHeaderInfoText());
+        new EdtPropertyChangeListener(this, message, "billedPromptTokens", evt -> updateHeaderInfoText());
+        new EdtPropertyChangeListener(this, message, "billedCompletionTokens", evt -> updateHeaderInfoText());
         new EdtPropertyChangeListener(this, message, "finishReason", evt -> updateFinishReason());
         new EdtPropertyChangeListener(this, message, "groundingMetadata", evt -> render());
-        
+
         // Initial sync
         updateRawJsonVisibility();
         updateFinishReason();
@@ -113,7 +106,7 @@ public class ModelMessagePanel extends AbstractMessagePanel<AbstractModelMessage
      */
     @Override
     protected String getHeaderSuffix() {
-        return String.format(" <font color='#888888' size='3'><i>(Billed Tokens: %d, Depth: %d)</i></font>", message.getBilledTokenCount(), message.getDepth());
+        return String.format(" <font color='#888888' size='3'><i>(Billed: In:%d, Out:%d, Depth: %d)</i></font>", message.getBilledPromptTokens(), message.getBilledCompletionTokens(), message.getDepth());
     }
 
     /** 

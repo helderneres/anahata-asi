@@ -4,6 +4,7 @@
 package uno.anahata.asi.agi;
 
 import java.io.InterruptedIOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -331,6 +332,11 @@ public class Agi extends BasicPropertyChangeSource {
             }
         }
 
+        // Reset cached token counts across all tools, history parts, and resources lazily on model change
+        getToolManager().resetTokenCounts();
+        getContextManager().resetTokenCounts();
+        getResourceManager().resetTokenCounts();
+
         propertyChangeSupport.firePropertyChange("selectedModel", oldModel, selectedModel);
         autoSave("model changed to: " + selectedModel.getModelId());
     }
@@ -522,7 +528,7 @@ public class Agi extends BasicPropertyChangeSource {
                 log.error("Exception in performSingleTurn", e);
                 ApiErrorRecord.ApiErrorRecordBuilder<?, ?> errorRecordBuilder = ApiErrorRecord.builder()
                         .modelId(selectedModel.getModelId())
-                        .timestamp(java.time.Instant.now())
+                        .timestamp(Instant.now())
                         .retryAttempt(attempt)
                         .stackTrace(ExceptionUtils.getStackTrace(e));
 

@@ -1,6 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.agi.message;
 
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.apache.commons.lang3.Validate;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.internal.TimeUtils;
 import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
+import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.internal.TokenizerUtils;
 
 /**
@@ -258,6 +260,13 @@ public abstract class AbstractMessage extends BasicPropertyChangeSource {
     }
 
     /**
+     * Resets the cached token counts on all parts contained within this message,
+     * forcing a lazy recalculation under the new selected model's tokenizer.
+     */
+    public void resetTokenCounts() {
+        parts.forEach(AbstractPart::resetTokenCount);
+    }
+    /**
      * Calculates the total number of tokens in this message, summing the token
      * counts of its visible parts.
      *
@@ -271,15 +280,15 @@ public abstract class AbstractMessage extends BasicPropertyChangeSource {
     }
 
     /**
-     * Calculates the total "effective" tokens in this message, summing the
-     * effective counts of its parts plus the message-level metadata header.
-     *
-     * @return The effective token count.
+     * Calculates the total effective tokens consumed by this message, including the
+     * in-band metadata header and all of its parts.
+     * @return The total effective token count.
      */
     public int getEffectiveTokenCount() {
         int count = 0;
-        if (shouldCreateMetadata()) {
-            count += TokenizerUtils.countTokens(createMetadataHeader());
+        AbstractModel model = agi != null ? agi.getSelectedModel() : null;
+        if (shouldCreateMetadata() && model != null) {
+            count += model.countTokens(createMetadataHeader());
         }
         count += parts.stream().mapToInt(AbstractPart::getEffectiveTokenCount).sum();
         return count;
@@ -351,7 +360,7 @@ public abstract class AbstractMessage extends BasicPropertyChangeSource {
      * @throws Exception if the file cannot be read or the MIME type cannot be
      * detected.
      */
-    public abstract BlobPart addBlobPart(java.nio.file.Path path) throws Exception;
+    public abstract BlobPart addBlobPart(Path path) throws Exception;
 
     /**
      * Creates a standardized text header containing metadata for this message.

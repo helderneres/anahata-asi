@@ -5,8 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
@@ -64,6 +62,11 @@ public class RequestConfig extends BasicPropertyChangeSource {
     /** If true, in-band metadata headers are injected into the prompt for history pruning purposes. */
     private boolean injectInbandMetadata = false;
 
+    /**
+     * Sets whether in-band metadata headers should be injected into the prompt and fires a property change event.
+     *
+     * @param injectInbandMetadata true to enable in-band metadata injection.
+     */
     public void setInjectInbandMetadata(boolean injectInbandMetadata) {
         boolean old = this.injectInbandMetadata;
         if (old != injectInbandMetadata) {

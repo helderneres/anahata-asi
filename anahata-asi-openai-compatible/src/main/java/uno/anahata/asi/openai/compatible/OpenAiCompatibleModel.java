@@ -9,10 +9,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -32,8 +39,14 @@ import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.provider.RetryableApiException;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.provider.StreamObserver;
+import uno.anahata.asi.agi.provider.TokenizerType;
+import uno.anahata.asi.agi.tool.ToolResponseAttachment;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
+import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
+import uno.anahata.asi.agi.tool.spi.AbstractToolResponse;
+import uno.anahata.asi.internal.ImageMetadataUtils;
+import uno.anahata.asi.internal.ImageMetadataUtils.ImageMetadata;
 import uno.anahata.asi.internal.JacksonUtils;
 import uno.anahata.asi.internal.TokenizerUtils;
 import uno.anahata.asi.openai.compatible.adapter.OpenAiCompatibleResponseAdapter;
@@ -59,24 +72,42 @@ public class OpenAiCompatibleModel extends AbstractModel {
      * The user-friendly name of the model.
      */
     private final String displayName;
+    /** The model version. */
     private String version = "";
+    /** The maximum input tokens allowed. */
     private int maxInputTokens = 200000;
+    /** The maximum output tokens allowed. */
     private int maxOutputTokens = 32000;
 
+    /** The reasoning extraction style used by this model. */
     private OpenAiCompatibleReasoningStyle reasoningStyle = OpenAiCompatibleReasoningStyle.NONE;
+    /** The specific field name representing thoughts in the JSON response. */
     private String reasoningFieldName;
+    /** The start and end tags wrapping reasoning content. */
     private List<String> reasoningTags;
 
+    /** Whether the model supports native function calling. */
     private boolean supportsFunctionCalling = true;
+    /** Whether the model supports content generation. */
     private boolean supportsContentGeneration = true;
+    /** Whether the model supports batch embeddings. */
     private boolean supportsBatchEmbeddings = false;
+    /** Whether the model supports simple embeddings. */
     private boolean supportsEmbeddings = false;
+    /** Whether the model supports content caching. */
     private boolean supportsCachedContent = false;
 
+    /** The shared, thread-safe HTTP Client instance. */
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(30))
             .build();
 
+    /**
+     * Constructs an OpenAiCompatibleModel with explicit metadata parameters.
+     * @param provider the parent provider instance.
+     * @param modelId the unique model identifier.
+     * @param displayName the human-readable display name.
+     */
     public OpenAiCompatibleModel(OpenAiChatCompletionsProvider provider, String modelId, String displayName) {
         this.provider = provider;
         this.modelId = modelId;
@@ -98,13 +129,79 @@ public class OpenAiCompatibleModel extends AbstractModel {
 
         long created = node.path("created").asLong(0);
         if (created > 0) {
-            this.version = java.time.LocalDateTime.ofInstant(
-                    java.time.Instant.ofEpochSecond(created),
-                    java.time.ZoneId.systemDefault()
-            ).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            this.version = LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(created),
+                    ZoneId.systemDefault()
+            ).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Utilizes TokenizerUtils to perform offline, BPE token counting based on configured TokenizerType.</p>
+     * @param text The text to count tokens for.
+     * @return The token count, or 0 if the text is null or empty.
+     */
+    @Override public int countTokens(java.lang.String text) {
+        return TokenizerUtils.countTokens(text, getTokenizerType());
+    }
+
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Serializes the base tool response to its flat JSON representation and adds the
+     * token cost of any generated attachments (like images or logs) by delegating
+     * to the generic binary tokenizer. This mirrors the exact OpenAI-compatible
+     * wire-format, where attachments are sent as a separate message item.
+     * </p>
+     * @param toolResponse The tool response instance to count.
+     * @return The precise, billing-identical token count.
+     */
+    @Override public int countTokens(AbstractToolResponse<?> toolResponse) {
+        if (toolResponse == null) {
+                    return 0;
+                }
+                try {
+                    int total = countTokens(JacksonUtils.serialize(toolResponse));
+
+                    // Replicate the OpenAI-compatible wire format: attachments are sent
+                    // as a separate top-level message containing input_image or input_audio parts.
+                    if (!toolResponse.getAttachments().isEmpty()) {
+                        total += 20; // Message packaging overhead
+                        total += countTokens("The following are multimodal attachments generated by the tool '" + toolResponse.getToolName() + "':");
+                        for (ToolResponseAttachment att : toolResponse.getAttachments()) {
+                            total += countTokens(att.getData(), att.getMimeType());
+                        }
+                    }
+                    return total;
+                } catch (Exception e) {
+                    log.error("Failed to serialize OpenAI-compatible tool response for token counting", e);
+                    throw new RuntimeException(e);
+                }
+    }
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Serializes the tool call into a standard OpenAI function call JSON object
+     * containing 'name' and 'arguments' properties, and counts its tokens using the active BPE encoding.
+     * </p>
+     * @param toolCall The tool call to count tokens for.
+     * @return The total token count.
+     */
+    @Override public int countTokens(AbstractToolCall<?, ?> toolCall) {
+        if (toolCall == null) {
+            return 0;
+        }
+        try {
+            Map<String, Object> map = new HashMap<>();
+            map.put("name", toolCall.getToolName());
+            map.put("arguments", JacksonUtils.serialize(toolCall.getEffectiveArgs()));
+            return countTokens(JacksonUtils.serialize(map));
+        } catch (Exception e) {
+            return countTokens(toolCall.asText());
+        }
+    }
     /**
      * {@inheritDoc}
      */
@@ -221,10 +318,19 @@ public class OpenAiCompatibleModel extends AbstractModel {
         return 0.95f;
     }
 
+    /**
+     * Gets the relative endpoint URL for Chat Completion requests.
+     * @return the sub-resource endpoint string.
+     */
     protected String getEndpoint() {
         return "chat/completions";
     }
 
+    /**
+     * Instantiates an OpenAI-compatible message container.
+     * @param agi the parent AGI session.
+     * @return a new OpenAiCompatibleModelMessage.
+     */
     public OpenAiCompatibleModelMessage createModelMessage(Agi agi) {
         return new OpenAiCompatibleMessage(agi, modelId);
     }
@@ -294,7 +400,6 @@ public class OpenAiCompatibleModel extends AbstractModel {
         Agi agi = request.config().getAgi();
         ObjectNode payload = preparePayload(request, true);
         String jsonPayload = payload.toString();
-        // Partition JSON: History vs Config
         JsonNode historyNode = payload.get("messages");
         if (historyNode == null) {
             historyNode = payload.get("input");
@@ -353,7 +458,6 @@ public class OpenAiCompatibleModel extends AbstractModel {
                                 observer.onError(new RuntimeException("OpenAI Stream Chunk Error: " + chunk.get("error").path("message").asText()));
                                 return;
                             }
-                            // 1. Handle Responses API Events (response.*)
                             if (chunk.has("type") && chunk.get("type").asText().startsWith("response.")) {
                                 if (!started.get()) {
                                     targets.add(createModelMessage(agi));
@@ -363,8 +467,7 @@ public class OpenAiCompatibleModel extends AbstractModel {
                                 for (OpenAiCompatibleModelMessage target : targets) {
                                     target.updateFromNode(chunk, reasoningStyle, reasoningFieldName, reasoningTags);
                                 }
-                            } // 2. Handle standard Chat Completions Choices
-                            else if (chunk.has("choices")) {
+                            } else if (chunk.has("choices")) {
                                 JsonNode choices = chunk.get("choices");
                                 if (choices != null && choices.isArray() && choices.size() > 0) {
                                     if (!started.get()) {
@@ -381,17 +484,14 @@ public class OpenAiCompatibleModel extends AbstractModel {
                                     }
                                 }
                             }
-                            // Accumulate raw JSON chunk
                             for (OpenAiCompatibleModelMessage target : targets) {
                                 target.appendRawJson(data);
                             }
                             OpenAiCompatibleResponse chunkResponse = new OpenAiCompatibleResponse(agi, modelId, data, configJson, historyJson, this);
-                            // Accumulate usage metadata if present in this chunk (like Gemini does)
-                            // OpenAI typically sends usage only in the final chunk
-                            if (chunkResponse.getUsageMetadata() != null
-                                    && chunkResponse.getUsageMetadata().getTotalTokenCount() > 0) {
+                            if (chunkResponse.getUsageMetadata() != null && chunkResponse.getUsageMetadata().getTotalTokenCount() > 0) {
                                 for (OpenAiCompatibleModelMessage target : targets) {
-                                    target.setBilledTokenCount(chunkResponse.getUsageMetadata().getCandidatesTokenCount());
+                                    target.setBilledPromptTokens(chunkResponse.getUsageMetadata().getPromptTokenCount());
+                                    target.setBilledCompletionTokens(chunkResponse.getUsageMetadata().getCandidatesTokenCount());
                                 }
                             }
                             observer.onNext(chunkResponse);
@@ -400,35 +500,26 @@ public class OpenAiCompatibleModel extends AbstractModel {
                         }
                     }
                 }
-                // Set the final response on each target message (like Gemini does)
                 if (!targets.isEmpty()) {
-                    // Check if we ever received usage from the API during streaming
-                    // Modal's GLM-5 returns usage: null in all streaming chunks
                     boolean usageProvided = targets.stream()
-                            .anyMatch(t-> t.getBilledTokenCount() > 0);
+                            .anyMatch(t-> t.getBilledCompletionTokens() > 0 || t.getBilledPromptTokens() > 0);
                     OpenAiCompatibleResponse finalResponse;
                     if (!usageProvided) {
-                        // No usage provided by API - estimate tokens ourselves
                         log.info("No usage metadata provided by API, estimating tokens using {} tokenizer", getTokenizerType());
-                        // Estimate prompt tokens from the payload
-                        int estimatedPromptTokens = TokenizerUtils.countTokens(
-                                jsonPayload, getTokenizerType());
-                        // Estimate completion tokens from accumulated content per target
+                        int estimatedPromptTokens = TokenizerUtils.countTokens(jsonPayload, getTokenizerType());
                         int totalCompletionTokens = 0;
                         for (OpenAiCompatibleModelMessage target : targets) {
-                            // Get accumulated text content from parts
                             StringBuilder contentBuilder = new StringBuilder();
                             for (AbstractPart part : target.getParts()) {
                                 if (part instanceof ModelTextPart mtp) {
                                     contentBuilder.append(mtp.getText());
                                 }
                             }
-                            int estimatedCompletionTokens = TokenizerUtils.countTokens(
-                                    contentBuilder.toString(), getTokenizerType());
+                            int estimatedCompletionTokens = TokenizerUtils.countTokens(contentBuilder.toString(), getTokenizerType());
                             totalCompletionTokens += estimatedCompletionTokens;
-                            target.setBilledTokenCount(estimatedCompletionTokens);
+                            target.setBilledPromptTokens(estimatedPromptTokens);
+                            target.setBilledCompletionTokens(estimatedCompletionTokens);
                         }
-                        // Create response with estimated usage metadata
                         finalResponse = createResponseWithEstimatedUsage(agi, modelId, configJson, historyJson,
                                 estimatedPromptTokens, totalCompletionTokens, getTokenizerType());
                     } else {
@@ -442,7 +533,6 @@ public class OpenAiCompatibleModel extends AbstractModel {
                     }
                 }
             }
-
         } catch (Exception e) {
             log.error("Failed to execute OpenAI stream", e);
             observer.onError(e);
@@ -462,6 +552,12 @@ public class OpenAiCompatibleModel extends AbstractModel {
     // Get accumulated text content from parts
     // Create response with estimated usage metadata
     
+    /**
+     * Routes a streaming JSON choice chunk to the target message, extracting
+     * thoughts or text content dynamically.
+     * @param choice the JSON choice node from the chunk event.
+     * @param target the target message accumulating the content.
+     */
     private void routeChunk(JsonNode choice, OpenAiCompatibleModelMessage target) {
         JsonNode delta = choice.get("delta");
         if (delta == null) {
@@ -584,7 +680,7 @@ public class OpenAiCompatibleModel extends AbstractModel {
     protected OpenAiCompatibleResponse createResponseWithEstimatedUsage(
             Agi agi, String modelId, String jsonPayload, String historyJson,
             int estimatedPromptTokens, int estimatedCompletionTokens,
-            uno.anahata.asi.agi.provider.TokenizerType tokenizerType) {
+            TokenizerType tokenizerType) {
 
         // Create estimated usage metadata with a descriptive rawJson
         String estimatedRawJson = String.format(
@@ -603,13 +699,20 @@ public class OpenAiCompatibleModel extends AbstractModel {
         // Create a minimal response JSON with estimated usage
         String estimatedResponseJson = String.format(
                 "{\"id\":\"estimated-%s\",\"object\":\"chat.completion\",\"model\":\"%s\",\"usage\":%s,\"choices\":[]}",
-                java.util.UUID.randomUUID().toString().substring(0, 8),
+                UUID.randomUUID().toString().substring(0, 8),
                 modelId,
                 estimatedRawJson);
 
         return new OpenAiCompatibleResponse(agi, modelId, estimatedResponseJson, jsonPayload, historyJson, this, estimatedUsage);
     }
 
+    /**
+     * Prepares the final JSON request payload combining system instructions,
+     * history, tools, and temperature.
+     * @param request the current generation request.
+     * @param stream whether the request is streaming.
+     * @return the constructed JSON ObjectNode payload.
+     */
     protected ObjectNode preparePayload(GenerationRequest request, boolean stream) {
         ObjectNode payload = SchemaProvider.OBJECT_MAPPER.createObjectNode();
         payload.put("model", modelId);
@@ -701,4 +804,25 @@ public class OpenAiCompatibleModel extends AbstractModel {
         // Default implementation does nothing.
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Calculates the exact, model-specific multimodal token count for OpenAI-compatible image data.
+     * Delegates the header-only image dimension reading to the core {@link ImageMetadataUtils} utility,
+     * and performs the OpenAI-specific high-detail scaling and tiling calculations.
+     * </p>
+     * @param mimeType The detected MIME type of the binary data (e.g. "image/png").
+     * @param data The raw binary data of the file or attachment.
+     * @return The precise, billing-identical multimodal token count.
+     */
+    @Override public int countTokens(byte[] data, String mimeType) {
+        if (data == null || data.length == 0) {
+                    return 0;
+                }
+                if (mimeType != null && mimeType.startsWith("image/")) {
+                    ImageMetadata metadata = ImageMetadataUtils.readMetadata(data);
+                    return ImageMetadataUtils.calculateOpenAiTileTokens(metadata);
+                }
+                return 85; // Fallback for non-image binary data
+    }
 }

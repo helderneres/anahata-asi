@@ -30,6 +30,17 @@ public interface ResourceView {
      */
     void populateRag(RagMessage ragMessage) throws Exception;
 
+    /**
+     * Returns the token count for the current processed state of this view.
+     *      * 
+     *      * @return The token count.
+     */
+    int getTokenCount();
+
+    /**
+     * Resets the cached token count of this view, forcing a lazy recalculation on the next query.
+     */
+    void resetTokenCount();
     /** 
      * Provides system instructions if the resource is in that position. 
      * Returns a list of processed text blocks.
@@ -41,12 +52,6 @@ public interface ResourceView {
         return Collections.emptyList();
     }
     
-    /** 
-     * Returns an estimated token count for the current processed state of the view. 
-     * 
-     * @return The estimated token count.
-     */
-    int getTokenCount();
 
     /**
      * Returns a machine-readable header summarizing the interpretation state.

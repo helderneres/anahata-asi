@@ -13,8 +13,8 @@ import uno.anahata.asi.agi.tool.ToolManager;
 /**
  * A context tree node representing a {@link ContextProvider}.
  * <p>
- * This node handles the recursive structure of context providers. It has 
- * special logic for the {@link ToolManager}, which exposes its registered 
+ * This node handles the recursive structure of context providers. It has
+ * special logic for the {@link ToolManager}, which exposes its registered
  * toolkits as child nodes.
  * </p>
  *
@@ -24,6 +24,7 @@ public class ProviderNode extends AbstractContextNode<ContextProvider> {
 
     /**
      * Constructs a new ProviderNode.
+     *
      * @param agiPanel The parent agi panel.
      * @param userObject The context provider to wrap.
      */
@@ -31,7 +32,9 @@ public class ProviderNode extends AbstractContextNode<ContextProvider> {
         super(agiPanel, userObject);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getName() {
         String name = userObject.getName();
@@ -41,13 +44,17 @@ public class ProviderNode extends AbstractContextNode<ContextProvider> {
         return name;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getDescription() {
         return userObject.getDescription();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected List<?> fetchChildObjects() {
         List<Object> objects = new ArrayList<>();
@@ -63,7 +70,9 @@ public class ProviderNode extends AbstractContextNode<ContextProvider> {
         return objects;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected AbstractContextNode<?> createChildNode(Object obj) {
         if (obj instanceof AbstractToolkit<?> tk) {
@@ -74,7 +83,9 @@ public class ProviderNode extends AbstractContextNode<ContextProvider> {
         return null;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected void calculateLocalTokens() {
         if (userObject.isEffectivelyProviding()) {
@@ -84,10 +95,11 @@ public class ProviderNode extends AbstractContextNode<ContextProvider> {
             this.instructionsTokens = 0;
             this.ragTokens = 0;
         }
-        
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected void updateStatus() {
         if (!userObject.isProviding()) {

@@ -6,13 +6,15 @@ package uno.anahata.asi.swing;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import javax.swing.table.AbstractTableModel;
 import lombok.NonNull;
 import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.agi.context.ContextManager;
+import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.agi.status.AgiStatus;
+import uno.anahata.asi.agi.status.StatusManager;
 
 /**
  * A reusable table model for displaying active AI agi sessions.
@@ -173,6 +175,10 @@ public class AgisTableModel extends AbstractTableModel {
         }
     }
 
+    /**
+     * Attaches reactive property change listeners to the given AGI session. This registers the metrics listener for properties like nickname, summary, history, resources, and current status.
+     * @param agi The AGI session to attach listeners to.
+     */
     private void attachListeners(Agi agi) {
         agi.addPropertyChangeListener("nickname", metricsListener);
         agi.addPropertyChangeListener("summary", metricsListener);
@@ -182,6 +188,10 @@ public class AgisTableModel extends AbstractTableModel {
         agi.getStatusManager().addPropertyChangeListener("currentStatus", metricsListener);
     }
 
+    /**
+     * Detaches reactive property change listeners from the given AGI session. This unregisters the metrics listener to prevent memory leaks.
+     * @param agi The AGI session to detach listeners from.
+     */
     private void detachListeners(Agi agi) {
         agi.removePropertyChangeListener("nickname", metricsListener);
         agi.removePropertyChangeListener("summary", metricsListener);
@@ -202,11 +212,11 @@ public class AgisTableModel extends AbstractTableModel {
         
         if (source instanceof Agi a) {
             targetAgi = a;
-        } else if (source instanceof uno.anahata.asi.agi.context.ContextManager cm) {
+        } else if (source instanceof ContextManager cm) {
             targetAgi = cm.getAgi();
-        } else if (source instanceof uno.anahata.asi.agi.resource.ResourceManager rm) {
+        } else if (source instanceof ResourceManager rm) {
             targetAgi = rm.getAgi();
-        } else if (source instanceof uno.anahata.asi.agi.status.StatusManager sm) {
+        } else if (source instanceof StatusManager sm) {
             targetAgi = sm.getAgi();
         }
         

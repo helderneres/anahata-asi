@@ -3,7 +3,6 @@ package uno.anahata.asi.swing.agi;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -17,8 +16,8 @@ import uno.anahata.asi.swing.internal.SwingTask;
 import uno.anahata.asi.swing.internal.UICapture;
 import uno.anahata.asi.swing.toolkit.Screens;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 /**
@@ -40,6 +39,9 @@ public class SharedScreenEditorFrame extends JFrame {
      * The active AGI session context.
      */
     private final AgiPanel agiPanel;
+    /**
+     * The AGI session orchestrator instance.
+     */
     private final Agi agi;
     /**
      * The specialized screens toolkit providing hardware access.
@@ -66,7 +68,7 @@ public class SharedScreenEditorFrame extends JFrame {
     /**
      * Constructs a new editor frame for the given AGI session.
      *
-     * @param agi The target AGI session.
+     * @param agiPanel The target AGI panel.
      */
     public SharedScreenEditorFrame(AgiPanel agiPanel) {
         this.agiPanel = agiPanel;
@@ -326,7 +328,7 @@ public class SharedScreenEditorFrame extends JFrame {
      * @param backgroundLogic The capture logic.
      * @param onDone Callback on completion.
      */
-    private <T> void executeCaptureTask(String name, Callable<T> backgroundLogic, java.util.function.Consumer<T> onDone) {
+    private <T> void executeCaptureTask(String name, Callable<T> backgroundLogic, Consumer<T> onDone) {
         SwingTask<T> task = new SwingTask<>(agiPanel, name, backgroundLogic, onDone, null, true);
         task.start();
     }
@@ -351,7 +353,7 @@ public class SharedScreenEditorFrame extends JFrame {
         /**
          * Callback for when a selection is completed.
          */
-        private final java.util.function.Consumer<Rectangle> onSelected;
+        private final Consumer<Rectangle> onSelected;
 
         /**
          * Constructs a new selection panel.
@@ -359,7 +361,7 @@ public class SharedScreenEditorFrame extends JFrame {
          * @param totalBounds All screen bounds combined.
          * @param onSelected Completion callback.
          */
-        public SelectionPanel(Rectangle totalBounds, java.util.function.Consumer<Rectangle> onSelected) {
+        public SelectionPanel(Rectangle totalBounds, Consumer<Rectangle> onSelected) {
             this.totalBounds = totalBounds;
             this.onSelected = onSelected;
             setOpaque(false);

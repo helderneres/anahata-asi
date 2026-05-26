@@ -1,7 +1,6 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.openai.compatible.adapter;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
@@ -23,6 +22,7 @@ import uno.anahata.asi.agi.message.TextPart;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.spi.AbstractToolResponse;
+import uno.anahata.asi.openai.compatible.OpenAiCompatibleReasoningStyle;
 
 /**
  * A specialized content adapter that translates Anahata's domain model into 
@@ -32,14 +32,12 @@ import uno.anahata.asi.agi.tool.spi.AbstractToolResponse;
  * ensuring that models remain context-aware by injecting metadata headers 
  * even for effectively pruned parts.
  * </p>
- * <p>
- * <b>Role Mapping:</b>
+ * <p><b>Role Mapping:</b></p>
  * <ul>
  *   <li>{@link Role#USER} &rarr; "user"</li>
  *   <li>{@link Role#MODEL} &rarr; "assistant"</li>
  *   <li>{@link Role#SYSTEM} &rarr; "system"</li>
  * </ul>
- * </p>
  * <p>
  * <b>Turn Synthesis:</b> For Model turns containing tool responses, it generates 
  * an 'assistant' message (calls) followed by one 'tool' message per response.
@@ -61,8 +59,8 @@ public class OpenAiCompatibleResponseAdapter {
     private final TokenizerType tokenizerType;
 
     /** Reasoning style of the target model. */
-    private final uno.anahata.asi.openai.compatible.OpenAiCompatibleReasoningStyle reasoningStyle;
-    /** Tags used for reasoning (e.g., ["<think>", "</think>"]). */
+    private final OpenAiCompatibleReasoningStyle reasoningStyle;
+    /** Tags used for reasoning (e.g., [{@code "<think>"}, {@code "</think>"}]). */
     private final List<String> reasoningTags;
 
     /**
@@ -88,6 +86,8 @@ public class OpenAiCompatibleResponseAdapter {
 
     /**
      * Synthesizes a Model turn into 'assistant' and 'tool' messages.
+     * @param modelMsg the source Anahata model message.
+     * @return a list of synthesized assistant and tool message nodes.
      */
     private List<ObjectNode> toOpenAiModel(AbstractModelMessage<?> modelMsg) {
         List<ObjectNode> synthesized = new ArrayList<>();
@@ -145,6 +145,7 @@ public class OpenAiCompatibleResponseAdapter {
 
     /**
      * Translates USER or SYSTEM messages, supporting multimodal content arrays.
+     * @return the constructed user or system message node.
      */
     private ObjectNode toOpenAiUser() {
         ObjectNode msgNode = SchemaProvider.OBJECT_MAPPER.createObjectNode();
@@ -205,6 +206,9 @@ public class OpenAiCompatibleResponseAdapter {
 
     /**
      * Internal helper for metadata interleaving in the assistant buffer.
+     * @param textContent the text buffer being accumulated.
+     * @param toolCalls the tool calls array node being populated.
+     * @param part the part being processed.
      */
     private void addPartWithMetadata(StringBuilder textContent, ArrayNode toolCalls, AbstractPart part) {
         boolean isEffectivelyPruned = part.isEffectivelyPruned();
@@ -220,12 +224,12 @@ public class OpenAiCompatibleResponseAdapter {
                 
                 // Thought Tagging: If this is a thought part and the model uses TAGS style,
                 // we wrap the text in the appropriate tags to preserve the model's "flow".
-                if (mtp.isThought() && reasoningStyle == uno.anahata.asi.openai.compatible.OpenAiCompatibleReasoningStyle.TAGS 
+                if (mtp.isThought() && reasoningStyle == OpenAiCompatibleReasoningStyle.TAGS 
                         && reasoningTags != null && reasoningTags.size() >= 2) {
                     text = reasoningTags.get(0) + text + reasoningTags.get(1);
                 }
                 
-                part.setTokenCount(TokenizerUtils.countTokens(text, tokenizerType));
+                //part.setTokenCount(TokenizerUtils.countTokens(text, tokenizerType));
                 textContent.append(text);
             } else if (part instanceof AbstractToolCall<?, ?> tc) {
                 ObjectNode callNode = toolCalls.addObject();
@@ -236,7 +240,7 @@ public class OpenAiCompatibleResponseAdapter {
                 try {
                     String argsJson = SchemaProvider.OBJECT_MAPPER.writeValueAsString(tc.getResponse().getExecutedArgs());
                     funcNode.put("arguments", argsJson);
-                    part.setTokenCount(TokenizerUtils.countTokens(argsJson, tokenizerType));
+                    //part.setTokenCount(TokenizerUtils.countTokens(argsJson, tokenizerType));
                 } catch (Exception e) {
                     log.error("Failed to serialize executed args for tool call {}", tc.getId(), e);
                     funcNode.put("arguments", "{}");
@@ -244,17 +248,8 @@ public class OpenAiCompatibleResponseAdapter {
             } else if (part instanceof BlobPart bp) {
                 // Estimate tokens for blobs: use a heuristic based on data size
                 // For images: ~85 tokens per 512x512 tile is a common approximation
-                // For other files: use data length / 4 as rough estimate
-                int estimatedTokens;
-                if (bp.getMimeType().startsWith("image/")) {
-                    // Image token estimation: roughly 85 tokens per 512x512 tile
-                    // This is a rough heuristic; actual tokenization depends on the model
-                    estimatedTokens = Math.max(85, bp.getData().length / 768); // ~768 bytes per 85 tokens
-                } else {
-                    // For other blobs, estimate based on data length
-                    estimatedTokens = bp.getData().length / 4;
-                }
-                part.setTokenCount(estimatedTokens);
+                
+                //part.setTokenCount(estimatedTokens);
                 textContent.append(String.format("\n[Output Blob: %s]\n", bp.getMimeType()));
             }
         }

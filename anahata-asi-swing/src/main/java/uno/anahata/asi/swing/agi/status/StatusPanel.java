@@ -7,6 +7,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
@@ -184,7 +185,7 @@ public class StatusPanel extends JPanel {
         
         executingToolsLabel = new JLabel();
         executingToolsLabel.setForeground(new Color(128, 0, 128)); // Purple
-        executingToolsLabel.setFont(executingToolsLabel.getFont().deriveFont(java.awt.Font.BOLD));
+        executingToolsLabel.setFont(executingToolsLabel.getFont().deriveFont(Font.BOLD));
         agiStatusPanel.add(executingToolsLabel);
         
         row1Panel.add(agiStatusPanel);
@@ -284,12 +285,12 @@ public class StatusPanel extends JPanel {
     /**
      * Refreshes the UI components with the latest data from the agi session.
      */
-    public void refresh() {
+        public void refresh() {
         if (agi.isShutdown()) {
             if (refreshTimer.isRunning()) refreshTimer.stop();
             return;
         }
-        
+
         StatusManager statusManager = agi.getStatusManager();
         AgiStatus currentStatus = statusManager.getCurrentStatus();
         long now = System.currentTimeMillis();
@@ -303,9 +304,9 @@ public class StatusPanel extends JPanel {
         statusIndicator.setColor(statusColor);
         statusLabel.setForeground(statusColor);
         statusLabel.setToolTipText(currentStatus.getDescription());
-        
+
         String statusText = currentStatus.getDisplayName();
-        
+
         if (currentStatus == AgiStatus.WAITING_WITH_BACKOFF) {
             long elapsedSinceBackoffStart = now - statusManager.getStatusChangeTime();
             long totalBackoffDuration = statusManager.getCurrentBackoffAmount();
@@ -324,7 +325,7 @@ public class StatusPanel extends JPanel {
                 statusLabel.setText(currentStatus.getDisplayName());
             }
         }
-        
+
         // Update Executing Tools Label
         ToolManager toolManager = agi.getToolManager();
         List<AbstractToolCall<?, ?>> executingCalls = toolManager.getExecutingCalls();
@@ -358,8 +359,8 @@ public class StatusPanel extends JPanel {
             ApiErrorRecord lastError = errors.get(errors.size() - 1);
             long totalErrorTime = now - lastError.getTimestamp().toEpochMilli();
             String headerText = String.format("Retrying... Total Time: %s | Attempt: %d | Backoff: %s",
-                                              TimeUtils.formatMillisConcise(totalErrorTime),
-                                              lastError.getRetryAttempt() + 1,
+                                             TimeUtils.formatMillisConcise(totalErrorTime),
+                                             lastError.getRetryAttempt() + 1,
                                               TimeUtils.formatMillisConcise(lastError.getBackoffAmount()));
             apiErrorsPanel.add(new JLabel(headerText));
 
@@ -370,7 +371,7 @@ public class StatusPanel extends JPanel {
                                                  TIME_FORMAT.format(error.getTimestamp().toEpochMilli()),
                                                  apiKeySuffix,
                                                  displayString);
-                
+
                 JXHyperlink errorLink = new JXHyperlink();
                 errorLink.setText(errorText);
                 errorLink.setToolTipText("Click to view full stack trace");
@@ -378,7 +379,7 @@ public class StatusPanel extends JPanel {
                 errorLink.addActionListener(e -> ExceptionDialog.show(this, "API Error", "Excpetion furing API request", error.getStackTrace()));
                 apiErrorsPanel.add(errorLink);
             }
-            
+
         } else if (lastResponse != null) {
             apiErrorsScrollPane.setVisible(false);
             apiErrorsPanel.removeAll();
@@ -387,32 +388,48 @@ public class StatusPanel extends JPanel {
             rawJsonResponseLink.setVisible(true);
             rawJsonRequestConfigLink.setVisible(true);
             historyJsonLink.setVisible(true);
-            
+
             tokenDetailsLabel.setVisible(true);
 
             lastResponse.getPromptFeedback().ifPresent(blockReason -> {
                 blockReasonLabel.setText("Prompt Blocked: " + blockReason);
                 blockReasonLabel.setVisible(true);
             });
-            
+
             ResponseUsageMetadata usage = lastResponse.getUsageMetadata();
             if (usage != null) {
                 String prompt = "Prompt: " + NUMBER_FORMAT.format(usage.getPromptTokenCount());
+
+                // Append non-text input modalities details (e.g. IMAGE, AUDIO, VIDEO) if present
+                StringBuilder details = new StringBuilder();
+                if (usage.getPromptTokensDetails() != null) {
+                    usage.getPromptTokensDetails().forEach((modality, count) -> {
+                        if (!"TEXT".equals(modality) && count > 0) {
+                            if (details.length() > 0) {
+                                details.append(", ");
+                            }
+                            details.append(modality).append(": ").append(NUMBER_FORMAT.format(count));
+                        }
+                    });
+                }
+                if (details.length() > 0) {
+                    prompt += " (" + details.toString() + ")";
+                }
+
                 String candidates = "Candidates: " + NUMBER_FORMAT.format(usage.getCandidatesTokenCount());
                 String cached = "Cached: " + NUMBER_FORMAT.format(usage.getCachedContentTokenCount());
                 String thoughts = "Thoughts: " + NUMBER_FORMAT.format(usage.getThoughtsTokenCount());
                 String toolPrompt = "Tools: " + NUMBER_FORMAT.format(usage.getToolUsePromptTokenCount());
-                String total = "Billed Tokens: " + NUMBER_FORMAT.format(usage.getTotalTokenCount());
 
-                tokenDetailsLabel.setText(String.join(" | ", prompt, candidates, cached, thoughts, toolPrompt, total));
+                tokenDetailsLabel.setText(String.join(" | ", prompt, candidates, cached, thoughts, toolPrompt));
             } else {
                 tokenDetailsLabel.setText("");
             }
-            
+
         } else {
             apiErrorsScrollPane.setVisible(false);
         }
-        
+
         revalidate();
         repaint();
     }

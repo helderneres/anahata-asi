@@ -61,7 +61,6 @@ public class ToolNode extends AbstractContextNode<AbstractTool<?, ?>> {
     }
 
     /** {@inheritDoc} */
-    @Override
     protected void calculateLocalTokens() {
         this.declarationsTokens = userObject.getTokenCount();
     }

@@ -1,10 +1,7 @@
 package uno.anahata.asi.nb.tools.java.coderefiner;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import lombok.SneakyThrows;
-
+import java.io.File;
+import java.util.LinkedList;
 
 /**
  * Base Test Class for AST.
@@ -16,7 +13,8 @@ public class SmallTestClass {
      */
     public static class InnerTest {
         private String b;
-        private String description = "123";
+
+        private final String description = "123";
         public void foo() {}
         @Deprecated
         public void bar() {
@@ -27,7 +25,7 @@ public class SmallTestClass {
     /**
      * This method is extremely risky.
      */
-    @SneakyThrows
+    @lombok.SneakyThrows
     public void riskyMethod() {
         System.out.println("A");
 
@@ -39,8 +37,11 @@ public class SmallTestClass {
     /**
      * Processes generic numbers.
      */
-    public <T extends Number, R> List<R> processGenerics(Map<String, T> input) {
-        List<R> list = new ArrayList<>();
+    public <T extends Number, R> java.util.List<R> processGenerics(java.util.Map<String, T> input) {
+        java.util.List<R> list = new java.util.ArrayList<>();
+
+        // Look at this beautiful blank line!
+
         return list;
     }
 
@@ -65,9 +66,30 @@ public class SmallTestClass {
      * A test enum.
      */
     public enum TestEnum {
+        /** First doc */
         FIRST,
-        //comment
+        /** Second doc */
         SECOND,
+        /**
+         * The third constant.
+         */
         THIRD;
+    }
+
+    @lombok.Getter
+    public enum TestEnum2 {
+        FIRST ("first"),
+        /** Second doc */
+        SECOND ("second"),
+        /**
+         * The third constant with args.
+         */
+        THIRD ("third");
+
+        /** First doc */
+        private TestEnum2(String displayValue) {
+        this.displayValue = displayValue;
+        }
+        String displayValue;
     }
 }

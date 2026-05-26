@@ -89,6 +89,9 @@ public class InputPanel extends JPanel {
     private JButton screenshotButton;
     /** The button to capture and attach application frames. */
     private JButton captureFramesButton;
+    /**
+     * Button to add a URL-based context resource to the active session.
+     */
     private JButton addUrlButton;
     /** The renderer for the live message preview. */
     private InputUserMessagePanel inputMessagePreview;
@@ -101,16 +104,34 @@ public class InputPanel extends JPanel {
     
     /** Panel to display the staged message. */
     private JPanel stagedMessagePanel;
+    /**
+     * Label displaying summary preview of the staged user message.
+     */
     private JLabel stagedMessageLabel;
+    /**
+     * Button to edit and unstage the staged user message.
+     */
     private JButton revertStagedButton;
+    /**
+     * Button to permanently discard the staged user message.
+     */
     private JButton deleteStagedButton;
     
     /** Label for transient registration notifications. */
     private JLabel notificationLabel;
 
+    /**
+     * Reactive property change listener for staged user messages.
+     */
     private EdtPropertyChangeListener stagedListener;
+    /**
+     * Reactive property change listener for session status changes.
+     */
     private EdtPropertyChangeListener statusListener;
     
+    /**
+     * UndoManager tracking edits within the input text area.
+     */
     private final UndoManager undoManager = new UndoManager();
 
     /**
@@ -412,6 +433,9 @@ public class InputPanel extends JPanel {
         scrollToBottomPreview();
     }
 
+    /**
+     * Triggers a modal dialog prompting for a URL to register as a resource.
+     */
     private void addUrl() {
         String url = JOptionPane.showInputDialog(this, "Enter the URL to add as a resource:", "Add URL Resource", JOptionPane.PLAIN_MESSAGE);
         if (url != null && !url.trim().isEmpty()) {
@@ -545,9 +569,9 @@ public class InputPanel extends JPanel {
     /**
      * Updates the state and text of the send and stop buttons based on the current {@link AgiStatus}.
      * <p>
-     * This method handles the logic for switching between the "Send" and "Run Pending & Send"
+     * This method handles the logic for switching between the "Send" and "Run Pending and Send"
      * states, manages the visibility of the "Stop" button during active API calls, and
-     * ensures the "Decline Pending & Send" button is correctly toggled when tools are pending.
+     * ensures the "Decline Pending and Send" button is correctly toggled when tools are pending.
      * </p>
      */
     private void updateSendButtonState() {
@@ -610,6 +634,14 @@ public class InputPanel extends JPanel {
         new SwingTask<>(agiPanel, taskName, backgroundTask).start();
     }
 
+    /**
+     * Runs a background task with custom completion and error callbacks on the EDT.
+     * @param backgroundTask The background logic to execute.
+     * @param onError Callback executed on the EDT when the task fails.
+     * @param onDone Callback executed on the EDT when the task succeeds.
+     * @param taskName The descriptive task name.
+     * @param <T> The result type of the task.
+     */
     private <T> void executeTask(String taskName, Callable<T> backgroundTask, Consumer<T> onDone, Consumer<Exception> onError) {
         new SwingTask<>(agiPanel, taskName, backgroundTask, onDone, onError, true).start();
     }

@@ -14,6 +14,8 @@ import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,6 +38,7 @@ import uno.anahata.asi.openai.compatible.OpenAiChatCompletionsProvider;
 import javax.swing.Icon;
 import javax.swing.JFileChooser;
 import javax.swing.JTabbedPane;
+import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.anthropic.AnthropicProvider;
 import uno.anahata.asi.openai.OpenAiResponsesProvider;
 import uno.anahata.asi.gemini.GeminiAiProvider;
@@ -47,6 +50,7 @@ import uno.anahata.asi.swing.internal.AnyChangeDocumentListener;
 import uno.anahata.asi.swing.internal.SwingTask;
 
 import uno.anahata.asi.swing.components.ScrollablePanel;
+import uno.anahata.asi.swing.internal.SwingUtils;
 
 /**
  * A centralized, high-density configuration panel for AI Providers.
@@ -104,8 +108,14 @@ public class AiProviderPanel extends ScrollablePanel {
      */
     private final JComboBox<TokenizerType> tokenizerCombo;
 
+    /**
+     * The text area for entering and displaying allowed models for this provider.
+     */
     private final JTextArea allowedModelsArea;
 
+    /**
+     * Checkbox to toggle Google Cloud Vertex AI endpoint usage.
+     */
     private JCheckBox vertexCheck;
 
     /**
@@ -256,7 +266,7 @@ public class AiProviderPanel extends ScrollablePanel {
             try {
                 syncToProvider(); // Ensure URL and API keys are synced
                 new SwingTask<>(containerPanel, "Fetching Models", () -> {
-                    return provider.refreshModels().stream().map(uno.anahata.asi.agi.provider.AbstractModel::getModelId).collect(Collectors.toList());
+                    return provider.refreshModels().stream().map(AbstractModel::getModelId).collect(Collectors.toList());
                 }, models -> {
                     if(models.isEmpty()) {
                         JOptionPane.showMessageDialog(this, "No models were discovered. Check API keys and connection.");
@@ -357,7 +367,7 @@ public class AiProviderPanel extends ScrollablePanel {
         }
 
         textArea.setRows(7);
-        textArea.addMouseWheelListener(e -> uno.anahata.asi.swing.internal.SwingUtils.redispatchMouseWheelEvent(textArea, e));
+        textArea.addMouseWheelListener(e -> SwingUtils.redispatchMouseWheelEvent(textArea, e));
         textArea.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         JScrollPane textScroll = new JScrollPane(textArea);
         textScroll.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
@@ -401,6 +411,9 @@ public class AiProviderPanel extends ScrollablePanel {
         }
     }
 
+    /**
+     * Updates the hyperlinked label to browse to the key acquisition URL.
+     */
     private void updateLinkLabel() {
         if (provider.getKeysAcquisitionUri() == null) {
             return;
@@ -458,8 +471,8 @@ public class AiProviderPanel extends ScrollablePanel {
     }
 
     /**
-     * Synchronizes the UI state back to the provider domain and flushes the key
-     * pool to disk. This is called by the parent preferences panel.
+     * Synchronizes the UI state back to the provider domain and flushes the key pool to disk. This is called by the parent preferences panel.
+     * @throws java.io.IOException If writing the keys file or syncing the provider state fails.
      */
     public void syncToProvider() throws IOException {
         provider.setDisplayName(displayNameField.getText().trim());
@@ -472,9 +485,9 @@ public class AiProviderPanel extends ScrollablePanel {
 
         String allowed = allowedModelsArea.getText().trim();
         if (allowed.isEmpty()) {
-            provider.setAllowedModels(new java.util.ArrayList<>());
+            provider.setAllowedModels(new ArrayList<>());
         } else {
-            provider.setAllowedModels(java.util.Arrays.stream(allowed.split("\\s+"))
+            provider.setAllowedModels(Arrays.stream(allowed.split("\\s+"))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
                     .collect(java.util.stream.Collectors.toList()));

@@ -4,13 +4,17 @@ This file tracks the actionable tasks and tactical goals for the Anahata ASI (V2
 
 ## 0. Zero Day Go Live: 
 
-- [ ] Test CodeRefiner.optimizeImports more and if it is good, then integrate it in BCR
+- [ ] Remove syntax highligthing from java code blocks in text parts.
+
+- [ ] Integrate CodeRefiner.optimizeImports in BCR
+
+- [ ] ToolCallPanel sometimes shows white sspace between the adjustingtabbedpane and the response titled panel
 
 - [ ] make "cached data" in MediaView transient? possibly in text resources too?
 
 - [ ] change all log.info to log.debug
 
-- [ ] enums in json schemas dont have description, check JavaMethodToolResponse for ExecutionStatus
+- [ ] WrapLayout in unloadResources plays games with horizotnal widths some times
 
 - [ ] recording audio on the microphon button default recording device leaves a dangling swing task and doesn't record
 
@@ -20,7 +24,6 @@ This file tracks the actionable tasks and tactical goals for the Anahata ASI (V2
 
 ## 1. Have to do before Go Live: 
 - [ ] merge helders database branch
-- [ ] chatgpt responses api verified organisation/store/text reasoning
 - [ ] test one hf model with the chat completions api and put (Beta) 
     
 ## 2. Post Go Live (v1.1)
@@ -30,8 +33,7 @@ This file tracks the actionable tasks and tactical goals for the Anahata ASI (V2
 - [ ] **Context Panel**: 
     [ ] prune / remove multiple messages
     [ ] disable multiple toolkits at once
-    [ ] convert to diff based update events and add something to 
-- [ ] **Investigate editTextResource Diff limitations**: Investigate why in `editTextResource` no model can figure out the lines.
+
 - [ ] **[CORE] Generic "TOO LARGE" Response Handling**: Implement a mechanism to detect when a `JavaMethodToolResponse` (including logs, errors, and result) exceeds a safe token/size threshold. If too large, the status should be set to `TOO_LARGE` and the content truncated or replaced with a summary to prevent context window exhaustion.
 - [ ] Rework system instructions to be more natural
 - [ ] **ContextPanel**: Still some flickers when i have a node selected in the tree and a resource changes or a message arrives the right hand side disappears
@@ -53,6 +55,8 @@ This file tracks the actionable tasks and tactical goals for the Anahata ASI (V2
             - get the full details of any part or message
             - get the consolidated metadata index or always include it in the rag message of the parent
     - [ ] **Reporting Mechanism**: Implement a way for subagents to report task completion and results back to the "Boss" agent via shared dashboard or messaging system or something like that.
+- [ ] convert to diff based update events and add something to 
+
     
 
 ## 3. Post Go Live Go Live (v1.2)

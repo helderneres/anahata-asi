@@ -65,11 +65,17 @@ public class Hints extends AnahataToolkit {
     @AllArgsConstructor
     public static class HintMetadata {
 
+        /** The unique identifier of the hint. */
         String id;
+        /** The user-visible display name of the hint. */
         String displayName;
+        /** The description of what this hint checks. */
         String description;
+        /** The category folder where the hint belongs. */
         String category;
+        /** The severity level of this hint. */
         String severity;
+        /** Whether this hint is active in the IDE settings. */
         boolean enabled;
     }
 
@@ -164,6 +170,9 @@ public class Hints extends AnahataToolkit {
             List<ErrorDescription> hints = invoker.computeHints(info);
             if (hints != null) {
                 for (ErrorDescription ed : hints) {
+                    if (ed == null) {
+                        continue;
+                    }
                     long hintStart = ed.getRange().getBegin().getOffset();
                     if (hintStart >= start && hintStart <= end) {
                         results.add(new HintInfo(fo.getPath(), ed.getDescription(), ed.getSeverity().toString(), ed.getRange().getBegin().getLine(), ed.getRange().getBegin().getColumn(), ed.getId()));
@@ -215,6 +224,9 @@ public class Hints extends AnahataToolkit {
                 List<ErrorDescription> hints = invoker.computeHints(copy);
                 if (hints != null) {
                     for (ErrorDescription ed : hints) {
+                        if (ed == null) {
+                            continue;
+                        }
                         if (hintId.equals(ed.getId())) {
                             List<Fix> fixes = ed.getFixes().getFixes();
                             if (fixes != null && !fixes.isEmpty()) {
@@ -267,6 +279,9 @@ public class Hints extends AnahataToolkit {
             List<ErrorDescription> hints = invoker.computeHints(info);
             if (hints != null) {
                 for (ErrorDescription ed : hints) {
+                    if (ed == null) {
+                        continue;
+                    }
                     fileHints.add(new HintInfo(fo.getPath(), ed.getDescription(), ed.getSeverity().toString(), ed.getRange().getBegin().getLine(), ed.getRange().getBegin().getColumn(), ed.getId()));
                 }
             }
@@ -317,6 +332,9 @@ public class Hints extends AnahataToolkit {
                             List<ErrorDescription> hints = invoker.computeHints(info);
                             if (hints != null) {
                                 for (ErrorDescription ed : hints) {
+                                    if (ed == null) {
+                                        continue;
+                                    }
                                     if (hintIds == null || hintIds.isEmpty() || hintIds.contains(ed.getId())) {
                                         allHints.add(new HintInfo(fo.getPath(), ed.getDescription(), ed.getSeverity().toString(), ed.getRange().getBegin().getLine(), ed.getRange().getBegin().getColumn(), ed.getId()));
                                     }

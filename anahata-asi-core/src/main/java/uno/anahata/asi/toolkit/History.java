@@ -139,7 +139,7 @@ public class History extends AnahataToolkit {
     /**
      * Creates the consolidated history index.
      *
-     * @return
+     * @return The formatted Markdown consolidated index string containing message and part metadata.
      */
     public String createConsolidatedIndex() {
         StringBuilder sb = new StringBuilder("**Consolidated History Metadata Index**\n");
@@ -163,6 +163,11 @@ public class History extends AnahataToolkit {
         return sb.toString();
     }
 
+    /**
+     * Clears all Context Window Garbage Collector (CwGC) log records from memory.
+     *
+     * @return A descriptive confirmation string indicating the number of logs cleared.
+     */
     @AgiTool(value = "Deletes the garbage collector logs")
     public String clearGarbageCollectorLogs() {
         List<GarbageCollectorRecord> lr = getAgi().getContextManager().getGarbageCollector().getLogRecords();
@@ -172,8 +177,7 @@ public class History extends AnahataToolkit {
 
     /**
      * Updates the pruning policy for all parts of one or more messages.
-     * <p>
-     * Pruning states:
+     * <p>Pruning states:</p>
      * <ul>
      * <li><b>PINNED</b>: Never garbage collected; always remains in
      * context.</li>
@@ -181,7 +185,6 @@ public class History extends AnahataToolkit {
      * history.</li>
      * <li><b>AUTO</b>: Standard lifecycle managed by the CwGC system.</li>
      * </ul>
-     * </p>
      *
      * @param messageIds The sequential IDs of the messages to update.
      * @param newState The new pruning state to apply.

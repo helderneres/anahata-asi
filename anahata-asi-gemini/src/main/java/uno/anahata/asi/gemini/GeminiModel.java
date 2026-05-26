@@ -2,24 +2,20 @@
 package uno.anahata.asi.gemini;
 
 import com.google.genai.Client;
+import com.google.genai.LocalTokenizer;
 import com.google.genai.ResponseStream;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Citation;
-import com.google.genai.types.ComputerUse;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
-import com.google.genai.types.GoogleMaps;
 import com.google.genai.types.GoogleSearch;
-import com.google.genai.types.GoogleSearchRetrieval;
 import com.google.genai.types.ListModelsConfig;
 import com.google.genai.types.Model;
 import com.google.genai.types.Part;
 import com.google.genai.types.ToolCodeExecution;
-import com.google.genai.types.EnterpriseWebSearch;
-import com.google.genai.types.FileSearch;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,9 +40,16 @@ import uno.anahata.asi.agi.provider.StreamObserver;
 import uno.anahata.asi.agi.provider.AbstractAiProvider;
 import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.agi.provider.ApiCallInterruptedException;
+import uno.anahata.asi.agi.provider.FinishReason;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
 import uno.anahata.asi.agi.provider.RetryableApiException;
+import uno.anahata.asi.agi.tool.ToolResponseAttachment;
+import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
+import uno.anahata.asi.gemini.adapter.GeminiPartAdapter;
+import uno.anahata.asi.internal.ImageMetadataUtils;
+import uno.anahata.asi.internal.ImageMetadataUtils.ImageMetadata;
+import uno.anahata.asi.internal.JacksonUtils;
 
 /**
  * Gemini-specific implementation of the {@code AbstractModel}. It wraps the
@@ -67,11 +70,19 @@ public class GeminiModel extends AbstractModel {
      */
     private final String modelId;
     /**
-     * The transient native model metadata. transient to avoid 
-     * serialization of SDK types.
+     * The transient native model metadata. transient to avoid serialization of
+     * SDK types.
      */
     private transient Model genaiModel;
 
+    private transient com.google.genai.LocalTokenizer localTokenizer;
+
+    /**
+     * Constructs a new GeminiModel adapter.
+     *
+     * @param provider the owning provider instance.
+     * @param genaiModel the native Google GenAI model metadata.
+     */
     public GeminiModel(GeminiAiProvider provider, Model genaiModel) {
         this.provider = provider;
         this.genaiModel = genaiModel;
@@ -80,6 +91,7 @@ public class GeminiModel extends AbstractModel {
 
     /**
      * Lazily restores or returns the native GenAI model metadata.
+     *
      * @return The active Model instance.
      */
     private synchronized Model getGenaiModel() {
@@ -102,6 +114,149 @@ public class GeminiModel extends AbstractModel {
         return provider;
     }
 
+    /**
+     * Lazily retrieves and caches the Google GenAI LocalTokenizer.
+     * <p>
+     * This helper method encapsulates the initialization of Google's native
+     * LocalTokenizer, ensuring we fall back to a standard model
+     * (gemini-2.5-flash) if the requested model is not supported by the local
+     * tokenizer loader.
+     * </p>
+     *
+     * @return The cached LocalTokenizer instance.
+     */
+    private synchronized LocalTokenizer getLocalTokenizer() {
+        if (localTokenizer == null) {
+            try {
+                localTokenizer = new LocalTokenizer(getModelId());
+            } catch (IllegalArgumentException e) {
+                log.info("Model ID '{}' not supported by LocalTokenizerLoader, falling back to gemini-2.5-flash.", getModelId());
+                localTokenizer = new LocalTokenizer("gemini-2.5-flash");
+            }
+        }
+        return localTokenizer;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Utilizes Google's native LocalTokenizer to perform 100% accurate, offline
+     * token counting.</p>
+     *
+     * @param text The text to count tokens for.
+     * @return The token count, or 0 if the text is null or empty.
+     */
+    @Override
+    public int countTokens(java.lang.String text) {
+        if (text == null || text.isEmpty()) {
+            return 0;
+        }
+        return getLocalTokenizer().countTokens(text).totalTokens().orElse(0);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Translates the generic Anahata tool call into its native Google GenAI
+     * Part representation (excluding any thought signatures to avoid token
+     * inflation), serializes it to JSON, and tokenizes the JSON payload using
+     * the cached LocalTokenizer.
+     * </p>
+     *
+     * @param toolCall The tool call instance to tokenize.
+     * @return The precise token count.
+     */
+    @Override
+    public int countTokens(AbstractToolCall<?, ?> toolCall) {
+        if (toolCall == null) {
+            return 0;
+        }
+        try {
+            Part googlePart = new GeminiPartAdapter(toolCall, false).toGoogle();
+            if (googlePart != null) {
+                return getLocalTokenizer().countTokens(googlePart.toJson()).totalTokens().orElse(0);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to count tokens for Gemini tool call, falling back to raw args", e);
+        }
+        return countTokens(JacksonUtils.serialize(toolCall.getEffectiveArgs()));
+    }
+
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Counts the multimodal tokens for raw binary data under Gemini's flat-rate billing scheme.
+     * Gemini typically bills a model-independent flat-rate of 258 tokens per standard image, 
+     * which is preserved here.
+     * </p>
+     * @param mimeType The MIME type of the binary data (e.g. "image/png").
+     * @param data The raw binary data.
+     * @return The precise token count, or 0 if the data is null or empty.
+     */
+    @Override public int countTokens(byte[] data, java.lang.String mimeType) {
+        if (data == null || data.length == 0) {
+            return 0;
+        }
+        if (mimeType != null && mimeType.startsWith("image/")) {
+            ImageMetadata metadata = ImageMetadataUtils.readMetadata(data);
+            if (metadata != null) {
+                int width = metadata.getWidth();
+                int height = metadata.getHeight();
+
+                // 1. Low-Resolution check (both dimensions <= 384px)
+                if (width <= 384 && height <= 384) {
+                    return 258;
+                }
+
+                // 2. High-Resolution scaling: scale so shorter side is exactly 768px
+                double scaleRatio = 768.0 / Math.min(width, height);
+                int scaledWidth = (int) Math.ceil(width * scaleRatio);
+                int scaledHeight = (int) Math.ceil(height * scaleRatio);
+
+                // 3. Count 768x768 pixel tiles
+                int tilesW = (int) Math.ceil(scaledWidth / 768.0);
+                int tilesH = (int) Math.ceil(scaledHeight / 768.0);
+
+                // 4. Each tile costs 258 tokens
+                return (tilesW * tilesH) * 258;
+            }
+        }
+        return 258;
+    }
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Translates the generic Anahata tool response into a native Google GenAI
+     * FunctionResponse. It calculates the base tokens using the local offline tokenizer 
+     * and manually aggregates the model-specific flat-rate tokens for each binary 
+     * attachment (since Google's LocalTokenizer completely ignores FunctionResponse parts).
+     * </p>
+     * @param toolResponse The tool response instance to count.
+     * @return The precise, billing-identical token count.
+     */
+    @Override public int countTokens(uno.anahata.asi.agi.tool.spi.AbstractToolResponse<?> toolResponse) {
+        if (toolResponse == null) {
+                    return 0;
+                }
+                try {
+                    Part googlePart = GeminiPartAdapter.toGoogleFunctionResponsePart(toolResponse);
+                    if (googlePart != null) {
+                        // 1. Count the base tokens of the function response name and map using the local tokenizer.
+                        int total = getLocalTokenizer().countTokens(googlePart.toJson()).totalTokens().orElse(0);
+
+                        // 2. LocalTokenizer ignores parts() inside FunctionResponse. We must manually
+                        // accumulate the flat-rate token cost for each binary attachment to match billing.
+                        for (ToolResponseAttachment att : toolResponse.getAttachments()) {
+                            total += countTokens(att.getData(), att.getMimeType());
+                        }
+                        return total;
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to count tokens for Gemini tool response, falling back to raw serialization", e);
+                }
+                return countTokens(JacksonUtils.serialize(toolResponse));
+    }
     /**
      * {@inheritDoc}
      */
@@ -165,8 +320,9 @@ public class GeminiModel extends AbstractModel {
 
     /**
      * {@inheritDoc}
-     * <p>Implementation details: Escapes special HTML characters in the model metadata 
-     * to ensure safe rendering in the NetBeans HTML view.</p>
+     * <p>
+     * Implementation details: Escapes special HTML characters in the model
+     * metadata to ensure safe rendering in the NetBeans HTML view.</p>
      */
     @Override
     public String getRawDescription() {
@@ -191,6 +347,7 @@ public class GeminiModel extends AbstractModel {
 
     /**
      * Escapes special HTML characters in a string.
+     *
      * @param text The text to escape.
      * @return The escaped text.
      */
@@ -280,7 +437,7 @@ public class GeminiModel extends AbstractModel {
     public List<ServerTool> getDefaultServerTools() {
         return getAvailableServerTools().stream()
                 .filter(st -> st.getId().equals(GoogleSearch.class))
-                .collect(Collectors.toList()); 
+                .collect(Collectors.toList());
     }
 
     /**
@@ -309,6 +466,7 @@ public class GeminiModel extends AbstractModel {
 
     /**
      * Internal container for parameters used to invoke the Gemini API.
+     *
      * @param history The list of content blocks to send.
      * @param historyJson The JSON representation of the history.
      * @param config The generation configuration.
@@ -319,6 +477,7 @@ public class GeminiModel extends AbstractModel {
 
     /**
      * Synthesizes the history and configuration into SDK-ready parameters.
+     *
      * @param request The source Anahata request.
      * @return The prepared parameters.
      */
@@ -400,6 +559,7 @@ public class GeminiModel extends AbstractModel {
 
     /**
      * Serious intelligence to detect whether it is retriable or not.
+     *
      * @param e the exception to check.
      * @return true if the error is considered transient/retryable.
      */
@@ -430,7 +590,6 @@ public class GeminiModel extends AbstractModel {
             boolean started = false;
             GeminiResponse lastGeminiResponse = null;
 
-            // Accumulators for usage metadata
             int totalCandidatesTokens = 0;
 
             for (GenerateContentResponse chunk : stream) {
@@ -452,14 +611,13 @@ public class GeminiModel extends AbstractModel {
 
                 handleChunk(chunk, targets);
 
-                // Accumulate billed tokens if present in the chunk
                 Optional<GenerateContentResponseUsageMetadata> usage = chunk.usageMetadata();
                 if (usage.isPresent()) {
                     GenerateContentResponseUsageMetadata um = usage.get();
-                    // Gemini usually sends the total accumulated so far in each chunk.
                     totalCandidatesTokens = Math.max(totalCandidatesTokens, um.candidatesTokenCount().orElse(0));
                     for (GeminiModelMessage target : targets) {
-                        target.setBilledTokenCount(totalCandidatesTokens);
+                        target.setBilledCompletionTokens(totalCandidatesTokens);
+                        target.setBilledPromptTokens(um.promptTokenCount().orElse(0));
                     }
                 }
 
@@ -470,12 +628,10 @@ public class GeminiModel extends AbstractModel {
             if (lastGeminiResponse != null) {
                 for (GeminiModelMessage target : targets) {
                     target.setResponse(lastGeminiResponse);
-                    // Ensure the final model version is set
                     target.setModelId(lastGeminiResponse.getModelVersion());
 
-                    // Ensure the finish reason is set if it's still null after the stream
                     if (target.getFinishReason() == null) {
-                        target.setFinishReason(uno.anahata.asi.agi.provider.FinishReason.GOD_FUCKING_KNOWS);
+                        target.setFinishReason(FinishReason.GOD_FUCKING_KNOWS);
                     }
                 }
             }
@@ -496,6 +652,7 @@ public class GeminiModel extends AbstractModel {
 
     /**
      * Checks if the given exception or any of its causes is an interruption.
+     *
      * @param e The exception to check.
      * @return true if it's an interruption, false otherwise.
      */
@@ -513,6 +670,7 @@ public class GeminiModel extends AbstractModel {
     /**
      * Processes a single streaming chunk by appending its deltas to the
      * corresponding target messages.
+     *
      * @param chunk The raw chunk from the Gemini API.
      * @param targets The persistent ModelMessage objects being updated.
      */
@@ -570,6 +728,7 @@ public class GeminiModel extends AbstractModel {
 
     /**
      * Unified handler for response metadata (finish reason, grounding).
+     *
      * @param c The candidate object.
      * @param response The full response or chunk.
      * @param target The target Anahata message.

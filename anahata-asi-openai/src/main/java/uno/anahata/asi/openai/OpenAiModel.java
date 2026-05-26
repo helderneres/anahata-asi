@@ -5,13 +5,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.net.URI;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -26,8 +30,15 @@ import uno.anahata.asi.agi.provider.RetryableApiException;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.provider.StreamObserver;
 import uno.anahata.asi.agi.provider.ThinkingLevel;
+import uno.anahata.asi.agi.tool.ToolResponseAttachment;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
+import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.tool.spi.AbstractToolParameter;
+import uno.anahata.asi.agi.tool.spi.AbstractToolkit;
+import uno.anahata.asi.internal.ImageMetadataUtils;
+import uno.anahata.asi.internal.ImageMetadataUtils.ImageMetadata;
+import uno.anahata.asi.internal.JacksonUtils;
+import uno.anahata.asi.internal.TokenizerUtils;
 
 /**
  * Native implementation for OpenAI models using the Responses API
@@ -72,6 +83,38 @@ public class OpenAiModel extends AbstractModel {
         this.displayName = node.path("name").asText(modelId);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Utilizes TokenizerUtils to perform offline, BPE token counting based on configured TokenizerType.</p>
+     * @param text The text to count tokens for.
+     * @return The token count, or 0 if the text is null or empty.
+     */
+    @Override public int countTokens(java.lang.String text) {
+        return TokenizerUtils.countTokens(text, getTokenizerType());
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Serializes the tool call into a standard OpenAI function call JSON object
+     * containing 'name' and 'arguments' properties, and counts its tokens using the active BPE encoding.
+     * </p>
+     * @param toolCall The tool call to count tokens for.
+     * @return The total token count.
+     */
+    @Override public int countTokens(AbstractToolCall<?, ?> toolCall) {
+        if (toolCall == null) {
+            return 0;
+        }
+        try {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("name", toolCall.getToolName());
+            map.put("arguments", JacksonUtils.serialize(toolCall.getEffectiveArgs()));
+            return countTokens(JacksonUtils.serialize(map));
+        } catch (Exception e) {
+            return countTokens(toolCall.asText());
+        }
+    }
     /**
      * {@inheritDoc}
      * <p>Implementation details: Returns the display name or model ID.</p>
@@ -192,8 +235,8 @@ public class OpenAiModel extends AbstractModel {
     @Override
     public List<ServerTool> getDefaultServerTools() {
         return getAvailableServerTools().stream()
-                .filter(st -> "web_search".equals(st.getId()))
-                .collect(java.util.stream.Collectors.toList());
+                .filter((ServerTool st) -> "web_search".equals(st.getId()))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -222,6 +265,9 @@ public class OpenAiModel extends AbstractModel {
 
     /**
      * Record holding the three distinct partitions of a request payload.
+     * @param fullPayload the raw JSON of the entire aggregated payload.
+     * @param configJson the raw JSON of the request configuration partition.
+     * @param historyJson the raw JSON of the history/memory partition.
      */
     public record PreparedPayload(String fullPayload, String configJson, String historyJson) {
 
@@ -290,10 +336,10 @@ public class OpenAiModel extends AbstractModel {
         // Tools (Local and Hosted)
         ArrayNode toolsArray = root.putArray("tools");
         if (request.config().getLocalTools() != null && !request.config().getLocalTools().isEmpty()) {
-            Map<uno.anahata.asi.agi.tool.spi.AbstractToolkit, List<AbstractTool>> grouped = (Map) request.config().getLocalTools().stream()
-                    .collect(java.util.stream.Collectors.groupingBy(AbstractTool::getToolkit));
+            Map<AbstractToolkit, List<AbstractTool>> grouped = (Map) request.config().getLocalTools().stream()
+                    .collect(Collectors.groupingBy(AbstractTool::getToolkit));
 
-            for (var entry : grouped.entrySet()) {
+            for (Map.Entry<AbstractToolkit, List<AbstractTool>> entry : grouped.entrySet()) {
                 ObjectNode namespaceNode = toolsArray.addObject();
                 namespaceNode.put("type", "namespace");
                 namespaceNode.put("name", entry.getKey().getName());
@@ -404,17 +450,17 @@ public class OpenAiModel extends AbstractModel {
                     .POST(HttpRequest.BodyPublishers.ofString(prepared.fullPayload()))
                     .build();
                     
-            java.net.http.HttpClient client = provider.getHttpClient(); {
+            HttpClient client = provider.getHttpClient(); {
                 OpenAiModelMessage targetMessage = new OpenAiModelMessage(agi, getModelId());
                 targetMessage.setStreaming(true);
                 List<OpenAiModelMessage> targets = List.of(targetMessage);
-                java.util.concurrent.atomic.AtomicBoolean started = new java.util.concurrent.atomic.AtomicBoolean(false);
+                AtomicBoolean started = new AtomicBoolean(false);
                 
-                HttpResponse<java.util.stream.Stream<String>> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofLines());
+                HttpResponse<Stream<String>> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofLines());
                 if (response.statusCode() != 200) {
                     String errorMsg = "No error body";
-                    try (java.util.stream.Stream<String> bodyStream = response.body()) {
-                        errorMsg = bodyStream.collect(java.util.stream.Collectors.joining("\n"));
+                    try (Stream<String> bodyStream = response.body()) {
+                        errorMsg = bodyStream.collect(Collectors.joining("\n"));
                     }
                     if (provider.isRetryable(response.statusCode(), errorMsg)) {
                         provider.hokusPocus();
@@ -425,8 +471,8 @@ public class OpenAiModel extends AbstractModel {
                     return;
                 }
                 
-                try (java.util.stream.Stream<String> lines = response.body()) {
-                    java.util.Iterator<String> it = lines.iterator();
+                try (Stream<String> lines = response.body()) {
+                    Iterator<String> it = lines.iterator();
                     
                     while (it.hasNext()) {
                         String line = it.next();
@@ -445,7 +491,7 @@ public class OpenAiModel extends AbstractModel {
                             }
                             
                             try {
-                                JsonNode chunk = uno.anahata.asi.internal.JacksonUtils.parse(data, JsonNode.class);
+                                JsonNode chunk = JacksonUtils.parse(data, JsonNode.class);
                                 targetMessage.handleStreamEvent(chunk);
                                 targetMessage.appendRawJson(data);
                                 
@@ -505,5 +551,59 @@ public class OpenAiModel extends AbstractModel {
         decl.put("strict", false);
 
         return API_MAPPER.writeValueAsString(decl);
+    }
+
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Serializes the base tool response to its flat JSON representation and adds the
+     * token cost of any generated attachments (like images or logs) by delegating
+     * to the generic binary tokenizer. This mirrors the exact OpenAI Responses API
+     * wire-format, where attachments are sent as a separate developer-role message.
+     * </p>
+     * @param toolResponse The tool response instance to count.
+     * @return The precise, billing-identical token count.
+     */
+    @Override public int countTokens(uno.anahata.asi.agi.tool.spi.AbstractToolResponse<?> toolResponse) {
+        if (toolResponse == null) {
+                    return 0;
+                }
+                try {
+                    int total = countTokens(JacksonUtils.serialize(toolResponse));
+                    if (!toolResponse.getAttachments().isEmpty()) {
+                        total += 20; // Developer message packaging overhead
+                        total += countTokens("The following are multimodal attachments generated by the tool '" + toolResponse.getToolName() + "':");
+                        for (ToolResponseAttachment att : toolResponse.getAttachments()) {
+                            total += countTokens(att.getData(), att.getMimeType());
+                        }
+                    }
+                    return total;
+                } catch (Exception e) {
+                    log.error("Failed to serialize OpenAI tool response for token counting", e);
+                    throw new RuntimeException(e);
+                }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Calculates the exact, model-specific multimodal token count for OpenAI image data.
+     * Delegates the header-only image dimension reading to the core {@link ImageMetadataUtils} utility,
+     * and performs the OpenAI-specific high-detail scaling and tiling calculations.
+     * </p>
+     * @param data The raw binary data of the file or attachment.
+     * @param mimeType The detected MIME type of the binary data (e.g. "image/png").
+     * @return The precise, billing-identical multimodal token count.
+     */
+    @Override public int countTokens(byte[] data, String mimeType) {
+        if (data == null || data.length == 0) {
+                    return 0;
+                }
+                if (mimeType != null && mimeType.startsWith("image/")) {
+                    ImageMetadata metadata = ImageMetadataUtils.readMetadata(data);
+                    return ImageMetadataUtils.calculateOpenAiTileTokens(metadata);
+                }
+                return 85; // Fallback for non-image binary data
     }
 }

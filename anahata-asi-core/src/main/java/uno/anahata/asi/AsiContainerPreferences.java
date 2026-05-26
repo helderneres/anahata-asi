@@ -5,13 +5,16 @@ package uno.anahata.asi;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
@@ -35,6 +38,7 @@ import uno.anahata.asi.agi.tool.ToolPermission;
 @Setter
 @Slf4j
 public class AsiContainerPreferences extends BasicPropertyChangeSource {
+    /** The standard filename used to persist the container's preference file on disk. */
     private static final String PREFERENCES_FILE_NAME = "preferences.kryo";
 
     /**
@@ -129,8 +133,8 @@ public class AsiContainerPreferences extends BasicPropertyChangeSource {
         // 2. Structural detection (for changes in available toolkits)
         AgiConfig defaults = container.createNewAgiConfig();
         
-        java.util.Set<Class<?>> templateTools = new java.util.HashSet<>(agiTemplate.getToolClasses());
-        java.util.Set<Class<?>> defaultTools = new java.util.HashSet<>(defaults.getToolClasses());
+        Set<Class<?>> templateTools = new HashSet<>(agiTemplate.getToolClasses());
+        Set<Class<?>> defaultTools = new HashSet<>(defaults.getToolClasses());
         
         return !templateTools.equals(defaultTools);
     }
@@ -166,7 +170,7 @@ public class AsiContainerPreferences extends BasicPropertyChangeSource {
         AgiConfig clone = KryoUtils.clone(agiTemplate);
         clone.setAsiContainer(container);
         // Ensure the new session gets its own unique identity
-        clone.setSessionId(java.util.UUID.randomUUID().toString());
+        clone.setSessionId(UUID.randomUUID().toString());
         
         // Sync: ensure all currently registered enabled providers are available in the new session
         for (AbstractAiProvider p : container.getAllProviders()) {
@@ -214,7 +218,7 @@ public class AsiContainerPreferences extends BasicPropertyChangeSource {
             // 2. Atomic move to destination
             try {
                 Files.move(tmpFile, preferencesFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+            } catch (AtomicMoveNotSupportedException e) {
                 log.warn("Atomic move not supported on this filesystem, falling back to standard move for preferences.");
                 Files.move(tmpFile, preferencesFile, StandardCopyOption.REPLACE_EXISTING);
             }
@@ -264,6 +268,12 @@ public class AsiContainerPreferences extends BasicPropertyChangeSource {
         return new AsiContainerPreferences();
     }
 
+    /**
+     * Resolves the absolute path to the persistent preferences file for a given container.
+     *
+     * @param config The active container instance.
+     * @return The absolute path to the preferences file.
+     */
     private static Path getPreferencesFile(AbstractAsiContainer config) {
         Path appWorkDir = config.getAppDir();
         return appWorkDir.resolve(PREFERENCES_FILE_NAME);

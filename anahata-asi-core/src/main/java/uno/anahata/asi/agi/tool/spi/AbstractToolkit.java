@@ -86,8 +86,7 @@ public abstract class AbstractToolkit<T extends AbstractTool<?,?>> {
 
     /**
      * Calculates the total token count of this toolkit on-the-fly by aggregating
-     * the token counts of all its contained tools.
-     *
+     * the cached token counts of all its contained tools.
      * @return The total token count for the entire toolkit.
      */
     public int getTokenCount() {

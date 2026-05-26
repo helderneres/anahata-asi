@@ -3,6 +3,7 @@ package uno.anahata.asi.agi.tool.spi.java;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,11 +13,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
-import uno.anahata.asi.agi.tool.ToolPermission;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
 import uno.anahata.asi.agi.tool.AgiTool;
 
@@ -87,9 +86,9 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
     }
     
     /**
-     * Initializes the maxDepth and description attributes
+     * Initializes the maxDepth and description attributes.
      * 
-     * @param toolAnnotation 
+     * @param toolAnnotation The source @AgiTool annotation containing metadata.
      */
     private final void initAttributes(AgiTool toolAnnotation) {
         // Set max depth using the clean inheritance model
@@ -159,12 +158,14 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
             Class<?> currentClass = instance.getClass();
             while (currentClass != null && currentClass != Object.class) {
                 for (Method m : currentClass.getDeclaredMethods()) {
-                    if (javaMethodSignature.equals(buildMethodSignature(m))) {
-                        this.method = m;
-                        AgiTool toolAnnotation = method.getDeclaredAnnotation(AgiTool.class);
-                        initAttributes(toolAnnotation);
-                        initParameters();
-                        break;
+                    if (javaMethodSignature.equals(buildMethodSignature(m))) {                        
+                        AgiTool toolAnnotation = m.getDeclaredAnnotation(AgiTool.class);
+                        if (toolAnnotation != null) {
+                            this.method = m;
+                            initAttributes(toolAnnotation);
+                            initParameters();
+                            break;
+                        }
                     }
                 }
                 if (method != null) {
@@ -188,12 +189,18 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
         // A tool creates its own parameters.
         
         getParameters().clear();
-        java.lang.reflect.Parameter[] params = method.getParameters();
+        Parameter[] params = method.getParameters();
         for (int i = 0; i < params.length; i++) {
             getParameters().add(JavaMethodToolParameter.of(this, params[i], i));
         }
     }
     
+    /**
+     * Returns a rich, formatted description string containing the base description,
+     * current permission status, and effective max depth details.
+     *
+     * @return The formatted tool description.
+     */
     @Override
     public String getDescription() {
         StringBuilder sb = new StringBuilder(super.description);
@@ -224,7 +231,7 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
                 + " " + m.getGenericReturnType().getTypeName()
                 + " " + m.getName() + "("
                 + Arrays.stream(m.getParameters())
-                        .map(p -> p.getParameterizedType().getTypeName() + " " + p.getName())
+                        .map((Parameter p) -> p.getParameterizedType().getTypeName() + " " + p.getName())
                         .collect(Collectors.joining(", "))
                 + ")";
 
