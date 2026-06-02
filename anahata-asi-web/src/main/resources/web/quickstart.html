@@ -33,6 +33,9 @@
         pre[class*="language-"] { background: #0d1117 !important; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem !important; margin: 1.5rem 0 !important; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
         .code-header { color: var(--barca-gold); font-size: 0.8rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
         .info-box { background: rgba(44, 122, 123, 0.1); border-left: 4px solid var(--barca-gold); padding: 1.5rem; border-radius: 8px; margin: 2rem 0; }
+        .toolkit-header { display: flex; align-items: center; gap: 1rem; margin-top: 3rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; }
+        .toolkit-header i { font-size: 1.8rem; color: var(--barca-gold); }
+        .toolkit-header h2 { margin: 0 !important; border-bottom: none !important; padding-bottom: 0 !important; }
     </style>
 </head>
 <body>
@@ -46,6 +49,7 @@
                     <li><a href="#dependencies">Dependencies</a></li>
                     <li><a href="#deployment">Deployment Models</a></li>
                     <li><a href="#custom-tools">Creating Custom Tools</a></li>
+                    <li><a href="#advanced-toolkits">Advanced Toolkits</a></li>
                     <li><a href="#context-providers">Custom Context Providers</a></li>
                 </ul>
             </div>
@@ -79,54 +83,16 @@
     &lt;dependency&gt;
         &lt;groupId&gt;uno.anahata&lt;/groupId&gt;
         &lt;artifactId&gt;anahata-asi-core&lt;/artifactId&gt;
-        &lt;version&gt;1.0.0-SNAPSHOT&lt;/version&gt;
+        &lt;version&gt;1.0.0&lt;/version&gt;
     &lt;/dependency&gt;
     &lt;dependency&gt;
         &lt;groupId&gt;uno.anahata&lt;/groupId&gt;
         &lt;artifactId&gt;anahata-asi-gemini&lt;/artifactId&gt;
-        &lt;version&gt;1.0.0-SNAPSHOT&lt;/version&gt;
+        &lt;version&gt;1.0.0&lt;/version&gt;
     &lt;/dependency&gt;
 &lt;/dependencies&gt;</code></pre>
 
-                        <h3 style="margin-top: 2rem; color: var(--white);">2. Custom Context Provider</h3>
-                        <p>Context providers act as "sensors", injecting real-time data into the ASI's prompt.</p>
-                        <div class="code-header" style="text-transform: none;">DatabaseContextProvider.java</div>
-                        <pre><code class="language-java">import uno.anahata.asi.agi.context.BasicContextProvider;
-import uno.anahata.asi.agi.message.RagMessage;
-
-public class DatabaseContextProvider extends BasicContextProvider {
-    public DatabaseContextProvider() {
-        super("db-sensor", "Database Status", "Monitors active DB connections.");
-    }
-
-    @Override
-    public void populateMessage(RagMessage ragMessage) throws Exception {
-        int activeConnections = 42; // Example logic
-        ragMessage.addTextPart("## Database Status\n- Active Connections: " + activeConnections);
-    }
-}</code></pre>
-
-                        <h3 style="margin-top: 2rem; color: var(--white);">3. Custom Toolkit</h3>
-                        <p>Toolkits grant the ASI the ability to take action. The <code>SchemaProvider</code> generates OpenAPI schemas automatically.</p>
-                        <div class="code-header" style="text-transform: none;">EnterpriseToolkit.java</div>
-                        <pre><code class="language-java">import uno.anahata.asi.agi.tool.AnahataToolkit;
-import uno.anahata.asi.agi.tool.AgiToolkit;
-import uno.anahata.asi.agi.tool.AgiTool;
-import uno.anahata.asi.agi.tool.AgiToolParam;
-
-@AgiToolkit("Enterprise operations and revenue management.")
-public class EnterpriseToolkit extends AnahataToolkit {
-    @AgiTool("Calculates the total revenue for a given region.")
-    public double calculateRevenue(
-            @AgiToolParam("The target region (e.g., 'EMEA', 'NA').") String region,
-            @AgiToolParam("Whether to include projected sales.") boolean includeProjected) {
-        
-        log("Calculating revenue for region: " + region); // Thread-safe logging!
-        return includeProjected ? 1500000.0 : 1000000.0;
-    }
-}</code></pre>
-
-                        <h3 style="margin-top: 2rem; color: var(--white);">4. Configuration (DNA)</h3>
+                        <h3 style="margin-top: 2rem; color: var(--white);">2. Configuration (DNA)</h3>
                         <p>The <code>AgiConfig</code> defines the default AI provider, model, and which toolkits are enabled for the session.</p>
                         <div class="code-header" style="text-transform: none;">MyAppAgiConfig.java</div>
                         <pre><code class="language-java">import uno.anahata.asi.agi.AgiConfig;
@@ -143,7 +109,7 @@ public class MyAppAgiConfig extends AgiConfig {
     }
 }</code></pre>
 
-                        <h3 style="margin-top: 2rem; color: var(--white);">5. Container & Main</h3>
+                        <h3 style="margin-top: 2rem; color: var(--white);">3. Container & Main</h3>
                         <p>The <code>AbstractAsiContainer</code> acts as the host application, managing session lifecycles.</p>
                         <div class="code-header" style="text-transform: none;">MyAppAsiContainer.java</div>
                         <pre><code class="language-java">import uno.anahata.asi.AbstractAsiContainer;
@@ -196,11 +162,11 @@ public class Main {
                         
                         <h3 style="margin-top: 2rem; color: var(--white);">Dependencies</h3>
                         <div class="code-header" style="text-transform: none;">pom.xml</div>
-                        <pre><code class="language-xml">&lt;dependency&gt;
-    &lt;groupId&gt;uno.anahata&lt;/groupId&gt;
-    &lt;artifactId&gt;anahata-asi-swing&lt;/artifactId&gt;
-    &lt;version&gt;1.0.0-SNAPSHOT&lt;/version&gt;
-&lt;/dependency&gt;</code></pre>
+                        <pre><code class="language-xml">    &lt;dependency&gt;
+        &lt;groupId&gt;uno.anahata&lt;/groupId&gt;
+        &lt;artifactId&gt;anahata-asi-swing&lt;/artifactId&gt;
+        &lt;version&gt;1.0.0&lt;/version&gt;
+    &lt;/dependency&gt;</code></pre>
                         
                         <h3 style="margin-top: 2rem; color: var(--white);">Embedded Configuration & Toolkits</h3>
                         <p>Define your session DNA and register any custom toolkits you want to expose to the AI.</p>
@@ -294,11 +260,11 @@ public class EmbeddedSwingAppAsiContainer extends AbstractSwingAsiContainer {
                         
                         <h3 style="margin-top: 2rem; color: var(--white);">1. Dependencies</h3>
                         <div class="code-header" style="text-transform: none;">pom.xml</div>
-                        <pre><code class="language-xml">&lt;dependency&gt;
-    &lt;groupId&gt;uno.anahata&lt;/groupId&gt;
-    &lt;artifactId&gt;anahata-asi-desktop&lt;/artifactId&gt;
-    &lt;version&gt;1.0.0-SNAPSHOT&lt;/version&gt;
-&lt;/dependency&gt;</code></pre>
+                        <pre><code class="language-xml">    &lt;dependency&gt;
+        &lt;groupId&gt;uno.anahata&lt;/groupId&gt;
+        &lt;artifactId&gt;anahata-asi-desktop&lt;/artifactId&gt;
+        &lt;version&gt;1.0.0&lt;/version&gt;
+    &lt;/dependency&gt;</code></pre>
 
                         <h3 style="margin-top: 2rem; color: var(--white);">2. Container & Config</h3>
                         <p>Extend <code>AsiDesktopAsiContainer</code> and define your custom default providers and configuration.</p>
@@ -372,7 +338,14 @@ public class Main {
                         <p class="subtitle">Create a NetBeans module that extends Anahata ASI Studio with custom toolkits.</p>
                         
                         <h3 style="margin-top: 2rem; color: var(--white);">Dependencies</h3>
-                        <p>Set <code>uno.anahata.asi.nb</code> as a module dependency in your NBM project.</p>
+                        <p>Declare the Anahata Studio API dependency in your suite or standalone NBM module POM:</p>
+                        <div class="code-header" style="text-transform: none;">pom.xml</div>
+                        <pre><code class="language-xml">&lt;dependency&gt;
+    &lt;groupId&gt;uno.anahata&lt;/groupId&gt;
+    &lt;artifactId&gt;anahata-asi-nb&lt;/artifactId&gt;
+    &lt;version&gt;1.0.0&lt;/version&gt;
+    &lt;type&gt;nbm&lt;/type&gt;
+&lt;/dependency&gt;</code></pre>
                         
                         <h3 style="margin-top: 2rem; color: var(--white);">Module Installer</h3>
                         <div class="code-header" style="text-transform: none;">MyModuleInstaller.java</div>
@@ -389,6 +362,172 @@ public class MyModuleInstaller extends ModuleInstall {
 }</code></pre>
                     </div>
                 </div>
+            </section>
+
+            <section id="custom-tools" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-wrench"></i><h2>Creating Custom Tools (Toolkits)</h2></div>
+                <p>Toolkits grant the ASI the ability to take action. By extending <code>AnahataToolkit</code> and annotating methods with <code>@AgiTool</code>, the <code>SchemaProvider</code> generates OpenAPI schemas automatically, allowing any model to invoke your custom code securely.</p>
+                <div class="code-header" style="text-transform: none;">EnterpriseToolkit.java</div>
+                <pre><code class="language-java">import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiTool;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+
+@AgiToolkit("Enterprise operations and revenue management.")
+public class EnterpriseToolkit extends AnahataToolkit {
+    @AgiTool("Calculates the total revenue for a given region.")
+    public double calculateRevenue(
+            @AgiToolParam("The target region (e.g., 'EMEA', 'NA').") String region,
+            @AgiToolParam("Whether to include projected sales.") boolean includeProjected) {
+        
+        log("Calculating revenue for region: " + region); // Thread-safe logging!
+        return includeProjected ? 1500000.0 : 1000000.0;
+    }
+}</code></pre>
+            </section>
+
+            <section id="advanced-toolkits" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-cubes"></i><h2>Advanced Toolkits & Lifecycle Management</h2></div>
+                <p>For complex enterprise integrations, toolkits must manage their own state persistence (Kryo serialization), interact with external resources, and integrate tightly with the ASI's prompt-assembly phase. To do this, your toolkit can leverage POJOs, transient fields, prompt-population callbacks, and early/late deserialization recovery hooks.</p>
+                
+                <div class="info-box">
+                    <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: var(--white);"><i class="fas fa-sync-alt"></i> Rebind vs. PostActivate Lifecycle Hooks</h4>
+                    <p style="margin-bottom: 0.8rem;">Because Anahata passivates and serializes the entire <code>Agi</code> session graph to a <code>.kryo</code> binary file on every turn, fields marked as <code>transient</code> (like database connections, threads, or UI listener supports) will be skipped during serialization. You must recover them on deserialization using our two-stage lifecycle hooks:</p>
+                    <ul style="margin: 0; padding-left: 1.5rem; font-size: 0.9rem; line-height: 1.5;">
+                        <li><b><code>rebind()</code> (Early Stage)</b>: Part of the <code>Rebindable</code> interface. Triggered <i>immediately</i> as soon as Kryo finishes deserializing your specific toolkit object, before the rest of the session graph is built. It is reserved strictly for restoring local transient variables (e.g. recreating <code>PropertyChangeSupport</code>). <i>Always invoke <code>super.rebind()</code> first!</i></li>
+                        <li><b><code>postActivate()</code> (Late Stage)</b>: Triggered by the framework <i>later</i>, after the entire session object graph is fully reconstructed and bound to the host <code>AsiContainer</code>. This is the safe, authoritative place to run logic that depends on other toolkits, active connections, your parent <code>Agi</code> session, or the host container.</li>
+                    </ul>
+                </div>
+
+                <div class="code-header" style="text-transform: none;">ProjectMetadata.java (POJO Parameter Model)</div>
+                <pre><code class="language-java">import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "Structured metadata describing an enterprise engineering project.")
+public class ProjectMetadata {
+    @Schema(description = "The unique identifier of the project.", required = true)
+    private String projectId;
+
+    @Schema(description = "The target deployment region.", example = "EMEA")
+    private String region;
+
+    @Schema(description = "The current development budget.")
+    private double budget;
+}</code></pre>
+
+                <div class="code-header" style="text-transform: none;">AdvancedEnterpriseToolkit.java</div>
+                <pre><code class="language-java">import java.beans.PropertyChangeSupport;
+import java.util.List;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Files;
+import lombok.extern.slf4j.Slf4j;
+import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.AgiToolkit;
+import uno.anahata.asi.agi.tool.AgiTool;
+import uno.anahata.asi.agi.tool.AgiToolParam;
+import uno.anahata.asi.agi.message.RagMessage;
+
+@Slf4j
+@AgiToolkit("High-performance enterprise toolkit with state persistence and JIT prompt integration.")
+public class AdvancedEnterpriseToolkit extends AnahataToolkit {
+
+    // Persistent field: Automatically saved to Kryo on every turn
+    private String currentAuditId = "INIT-AUDIT";
+
+    // Transient fields: Skipped by Kryo, must be recovered manually
+    private transient PropertyChangeSupport propertyChangeSupport;
+    private transient MyDatabaseConnection dbConnection;
+
+    // --- 1. Deserialization & Lifecycle Recovery ---
+
+    @Override
+    public void rebind() {
+        super.rebind(); // CRITICAL: Always invoke parent rebind first!
+        log.debug("Early stage: Recreating transient PropertyChangeSupport");
+        this.propertyChangeSupport = new PropertyChangeSupport(this);
+    }
+
+    @Override
+    public void postActivate() {
+        super.postActivate(); // Always invoke parent postActivate
+        log.debug("Late stage: Re-establishing transient database connection");
+        this.dbConnection = new MyDatabaseConnection(getAsiContainer().getHostId());
+    }
+
+    // --- 2. Prompt-Augmentation Integration ---
+
+    @Override
+    public List<String> getSystemInstructions() throws Exception {
+        // Automatically appends custom instructions to the AI's global system prompt on every turn
+        return List.of("Strictly audit all transaction budgets under AdvancedEnterpriseToolkit before approving.");
+    }
+
+    @Override
+    public void populateMessage(RagMessage ragMessage) throws Exception {
+        // Injects dynamic, real-time RAG context at the beginning of each turn
+        String dbStatus = (dbConnection != null && dbConnection.isAlive()) ? "CONNECTED" : "DISCONNECTED";
+        ragMessage.addTextPart("## Advanced Enterprise Context\n"
+                + "- Current Audit: " + currentAuditId + "\n"
+                + "- DB Connection Status: " + dbStatus);
+    }
+
+    // --- 3. AI-Callable Tool Method ---
+
+    @AgiTool("Audits project metadata, writes reports, and attaches the binary receipts.")
+    public String auditProject(
+            @AgiToolParam("The structured metadata of the target project.") ProjectMetadata metadata
+    ) {
+        // Operation check: Streaming log/error back to the AI panel
+        if (metadata.getBudget() <= 0) {
+            error("Validation failed: Budget must be a positive number."); // AI sees this in 'Errors'
+            return "Audit failed due to invalid budget constraints.";
+        }
+
+        this.currentAuditId = "AUDIT-" + metadata.getProjectId();
+        log("Executing audit on: " + currentAuditId); // AI sees this in 'Logs'
+
+        try {
+            // Write report to disk
+            Path reportPath = Path.of("/tmp/" + currentAuditId + "-report.txt");
+            Files.writeString(reportPath, "Pristine Audit completed for " + metadata.getProjectId());
+            
+            // Programmatically attach the report binary directly to the AI's tool response!
+            addAttachment(reportPath); 
+            
+            return "Audit successfully completed. Report attached as a response binary.";
+        } catch (IOException e) {
+            log.error("Internal filesystem error", e); // Writes to system slf4j logs
+            error("Failed to write report file: " + e.getMessage()); // Writes to AI's error log
+            return "Audit completed, but failed to attach binary receipt.";
+        }
+    }
+}</code></pre>
+            </section>
+
+            <section id="context-providers" class="toolkit-section">
+                <div class="toolkit-header"><i class="fas fa-eye"></i><h2>Custom Context Providers</h2></div>
+                <p>Context providers act as "sensors", injecting real-time data, files, active database states, or runtime telemetry into the ASI's prompt at the beginning of each turn.</p>
+                <div class="code-header" style="text-transform: none;">DatabaseContextProvider.java</div>
+                <pre><code class="language-java">import uno.anahata.asi.agi.context.BasicContextProvider;
+import uno.anahata.asi.agi.message.RagMessage;
+
+public class DatabaseContextProvider extends BasicContextProvider {
+    public DatabaseContextProvider() {
+        super("db-sensor", "Database Status", "Monitors active DB connections.");
+    }
+
+    @Override
+    public void populateMessage(RagMessage ragMessage) throws Exception {
+        int activeConnections = 42; // Example logic
+        ragMessage.addTextPart("## Database Status\n- Active Connections: " + activeConnections);
+    }
+}</code></pre>
             </section>
         </main>
     </div>
