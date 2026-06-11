@@ -16,9 +16,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import uno.anahata.asi.agi.Agi;
-import uno.anahata.asi.internal.JacksonUtils;
 import uno.anahata.asi.internal.TextUtils;
-import uno.anahata.asi.internal.TokenizerUtils;
 import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
 import uno.anahata.asi.agi.provider.AbstractModel;
 
@@ -403,6 +401,19 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
         this.logs.clear();
         updateTokenCount();
         propertyChangeSupport.firePropertyChange("logs", null, logs);
+    }
+
+    /**
+     * Removes logs that match the given predicate, updates the token count,
+     * and fires a single property change event.
+     *
+     * @param filter The predicate to apply to each log message.
+     */
+    public void removeLogsIf(java.util.function.Predicate<String> filter) {
+        if (this.logs.removeIf(filter)) {
+            updateTokenCount();
+            propertyChangeSupport.firePropertyChange("logs", null, logs);
+        }
     }
 
     /**
