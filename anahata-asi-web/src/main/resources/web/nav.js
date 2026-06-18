@@ -10,29 +10,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeFile = currentPath.split('/').pop();
     const isActive = (file) => activeFile === file;
 
+    // Compute directory depth prefix
+    const isSubfolder = currentPath.includes('/enterprise/') || currentPath.includes('/apidocs/');
+    const prefix = isSubfolder ? '../' : '';
+
     navPlaceholder.innerHTML = `
         <nav class="${isIndex ? '' : 'nav-solid'}">
             <div class="nav-container container">
-                <a href="index.html" class="logo">
-                    <img src="assets/logo-transparent.png" alt="Anahata Logo" style="height: 40px;">
+                <a href="${prefix}index.html" class="logo">
+                    <img src="${prefix}assets/logo-transparent.png" alt="Anahata Logo" style="height: 40px;">
                 </a>
                 <div class="menu-toggle"><i class="fas fa-bars"></i></div>
                 <div class="nav-links">
-                    <a href="index.html" class="${isIndex ? 'active-link' : ''}">Home</a>
                     
                     <div class="dropdown">
                         <a href="#" class="dropdown-toggle ${(isActive('core.html') || isActive('swing.html') || isActive('yam.html') || isActive('gemini.html') || isActive('openai.html') || isActive('anthropic.html') || isActive('compatible.html')) ? 'active-link' : ''}">
                             Modules <i class="fas fa-chevron-down"></i>
                         </a>
                         <div class="dropdown-menu">
-                            <a href="core.html" class="${isActive('core.html') ? 'active-item' : ''}"><i class="fas fa-brain"></i> Core API</a>
-                            <a href="swing.html" class="${isActive('swing.html') ? 'active-item' : ''}"><i class="fas fa-desktop"></i> Swing UI</a>
-                            <a href="yam.html" class="${isActive('yam.html') ? 'active-item' : ''}"><i class="fas fa-flask"></i> Yam Tools</a>
+                            <a href="${prefix}core.html" class="${isActive('core.html') ? 'active-item' : ''}"><i class="fas fa-brain"></i> Core API</a>
+                            <a href="${prefix}swing.html" class="${isActive('swing.html') ? 'active-item' : ''}"><i class="fas fa-desktop"></i> Swing UI</a>
+                            <a href="${prefix}yam.html" class="${isActive('yam.html') ? 'active-item' : ''}"><i class="fas fa-flask"></i> Yam Tools</a>
                             <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></div>
-                            <a href="gemini.html" class="${isActive('gemini.html') ? 'active-item' : ''}"><i class="fas fa-plug"></i> Gemini Provider</a>
-                            <a href="openai.html" class="${isActive('openai.html') ? 'active-item' : ''}"><i class="fas fa-bolt"></i> OpenAI Provider</a>
-                            <a href="anthropic.html" class="${isActive('anthropic.html') ? 'active-item' : ''}"><i class="fas fa-ghost"></i> Anthropic Provider</a>
-                            <a href="compatible.html" class="${isActive('compatible.html') ? 'active-item' : ''}"><i class="fas fa-globe"></i> Universal Alliance</a>
+                            <a href="${prefix}gemini.html" class="${isActive('gemini.html') ? 'active-item' : ''}"><i class="fas fa-plug"></i> Gemini Provider</a>
+                            <a href="${prefix}openai.html" class="${isActive('openai.html') ? 'active-item' : ''}"><i class="fas fa-bolt"></i> OpenAI Provider</a>
+                            <a href="${prefix}anthropic.html" class="${isActive('anthropic.html') ? 'active-item' : ''}"><i class="fas fa-ghost"></i> Anthropic Provider</a>
+                            <a href="${prefix}compatible.html" class="${isActive('compatible.html') ? 'active-item' : ''}"><i class="fas fa-globe"></i> Universal Alliance</a>
                         </div>
                     </div>
 
@@ -41,13 +44,37 @@ document.addEventListener('DOMContentLoaded', () => {
                             Applications <i class="fas fa-chevron-down"></i>
                         </a>
                         <div class="dropdown-menu">
-                            <a href="nb.html" class="${isActive('nb.html') ? 'active-item' : ''}"><i class="fas fa-code"></i> NetBeans ASI Studio</a>
-                            <a href="desktop.html" class="${isActive('desktop.html') ? 'active-item' : ''}"><i class="fas fa-rocket"></i> Anahata ASI Desktop</a>
+                            <a href="${prefix}nb.html" class="${isActive('nb.html') ? 'active-item' : ''}"><i class="fas fa-code"></i> NetBeans ASI Studio</a>
+                            <a href="${prefix}desktop.html" class="${isActive('desktop.html') ? 'active-item' : ''}"><i class="fas fa-rocket"></i> Anahata ASI Desktop</a>
                         </div>
                     </div>
 
-                    <a href="quickstart.html" class="${isActive('quickstart.html') ? 'active-link' : ''}">Quick Start</a>
-                    <a href="apidocs/index.html">Javadocs</a>
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle ${(isActive('enterprise.html') || isActive('defense.html') || isActive('finance.html') || isActive('healthcare.html') || isActive('public-sector.html') || isActive('legal.html') || isActive('logistics.html') || isActive('telecom.html')) ? 'active-link' : ''}">
+                            Enterprise <i class="fas fa-chevron-down"></i>
+                        </a>
+                        <div class="dropdown-menu">
+                            <a href="${prefix}enterprise.html" class="${isActive('enterprise.html') ? 'active-item' : ''}"><i class="fas fa-shield-halved"></i> Security Overview</a>
+                            <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></div>
+                            <a href="${prefix}enterprise/defense.html" class="${isActive('defense.html') ? 'active-item' : ''}"><i class="fas fa-shield-alt"></i> Defense & Intel</a>
+                            <a href="${prefix}enterprise/finance.html" class="${isActive('finance.html') ? 'active-item' : ''}"><i class="fas fa-landmark"></i> Finance & Banking</a>
+                            <a href="${prefix}enterprise/healthcare.html" class="${isActive('healthcare.html') ? 'active-item' : ''}"><i class="fas fa-dna"></i> Healthcare & Pharma</a>
+                            <a href="${prefix}enterprise/public-sector.html" class="${isActive('public-sector.html') ? 'active-item' : ''}"><i class="fas fa-gavel"></i> Public Sector</a>
+                            <a href="${prefix}enterprise/legal.html" class="${isActive('legal.html') ? 'active-item' : ''}"><i class="fas fa-scale-balanced"></i> Legal & Ethics</a>
+                            <a href="${prefix}enterprise/logistics.html" class="${isActive('logistics.html') ? 'active-item' : ''}"><i class="fas fa-truck-ramp-box"></i> Logistics & Supply</a>
+                            <a href="${prefix}enterprise/telecom.html" class="${isActive('telecom.html') ? 'active-item' : ''}"><i class="fas fa-wifi"></i> Telecom & 6G</a>
+                        </div>
+                    </div>
+
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle ${(isActive('quickstart.html') || currentPath.includes('apidocs')) ? 'active-link' : ''}">
+                            Developer docs <i class="fas fa-chevron-down"></i>
+                        </a>
+                        <div class="dropdown-menu">
+                            <a href="${prefix}quickstart.html" class="${isActive('quickstart.html') ? 'active-item' : ''}"><i class="fas fa-bolt"></i> Quick Start</a>
+                            <a href="${prefix}apidocs/index.html"><i class="fas fa-book"></i> Javadocs</a>
+                        </div>
+                    </div>
                     
                     <div class="social-links">
                         <a href="https://www.youtube.com/@anahata108" target="_blank" title="Anahata TV"><i class="fab fa-youtube"></i></a>
@@ -55,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <a href="https://x.com/AnahataASI" target="_blank" title="Twitter / X"><i class="fa-brands fa-x-twitter"></i></a>
                         <a href="https://github.com/anahata-os/anahata-asi" target="_blank" title="GitHub"><i class="fab fa-github"></i></a>
                     </div>
-                    <a href="https://github.com/sponsors/anahata-os" class="btn-sponsor">Sponsor</a>
+                    <a href="https://www.paypal.com/donate/?hosted_button_id=SS8B8R7S68R7G" target="_blank" class="btn-sponsor" style="background: var(--barca-red); color: white; border: none;">Donate</a>
                 </div>
             </div>
         </nav>
