@@ -24,6 +24,10 @@ public class ScreenShareIcon extends AbstractAnahataIcon {
         this.sharing = sharing;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Paints a monitor screen share icon with its frame colored adaptively, showing a pulsing recording dot if active screen sharing is occurring.</p>
+     */
     @Override
     public void paintIcon(Component c, Graphics g, int x, int y) {
         Graphics2D g2 = (Graphics2D) g.create();
@@ -36,7 +40,7 @@ public class ScreenShareIcon extends AbstractAnahataIcon {
         double sy = y + pad;
 
         // 1. Stand
-        g2.setColor(Color.GRAY);
+        g2.setColor(getRedColor(c));
         double neckW = sw * 0.15;
         double neckH = size * 0.1;
         g2.fill(new Rectangle2D.Double(x + (size - neckW) / 2.0, sy + sh, neckW, neckH));
@@ -46,7 +50,7 @@ public class ScreenShareIcon extends AbstractAnahataIcon {
         g2.fill(new RoundRectangle2D.Double(x + (size - baseW) / 2.0, sy + sh + neckH, baseW, baseH, 2, 2));
 
         // 2. Outer Frame
-        Color frameColor = sharing ? new Color(50, 200, 120) : new Color(80, 80, 80);
+        Color frameColor = sharing ? new Color(50, 200, 120) : getBlueColor(c);
         g2.setColor(frameColor);
         g2.fill(new RoundRectangle2D.Double(sx, sy, sw, sh, 4, 4));
 

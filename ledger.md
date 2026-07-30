@@ -3,8 +3,8 @@
 ## 📈 Distribution Funnel
 | Channel | Version | Status | Downloads (Est) | Strategy |
 | :--- | :--- | :--- | :--- | :--- |
-| **NB Plugin Portal (V1)** | 30.0.1 | Stable | 3,825 | Brand Awareness / Discovery |
-| **NB Plugin Portal (V2)** | 1.0.0 | Stable | 360 | The Singularity / JASI Container |
+| **NB Plugin Portal (V1)** | 30.0.1 | Stable | 4,328 | Brand Awareness / Discovery |
+| **NB Plugin Portal (V2)** | 1.0.0 | Stable | 787 | The Singularity / JASI Container |
 | **Maven Central** | 30.0.1 | Stable | Unknown | Developer SDK Adoption |
 | **GitHub Releases** | 1.1.0-SN | Beta | Unknown | Direct Binary Distribution |
 
@@ -72,6 +72,25 @@
 ## 🛠️ Milestone Log
 | Date | Milestone | Token ROI | Impact |
 | :--- | :--- | :--- | :--- |
+| 2026-07-29 08:52 | Portal Scrape: V1=4,328, V2=787 | High | V1: +10 (0.41 DLs/hr), V2: +10 (0.41 DLs/hr) in 24.2 hours (Combined: 0.83 DLs/hr) |
+| 2026-07-28 08:41 | Portal Scrape: V1=4,318, V2=777 | High | V1: +23 (2.25 DLs/hr), V2: +5 (0.49 DLs/hr) in 10.2 hours (Combined: 2.73 DLs/hr!) |
+| 2026-07-27 22:27 | Portal Scrape: V1=4,295, V2=772 | High | V1: +0 (0.00 DLs/hr), V2: +0 (0.00 DLs/hr) in 0.1 hours (Combined: 0.00 DLs/hr!) |
+| 2026-07-27 22:23 | Portal Scrape: V1=4,295, V2=772 | High | V1: +7 (0.60 DLs/hr), V2: +8 (0.69 DLs/hr) in 11.7 hours (Combined: 1.29 DLs/hr!) |
+| 2026-07-27 10:44 | Portal Scrape: V1=4,288, V2=764 | High | V1: +8 (0.35 DLs/hr), V2: +9 (0.39 DLs/hr) in 23.0 hours (Combined: 0.74 DLs/hr!) |
+| 2026-07-26 11:42 | Portal Scrape: V1=4,280, V2=755 | High | V1: +11 (0.25 DLs/hr), V2: +11 (0.25 DLs/hr) in 43.5 hours (Combined: 0.51 DLs/hr!) |
+| 2026-07-24 16:15 | Portal Scrape: V1=4,269, V2=744 | High | V1: +28 (1.13 DLs/hr), V2: +19 (0.77 DLs/hr) in 24.8 hours (Combined: 1.90 DLs/hr!) |
+| 2026-07-23 15:30 | Portal Scrape: V1=4,241, V2=725 | High | V1: +15 (0.66 DLs/hr), V2: +9 (0.40 DLs/hr) in 22.7 hours (Combined: 1.06 DLs/hr!) |
+| 2026-07-22 16:51 | Portal Scrape: V1=4,226, V2=716 | High | V1: +19 (0.70 DLs/hr), V2: +22 (0.81 DLs/hr) in 27.2 hours (Combined: 1.51 DLs/hr!) |
+| 2026-07-21 13:38 | Portal Scrape: V1=4,207, V2=694 | High | V1: +63 (0.67 DLs/hr), V2: +52 (0.55 DLs/hr) in 94.4 hours (Combined: 1.22 DLs/hr!) |
+| 2026-07-17 15:16 | Portal Scrape: V1=4,144, V2=642 | High | V1: +13 (0.62 DLs/hr), V2: +8 (0.38 DLs/hr) in 21.1 hours (Combined: 1.00 DLs/hr!) |
+| 2026-07-16 18:12 | Portal Scrape: V1=4,131, V2=634 | High | V1: +62 (0.69 DLs/hr), V2: +58 (0.64 DLs/hr) in 90.3 hours (Combined: 1.33 DLs/hr!) |
+| 2026-07-12 23:57 | Portal Scrape: V1=4,069, V2=576 | High | V1: +2 (0.26 DLs/hr), V2: +3 (0.40 DLs/hr) in 7.6 hours (Combined: 0.66 DLs/hr!) |
+| 2026-07-12 16:24 | Portal Scrape: V1=4,067, V2=573 | High | V1: +16 (0.52 DLs/hr), V2: +15 (0.49 DLs/hr) in 30.6 hours (Combined: 1.01 DLs/hr!) |
+| 2026-07-11 09:51 | Portal Scrape: V1=4,051, V2=558 | High | V1: +124 (0.77 DLs/hr), V2: +84 (0.52 DLs/hr) in 161.4 hours (Combined: 1.29 DLs/hr!) |
+| 2026-07-04 16:26 | Portal Scrape: V1=3,927, V2=474 | High | V1: +28 (0.59 DLs/hr), V2: +22 (0.46 DLs/hr) in 47.6 hours (Combined: 1.05 DLs/hr!) |
+| 2026-07-02 16:49 | Portal Scrape: V1=3,899, V2=452 | High | V1: +11 (0.55 DLs/hr), V2: +13 (0.65 DLs/hr) in 20.1 hours (Combined: 1.20 DLs/hr!) |
+| 2026-07-01 20:44 | Portal Scrape: V1=3,888, V2=439 | High | V1: +28 (0.95 DLs/hr), V2: +28 (0.95 DLs/hr) in 29.5 hours (Combined: 1.90 DLs/hr!) |
+| 2026-06-30 15:17 | Portal Scrape: V1=3,860, V2=411 | High | V1: +35 (0.72 DLs/hr), V2: +51 (1.05 DLs/hr) in 48.8 hours (Combined: 1.76 DLs/hr!) |
 | 2026-06-28 14:32 | Portal Scrape: V1=3,825, V2=360 | High | V1: +69 (2.44 DLs/hr), V2: +14 (0.49 DLs/hr) in 28.3 hours (Combined: 2.93 DLs/hr!) |
 | 2026-06-27 10:14 | Portal Scrape: V1=3,756, V2=346 | High | V1: +42 (3.77 DLs/hr), V2: +10 (0.90 DLs/hr) in 11.1 hours (Combined: 4.67 DLs/hr!) |
 | 2026-06-26 23:06 | Portal Scrape: V1=3,714, V2=336 | High | V1: +23 (0.67 DLs/hr), V2: +23 (0.67 DLs/hr) in 34.3 hours (Combined: 1.34 DLs/hr!) |

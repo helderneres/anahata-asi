@@ -28,6 +28,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.jdesktop.swingx.JXPanel;
 import org.jdesktop.swingx.JXTitledPanel;
+import uno.anahata.asi.swing.components.CollapsibleTitledPanel;
 import org.jdesktop.swingx.painter.MattePainter;
 import uno.anahata.asi.internal.TextUtils;
 import uno.anahata.asi.internal.TimeUtils;
@@ -56,7 +57,7 @@ import uno.anahata.asi.swing.internal.SwingUtils;
  */
 @Slf4j
 @Getter
-public abstract class AbstractPartPanel<T extends AbstractPart> extends JXTitledPanel {
+public abstract class AbstractPartPanel<T extends AbstractPart> extends CollapsibleTitledPanel {
 
     /** The parent agi panel. */
     protected final AgiPanel agiPanel;
@@ -172,19 +173,12 @@ public abstract class AbstractPartPanel<T extends AbstractPart> extends JXTitled
         this.footerContainer.setOpaque(false);
         mainContainer.add(this.footerContainer, BorderLayout.SOUTH);
 
-        setBorder(BorderFactory.createLineBorder(theme.getPartBorder(), 1, true));
+        setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createEmptyBorder(0, 0, 6, 0),
+                BorderFactory.createLineBorder(theme.getPartBorder(), 1, true)
+        ));
 
-        // 4. Expand/Collapse Logic on Header Click
-        if (getComponentCount() > 0) {
-            Component header = getComponent(0);
-            header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            header.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    toggleExpanded();
-                }
-            });
-        }
+        // 4. Expand/Collapse Logic on Header Click is now handled by CollapsibleTitledPanel
 
         // Declarative, thread-safe binding to all part properties
         new EdtPropertyChangeListener(this, part, null, evt -> render());
@@ -201,11 +195,29 @@ public abstract class AbstractPartPanel<T extends AbstractPart> extends JXTitled
     }
 
     /**
-     * Toggles the visibility of the content container.
+     * {@inheritDoc}
+     * <p>Toggles the expanded state of the part.</p>
      */
-    private void toggleExpanded() {
+    @Override
+    protected void toggleExpanded() {
         part.setExpanded(!part.isExpanded());
         // The property change listener will trigger render()
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>Overridden to dynamically update background colors and gradients when the Look and Feel changes.</p>
+     */
+    @Override
+    public void updateUI() {
+        super.updateUI();
+        if (agiConfig != null) {
+            updateBackgroundColors();
+            setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createEmptyBorder(0, 0, 6, 0),
+                    BorderFactory.createLineBorder(agiConfig.getTheme().getPartBorder(), 1, true)
+            ));
+        }
     }
 
     /**
@@ -253,11 +265,11 @@ public abstract class AbstractPartPanel<T extends AbstractPart> extends JXTitled
         Color startColor;
         Color contentBg;
         if (isEffectivelyPruned) {
-            startColor = new Color(230, 230, 230, 150);
-            contentBg = new Color(240, 240, 240);
+            startColor = agiConfig.getTheme().getPrunedPartHeaderStartBg();
+            contentBg = agiConfig.getTheme().getPrunedPartContentBg();
         } else {
-            startColor = new Color(248, 248, 248, 80);
-            contentBg = new Color(0, 0, 0, 0); // Transparent
+            startColor = agiConfig.getTheme().getPartHeaderStartBg();
+            contentBg = agiConfig.getTheme().getPartContentBg();
         }
         
         MattePainter mp = new MattePainter(new GradientPaint(0, 0, startColor, 1, 0, new Color(0,0,0,0)), true);
