@@ -14,6 +14,7 @@ import uno.anahata.asi.agi.message.AgiUserMessage;
 import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.agi.provider.AbstractAiProvider;
 import uno.anahata.asi.agi.provider.AbstractModel;
+import uno.anahata.asi.agi.provider.ThinkingLevel;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
 import uno.anahata.asi.agi.tool.AgiToolkit;
@@ -44,11 +45,13 @@ public class AsiContainer extends AnahataToolkit {
     @Override
     public List<String> getSystemInstructions() throws Exception {
         List<String> inst = new ArrayList<>(super.getSystemInstructions());
-        inst.add("### Programmatic Container Access (from the java toolkit)\n"
+        inst.add("### The **AsiContainer** toolkit is a proxy toolkit for " + getAsiContainer().getClass().getName() + ". It provides some convenience, on-shot tools to query and manage sub agents.\n"
+                + "Programmatic Container Access (from the java toolkit, if available:)\n"
                 + "When scripting custom automation via the java toolkit, "
-                + "you can programmatically query the container's configurations, providers, and secure API keys:\n"
+                + "you can programmatically query the ASI container's configurations, providers, and secure API keys:\n"
                 + "1. Retrieve the Container: `AbstractAsiContainer container = getAsiContainer();`\n"
-                + "2. Retrieve Active API Keys:\n"
+                + "2. Get a provider by id: `AbstractAiProvider provider= getProvider(\"Gemini\");`\n"
+                + "3. Retrieve Active API Keys:\n"
                 + "   - Get currently selected/rotated key: `String apiKey = provider.getCurrentKey();`\n"
                 + "   - Trigger key rotation: `provider.hokusPocus();`"
         );
@@ -212,8 +215,8 @@ public class AsiContainer extends AnahataToolkit {
                             .append(" | ✅ YES")
                             .append(" | ").append(m.getModelId())
                             .append(" | ").append(m.getDisplayName() != null ? m.getDisplayName() : "N/A")
-                            .append(" | ").append(m.getMaxInputTokens() > 0 ? m.getMaxInputTokens() : "Unbounded")
-                            .append(" | ").append(m.getMaxOutputTokens() > 0 ? m.getMaxOutputTokens() : "Unbounded")
+                            .append(" | ").append(m.getMaxInputTokens() != null ? m.getMaxInputTokens() : "Unbounded")
+                            .append(" | ").append(m.getMaxOutputTokens() != null ? m.getMaxOutputTokens() : "Unbounded")
                             .append(" | ").append(actions)
                             .append(" |\n");
                 }
@@ -291,6 +294,7 @@ public class AsiContainer extends AnahataToolkit {
      * @param initialMessage Optional message to send to the new AGI immediately after creation.
      * @param modelID Optional ID of the AI model to select. Will use container default if null.
      * @param toolkitFqns Optional list of fully qualified toolkit class names to enable.
+     * @param thinkingLevel the startup thinking level for the new AGI
      * @return A confirmation message with the new session ID.
      */
     @AgiTool("Creates a brand new AGI session with comprehensive configuration options.")
@@ -303,7 +307,8 @@ public class AsiContainer extends AnahataToolkit {
             @AgiToolParam(value = "List of toolkit fully qualified class names to enable. If not provided, will use all toolkits in the Asi Container preferences.", required = false) List<String> toolkitFqns,
             @AgiToolParam(value = "Optional List of resource URIs to register.", required = false) List<String> resourceURIs,
             @AgiToolParam(value = "An optional initial message to send to the new AGI.", required = false) String initialMessage,
-            @AgiToolParam(value = "Optional map of tool permission overrides for this session (e.g. tool name -> PROMPT, APPROVE_ALWAYS, DENY).", required = false) Map<String, ToolPermission> toolPermissions
+            @AgiToolParam(value = "Optional map of tool permission overrides for this session. The key should be the tool name using '.' as separator between the toolkit name and the tool name: e.g. 'AsiContainer.createAgi' or 'Session.updateSessionNickname'", required = false) Map<String, ToolPermission> toolPermissions,
+            @AgiToolParam(value = "Optional thinking level/mode for the new session.", required = false) ThinkingLevel thinkingLevel
     ) {
         AbstractAsiContainer container = getAsiContainer();
         AgiConfig config = container.createNewAgiConfig();
@@ -336,6 +341,9 @@ public class AsiContainer extends AnahataToolkit {
         Agi newAgi = container.createNewAgi(config);
         if (nickName != null && !nickName.isBlank()) {
             newAgi.setNickname(nickName);
+        }
+        if (thinkingLevel != null) {
+            newAgi.getRequestConfig().setThinkingLevel(thinkingLevel);
         }
 
         // 5. Session-Level Tool Permission Overrides

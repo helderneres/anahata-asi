@@ -23,10 +23,12 @@ import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactor
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
 import uno.anahata.asi.nb.ui.render.JavaCodeParameterRenderer;
+import uno.anahata.asi.swing.internal.SwingTask;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
 import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
+//import uno.anahata.asi.yam.util.JavaFxUtils;
 
 /**
  * NetBeans-specific configuration for the Anahata ASI.
@@ -78,6 +80,9 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
 
         // 3. Register the NetBeans-native resource UI strategy
         ResourceUiRegistry.getInstance().setResourceUI(new NbResourceUI());
+
+        // 4. Pre-boot JavaFX Platform with setImplicitExit(false) for multi-stage stability
+        //JavaFxUtils.ensureInitialized();
     }
 
     /**
@@ -91,6 +96,7 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
      */
     public NetBeansAsiContainer() {
         super("netbeans");
+        new SwingTask<>(this, "Discovering AI Models", () -> getAllModels(true)).start();
     }
 
     /**
