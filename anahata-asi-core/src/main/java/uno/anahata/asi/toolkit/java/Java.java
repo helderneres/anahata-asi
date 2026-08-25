@@ -156,7 +156,7 @@ public class Java extends AnahataToolkit {
      */
     @Override
     public void postActivate() {
-        getClasspathPrinter().setRaw(defaultCompilerClasspath);
+        this.classpathPrinter = null;
     }
 
     /**
@@ -174,17 +174,62 @@ public class Java extends AnahataToolkit {
         sb.append("**Inherited from " + getConcreteClassModelShouldExtend().getName() + "**:\n");
         appendMethods(sb, getConcreteClassModelShouldExtend());
 
-        sb.append("\n Multi-threading and Thread Safety:\n");
-        //sb.append("The `log()`, `error()`, and `addAttachment()` methods rely on a thread-local context and will fail if called from a subthread or the EDT (Event Dispatch Thread).\n");
-        sb.append("- To access the context from another thread, capture it in a final variable: `final ToolContext ctx = getToolContext();` and use `ctx.log(...)`, `ctx.error(...)`, `ctx.addAttachment(...)`, etc.\n");
+        sb.append("\n⚠️ **IN-PROCESS JVM EXECUTION SAFETY WARNING**:\n");
+        sb.append("Your compiled Java code executes directly **inside the host application's JVM process**.\n");
+        sb.append("- **DO NOT call `System.exit(...)`** or `Runtime.getRuntime().halt(...)` as it will instantly terminate the host application.\n");
+        sb.append("- **DO NOT mutate global JVM static state** or system properties unless specifically instructed.\n\n");
 
-        sb.append("\nAbout the attribute maps:"
-                + "\n- The Turn attribute map is for sharing data across tool calls within the same turn. (what in Servlet terms you could call 'request scoped'). Gets serialized."
-                + "\n The Session Map is for this agi session. Anything stored in this map during one turn will be available in subsequent turns (or subsquente tool calls withing the same turn). Gets serialized "
-                + "\n The ASI Container map is shared across sessions (agis) in the current AsiContainer (a given JVM could be running multiple ASI Containers). Currently it does not get serialized."
-                + "\n The Application Map is a static field shared across all sessions (agis) of all ASI Containers running in this jvm\n");
+        sb.append("⚙️ **Compilation & ClassLoading Architecture**:\n");
+        sb.append("When you invoke tools that compile and execute Java code (such as `compileAndExecute` or its subclass variants):\n\n");
+        sb.append("1. **In-Memory Compilation & Classpath Priority**:\n");
+        sb.append("   - The `JavaCompiler` compiles your `Anahata.java` source code in memory.\n");
+        sb.append("   - **Classpath Priority**: Any `extraClassPath` entries provided to the tool are **prepended** ahead of the default classpath (`extraClassPath + File.pathSeparator + defaultCompilerClasspath`). This ensures custom or updated classes take precedence over existing libraries.\n\n");
+        sb.append("2. **Child-First ClassLoading & Hot Reloading**:\n");
+        sb.append("   - A custom `URLClassLoader` loads your compiled bytecode and any `extraClassPath` entries **Child-First**. This enables instant hot-reloading of modified classes in memory.\n\n");
+        sb.append("3. **Parent-First Infrastructure Guard**:\n");
+        sb.append("   - Core framework classes are initialized on a Parent-First list when the toolkit is loaded.\n");
+        sb.append("   - These classes are explicitly delegated to the host JVM loader to prevent duplicate classloading when `extraClassPath` contains framework JARs, guaranteeing that ThreadLocal state and `instanceof` identity remain unified.\n");
+        sb.append("   - The active list of Parent-First class FQNs is dynamically printed in the RAG message on every turn.\n");
+        sb.append("   - You can dynamically mutate this set using `addParentFirstClasses` or `removeParentFirstClasses`.\n\n");
 
-        sb.append("\nAbout attachments: be careful attaching attachments as the supported mime types vary on a model basis .\n");
+        sb.append("\n Multi-threading, Background Tasks, and Context Propagation:\n");
+        sb.append("The logging (`log`), error reporting (`error`), attachment (`addAttachment`), turn map (`getTurnMap`), and response inspection (`getResponse`, `getCall`, `getModelMessage`) methods rely on ThreadLocal state bound to the tool execution thread.\n");
+        sb.append("If you spawn background threads (e.g. `new Thread()`, `CompletableFuture`, `ExecutorService`), that ThreadLocal context will NOT be present on the new thread unless explicitly propagated.\n\n");
+
+        sb.append("### Recommended Multi-Threading Patterns:\n\n");
+        sb.append("**Pattern 1: Capture ToolContext (`getToolContext()`)**\n");
+        sb.append("Capture `final ToolContext ctx = getToolContext();` on the main execution thread *before* creating background tasks. All methods called on `ctx` directly target the captured tool response without depending on ThreadLocal state:\n");
+        sb.append("```java\n");
+        sb.append("final ToolContext ctx = getToolContext();\n");
+        sb.append("getExecutorService().submit(() -> {\n");
+        sb.append("    ctx.log(\"Background processing started...\");\n");
+        sb.append("    // Do background work...\n");
+        sb.append("    ctx.log(\"Background processing complete!\");\n");
+        sb.append("});\n");
+        sb.append("```\n\n");
+
+        sb.append("**Pattern 2: Built-in `runAsync(taskName, runnable)`**\n");
+        sb.append("Automatically captures context, sets the thread name, binds context to the worker thread, and catches/logs background errors cleanly:\n");
+        sb.append("```java\n");
+        sb.append("runAsync(\"benchmark-task\", () -> {\n");
+        sb.append("    log(\"Logging directly from context-bound worker thread!\");\n");
+        sb.append("});\n");
+        sb.append("```\n\n");
+
+        sb.append("**Pattern 3: Thread-Safe Logger (`getThreadSafeLogger()`)**\n");
+        sb.append("Get a `Consumer<String>` logger on the execution thread for pass-through logging:\n");
+        sb.append("```java\n");
+        sb.append("Consumer<String> logger = getThreadSafeLogger();\n");
+        sb.append("CompletableFuture.runAsync(() -> logger.accept(\"Thread-safe log message!\"));\n");
+        sb.append("```\n\n");
+
+        sb.append("About the attribute maps:\n"
+                + "- The Turn attribute map is for sharing data across tool calls within the same turn. (what in Servlet terms you could call 'request scoped'). Gets serialized.\n"
+                + "- The Session Map is for this AGI session. Anything stored in this map during one turn will be available in subsequent turns (or subsequent tool calls within the same turn). This field is Persistent, gets serialized on every turn when the AGI container gets saved and survives application restarts, make sure that any object stored here is serializable with java.\n"
+                + "- The ASI Container map is shared across sessions (agis) in the current AsiContainer (a given JVM could be running multiple ASI Containers). Currently it does not get serialized.\n"
+                + "- The Application Map is a static field shared across all sessions (agis) of all ASI Containers running in this jvm\n");
+
+        sb.append("\nAbout attachments: be careful attaching attachments as the supported mime types vary on a model basis.\n");
 
         sb.append("\n Example:\n");
         sb.append("```java\n");
@@ -198,10 +243,6 @@ public class Java extends AnahataToolkit {
         sb.append("        // Perform logic\n");
         sb.append("        String result = \"Hello from AnahataTool!\";\n");
         sb.append("        log(\"Result: \" + result);\n");
-        sb.append("        \n");
-        // You can also add errors or attachments
-        // error("Something went wrong");
-        // addAttachment(data, "image/png");
         sb.append("        \n");
         sb.append("        return result;\n");
         sb.append("    }\n");
@@ -265,7 +306,7 @@ public class Java extends AnahataToolkit {
     public void setDefaultClasspath(@AgiToolParam("The default classpath for all code compiled by the Java toolkit") String defaultCompilerClasspath) {
         if (!Objects.equals(this.defaultCompilerClasspath, defaultCompilerClasspath)) {
             this.defaultCompilerClasspath = defaultCompilerClasspath;
-            getClasspathPrinter().setRaw(defaultCompilerClasspath);
+            this.classpathPrinter = null;
         }
     }
 
@@ -290,7 +331,7 @@ public class Java extends AnahataToolkit {
     protected final VeryPrettyClassPathPrinter getClasspathPrinter() {
         if (classpathPrinter == null) {
             classpathPrinter = createClassPathPrinter();
-            classpathPrinter.setRaw(defaultCompilerClasspath);
+            classpathPrinter.setRaw(getDefaultClasspath());
         }
         return classpathPrinter;
     }
@@ -315,10 +356,45 @@ public class Java extends AnahataToolkit {
     public void populateMessage(RagMessage ragMessage) throws Exception {
         String ragText
                 = "\nSession (Agi) map keys (shared across turns, persistent): " + getSessionMap().keySet()
-                + "\nASI Container map keys (shared across AGIs (i.e. sessions), not persistent today): " + getAsiContainerMap().keySet()
-                + "\nApplication map keys (shared across ASI Containers in the same JVM, not persistent today): " + getApplicationMap().keySet()
+                + "\nASI Container map keys (shared across AGIs within the container), not persistent today): " + getAsiContainerMap().keySet()
+                + "\nApplication map keys (a JVM wide static field, not persistent today): " + getApplicationMap().keySet()
+                + "\nParent-First Infrastructure Classes (loaded by host loader to preserve ThreadLocal & context identity): " + getParentFirstClassess()
                 + "\nDefault Compiler and ClassLoader Classpath (abbreviated):\n" + getPrettyPrintedDefaultClasspath();
         ragMessage.addTextPart(ragText);
+    }
+
+    /**
+     * Adds a list of class FQNs to the Parent-First ClassLoader guard set,
+     * resolving each class on the host classloader and recursively registering
+     * its superclasses and interfaces.
+     *
+     * @param fqns List of fully qualified class names (FQNs) to resolve and add
+     * to parent-first classes.
+     * @throws java.lang.ClassNotFoundException If any requested class cannot be
+     * loaded by the host ClassLoader.
+     */
+    @AgiTool("Adds a list of class FQNs to the Parent-First ClassLoader guard set, resolving each class and recursively registering its superclasses and interfaces")
+    public void addParentFirstClasses(
+            @AgiToolParam("List of fully qualified class names (FQNs) to add to parent-first classes") List<String> fqns) throws ClassNotFoundException {
+        for (String fqn : fqns) {
+            Class<?> clazz = Class.forName(fqn.trim(), false, getClass().getClassLoader());
+            registerParentFirstClass(clazz);
+        }
+    }
+
+    /**
+     * Removes a list of class FQNs from the Parent-First guard set to allow
+     * Child-First hot reloading.
+     *
+     * @param fqns List of fully qualified class names (FQNs) to remove from
+     * parent-first classes.
+     */
+    @AgiTool("Removes a list of class FQNs from the Parent-First guard set to allow Child-First hot reloading")
+    public void removeParentFirstClasses(
+            @AgiToolParam("List of fully qualified class names (FQNs) to remove from parent-first classes") List<String> fqns) {
+        for (String fqn : fqns) {
+            parentFirstClassess.remove(fqn.trim());
+        }
     }
 
     /**
@@ -368,7 +444,6 @@ public class Java extends AnahataToolkit {
      * @throws IllegalAccessException if access to a member is denied.
      * @throws InvocationTargetException if a method invocation fails.
      */
-    //@AgiTool("Compiles the source code of a java class with the default compiler classpath")
     public Class compile(
             @AgiToolParam(value = "The source code", rendererId = "java") String sourceCode,
             @AgiToolParam("The class name") String className,
@@ -427,7 +502,7 @@ public class Java extends AnahataToolkit {
             log.info("extraClassPath: {} entries:\n{}", extraClassPath.split(File.pathSeparator).length, extraClassPath);
         }
 
-        String classpath = defaultCompilerClasspath;
+        String classpath = getDefaultClasspath();
         if (extraClassPath != null && !extraClassPath.isEmpty()) {
             // CRITICAL FIX: Prepend extraClassPath to ensure hot-reloaded classes take precedence
             classpath = extraClassPath + File.pathSeparator + classpath;
@@ -483,7 +558,7 @@ public class Java extends AnahataToolkit {
                 error.append(d.toString()).append("\n");
             }
             System.out.println(error);
-            throw new java.lang.RuntimeException("Compilation error:\n" + error.toString());
+            throw new RuntimeException("Compilation error:\n" + error.toString());
         }
 
         Map<String, byte[]> compiledClasses = ((Map<String, byte[]>) fileManager.getClass().getMethod("getCompiledClasses").invoke(fileManager));
@@ -524,7 +599,7 @@ public class Java extends AnahataToolkit {
                             try {
                                 // 4. CHILD-FIRST: Try to find the class in our own URLs (e.g., target/classes)
                                 c = findClass(name);
-                                log.info("Loaded class from extraClassPath (Child-First): {}" + name);
+                                log.info("Loaded class from default classpath (Child-First): {}" + name);
                             } catch (ClassNotFoundException e) {
                                 // 5. FALLBACK: Ask the toolkit if it can find the bytes elsewhere (e.g. MR-JARs)
                                 byte[] fallbackBytes = findClassFallbackBytes(name);
@@ -533,7 +608,21 @@ public class Java extends AnahataToolkit {
                                     c = defineClass(name, fallbackBytes, 0, fallbackBytes.length);
                                 } else {
                                     // 6. PARENT-LAST: If not found, delegate to the parent classloader.
-                                    c = super.loadClass(name, resolve);
+                                    try {
+                                        c = super.loadClass(name, resolve);
+                                    } catch (ClassNotFoundException parentEx) {
+                                        // 7. SIBLING / EXTRA CLASSLOADERS: (e.g., NetBeans JavaFX module)
+                                        for (ClassLoader extraLoader : getExtraClassLoaders()) {
+                                            try {
+                                                c = extraLoader.loadClass(name);
+                                                break;
+                                            } catch (ClassNotFoundException ignored) {
+                                            }
+                                        }
+                                        if (c == null) {
+                                            throw parentEx;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -564,6 +653,16 @@ public class Java extends AnahataToolkit {
     }
 
     /**
+     * Hook for subclasses to provide extra/sibling classloaders to search if
+     * both the child classpath and the parent classloader fail to find a class.
+     *
+     * @return A list of additional ClassLoaders to query.
+     */
+    protected List<ClassLoader> getExtraClassLoaders() {
+        return Collections.emptyList();
+    }
+
+    /**
      * Compiles and executes a Java class named 'Anahata' on the application's
      * JVM. The class must extend {@link OnTheFlyAgiTool} and implement
      * {@link Callable}.
@@ -579,7 +678,7 @@ public class Java extends AnahataToolkit {
             + "The class should:\n"
             + "- be public, \n"
             + "- have no package declaration, \n"
-            + "- extend uno.anahata.asi.agi.tool.AgiTool (or the concreate subtype specified in the toolkit instructions, if any) and \n"
+            + "- extend uno.anahata.asi.agi.tool.OnTheFlyAgiTool (or the concreate subtype specified in the toolkit instructions, if any) and \n"
             + "- implement the call method of java.util.concurrent.Callable<Object>.\n"
             + "\nNote: Like any other tool, If call() throws an exception, the Exception's stack trace will be automatically converted to a string and included in the 'errors' attribute of the tool's response.\n"
     )

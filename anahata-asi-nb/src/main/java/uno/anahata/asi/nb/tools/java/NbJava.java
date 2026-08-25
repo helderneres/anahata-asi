@@ -30,6 +30,12 @@ import java.util.zip.ZipFile;
 import java.io.IOException;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.project.MavenProject;
+import org.netbeans.api.autoupdate.OperationContainer;
+import org.netbeans.api.autoupdate.OperationSupport;
+import org.netbeans.api.autoupdate.UpdateElement;
+import org.netbeans.api.autoupdate.UpdateManager;
+import org.netbeans.api.autoupdate.UpdateUnit;
+import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.nb.module.NetBeansModuleUtils;
 
 import uno.anahata.asi.nb.tools.project.Projects;
@@ -38,6 +44,7 @@ import uno.anahata.asi.swing.toolkit.SwingJava;
 import uno.anahata.asi.agi.tool.AgiToolkit;
 import uno.anahata.asi.agi.tool.AgiToolParam;
 import uno.anahata.asi.agi.tool.AgiTool;
+import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.nb.NetBeansAsiContainer;
 import uno.anahata.asi.nb.resources.handle.NbHandle;
 import uno.anahata.asi.toolkit.java.classpath.VeryPrettyClassPathPrinter;
@@ -64,8 +71,8 @@ public class NbJava extends SwingJava {
         super.initialize();
         registerParentFirstClass(NbHandle.class);
         registerParentFirstClass(NetBeansAsiContainer.class);
-        setDefaultClasspath(NetBeansModuleUtils.getFullModuleClasspath());
-        log.info("initialize() default classPath:" + getDefaultClasspath());
+        setDefaultClasspath(NetBeansModuleUtils.getFullAnahataAsiModuleClasspath());
+        log.debug("initialize() default classPath:" + getDefaultClasspath());
     }
 
     /**
@@ -77,10 +84,50 @@ public class NbJava extends SwingJava {
     @Override
     public void postActivate() {
         super.postActivate();
-        //we should really only be doing this if we are in dev / reload mode
-        //setDefaultClasspath(NetBeansModuleUtils.getFullModuleClasspath());
-        log.info("NbJava postActive() completed. default classPath:" + getDefaultClasspath());
-        log.info("NbJava postActive() completed. parentFirstClasses:" + getParentFirstClassess());
+        boolean isNbmReload = "true".equals(System.getProperty("anahata.nbmreload.pending"));
+        if (isNbmReload) {
+            log.info("NbJava.postActivate() detected nbmreload. Resetting default classpath.");
+            resetDefaultClasspath();
+        }
+        log.debug("NbJava postActivate() completed. default classPath:" + getDefaultClasspath());
+        log.debug("NbJava postActivate() completed. parentFirstClasses:" + getParentFirstClassess());
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Injects NetBeans-specific instructions explaining the distinction between
+     * the Plugins Classpath (for module uno.anahata.asi.nb) and the NbJava
+     * toolkit's Default Classpath.</p>
+     */
+    @Override
+    public List<String> getSystemInstructions() throws Exception {
+        List<String> instructions = new ArrayList<>(super.getSystemInstructions());
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n**NetBeans Classpath & Execution Architecture**:\n");
+        sb.append("- **Plugins Classpath**: The full classpath of the **Anahata ASI Studio - NetBeans plugin** (`uno.anahata.asi.nb` / `uno-anahata-asi-nb.jar`), containing the NetBeans Platform APIs the plugin uses and many other libraries bundled with the plugin (i.e. all the classess available to the plugin's OneModuleClassLoader).\n");
+        sb.append("- **NbJava Toolkit's Default Classpath**: The default classpath configured on this `NbJava` toolkit instance used by `javac` and the child-first ClassLoader of `compileAndExecute` and `compileAndExecuteInProject`. It is initialized from the Plugins Classpath and can be reset using `resetDefaultClasspath()`.\n");
+        sb.append("- **Hot Reloading via `compileAndExecuteInProject`**: When executing in a project context, the project's compiled `target/classes` is appended to `extraClassPath`, prioritizing local project bytecode over older versions in memory.\n");
+        instructions.add(sb.toString());
+        return instructions;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Appends an indicator to the RAG message specifying whether the NbJava
+     * toolkit's default classpath is identical to the plugin's classpath, as
+     * well as the active JavaFX runtime status.</p>
+     */
+    @Override
+    public void populateMessage(RagMessage ragMessage) throws Exception {
+        super.populateMessage(ragMessage);
+        String pluginCp = NetBeansModuleUtils.getFullAnahataAsiModuleClasspath();
+        String defaultCp = getDefaultClasspath();
+        boolean identical = java.util.Objects.equals(pluginCp, defaultCp);
+        ragMessage.addTextPart("\nNbJava toolkit's default classpath and Plugins default classpath identical: " + (identical ? "Yes" : "No"));
+        String fxVersion = NetBeansModuleUtils.getJavaFxVersion();
+        ragMessage.addTextPart("\nJavaFX Runtime Status: " + (fxVersion != null ? "Active (" + fxVersion + ")" : "Not Available (Use IDE.installJavaFxSupport to activate)"));
     }
 
     /**
@@ -114,6 +161,31 @@ public class NbJava extends SwingJava {
         synchronized (this) {
             mrJarRegistry = null;
         }
+    }
+
+    /**
+     * Restores the default classpath to the full original classpath of Anahata
+     * ASI Studio - NetBeans plugin's classpath.
+     * <p>
+     * Useful for troubleshooting classpath issues during nbm reload.</p>
+     */
+    @AgiTool("Restores the default classpath to the full original classpath of Anahata ASI Studio - NetBeans plugin's classpath. Useful for troubleshooting classpath issues during nbm reload.")
+    public void resetDefaultClasspath() {
+        setDefaultClasspath(NetBeansModuleUtils.getFullAnahataAsiModuleClasspath());
+        log.info("resetDefaultClasspath() restored default classpath: {}", getDefaultClasspath());
+    }
+
+    /**
+     * Gets the current full module classpath of the Anahata ASI Studio -
+     * NetBeans plugin.
+     * <p>
+     * Useful for comparing classpaths during nbm reload troubleshooting.</p>
+     *
+     * @return The full module classpath string.
+     */
+    @AgiTool("Gets the current full module classpath of the Anahata ASI Studio - NetBeans plugin.")
+    public String getPluginsClasspath() {
+        return NetBeansModuleUtils.getFullAnahataAsiModuleClasspath();
     }
 
     /**
@@ -155,6 +227,38 @@ public class NbJava extends SwingJava {
         return null;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Dynamically augments the default compiler classpath with the JavaFX
+     * module classpath if JavaFX is enabled in NetBeans.</p>
+     */
+    @Override
+    public String getDefaultClasspath() {
+        String base = super.getDefaultClasspath();
+        String fxCp = NetBeansModuleUtils.getJavaFxModuleClasspath();
+        if (fxCp != null && !fxCp.isEmpty() && !base.contains(fxCp)) {
+            return base + File.pathSeparator + fxCp;
+        }
+        return base;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Provides the JavaFX module's ClassLoader as a sibling classloader if
+     * JavaFX support is enabled in NetBeans.</p>
+     */
+    @Override
+    protected List<ClassLoader> getExtraClassLoaders() {
+        List<ClassLoader> loaders = new ArrayList<>(super.getExtraClassLoaders());
+        ClassLoader fxLoader = NetBeansModuleUtils.getJavaFxModuleClassLoader();
+        if (fxLoader != null) {
+            loaders.add(fxLoader);
+        }
+        return loaders;
+    }
+    
     /**
      * Lazily populates the Multi-Release JAR registry by scanning the current
      * default classpath.

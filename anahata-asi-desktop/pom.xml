@@ -4,7 +4,7 @@
     <parent>
         <groupId>uno.anahata</groupId>
         <artifactId>anahata-asi-parent</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.1.5-SNAPSHOT</version>
     </parent>
     <artifactId>anahata-asi-desktop</artifactId>
     <name>Anahata ASI Desktop</name>
@@ -54,6 +54,18 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+        </dependency>
+        
+        <!-- JNA Native Library Bindings -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.19.1</version>
+        </dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>5.19.1</version>
         </dependency>
     </dependencies>
 

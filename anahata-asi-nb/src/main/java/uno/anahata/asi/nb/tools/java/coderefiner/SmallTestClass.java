@@ -1,21 +1,29 @@
 package uno.anahata.asi.nb.tools.java.coderefiner;
 
-import java.io.File;
-import java.util.LinkedList;
+import java.util.AbstractCollection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import lombok.Getter;
+import lombok.SneakyThrows;
 
 /**
- * Base Test Class for AST.
+ * Base Test Class for AST (Updated with ToString).
  */
+@lombok.ToString
 public class SmallTestClass {
 
     /**
      * Inner Class Doc.
      */
     public static class InnerTest {
+
         private String b;
 
         private final String description = "123";
-        public void foo() {}
+        public void foo() {
+        }
         @Deprecated
         public void bar() {
             System.out.println("bar");
@@ -30,7 +38,6 @@ public class SmallTestClass {
         System.out.println("A");
 
         // Space!
-
         System.out.println("B");
     }
 
@@ -41,11 +48,11 @@ public class SmallTestClass {
         java.util.List<R> list = new java.util.ArrayList<>();
 
         // Look at this beautiful blank line!
-
         return list;
     }
 
     public static class GenericInner<X, Y> {
+
         private X first;
         private Y second;
     }
@@ -66,9 +73,13 @@ public class SmallTestClass {
      * A test enum.
      */
     public enum TestEnum {
-        /** First doc */
+        /**
+         * First doc
+         */
         FIRST,
-        /** Second doc */
+        /**
+         * Second doc
+         */
         SECOND,
         /**
          * The third constant.
@@ -78,22 +89,42 @@ public class SmallTestClass {
 
     @lombok.Getter
     public enum TestEnum2 {
-        FIRST ("first"),
-        /** Second doc */
-        SECOND ("second"),
+        FIRST("first"),
+        /**
+         * Second doc
+         */
+        SECOND("second"),
         /**
          * The third constant with args.
          */
-        THIRD ("third");
+        THIRD("third");
 
-        /** First doc */
+        /**
+         * First doc
+         */
         private TestEnum2(String displayValue) {
-        this.displayValue = displayValue;
+            this.displayValue = displayValue;
         }
         String displayValue;
     }
 
     public void testMethodWithEnum(TestEnum val) {
         System.out.println("Updated: " + val);
+    }
+
+    /**
+     * Gets the source files for types specified by their fully qualified names
+     * and registers them as resources.
+     */
+    public void complexStringMethod() {
+        String s = "cat.eat.the.dog";
+        String msg = "Invalid member FQN: Type.member or Type$NestedType";
+        System.out.println(s + msg);
+    }
+
+    public void methodWithFqns() {
+        AbstractCollection c = null;
+        ConcurrentHashMap<String, Object> map = new ConcurrentHashMap<>();
+        System.out.println(c);
     }
 }

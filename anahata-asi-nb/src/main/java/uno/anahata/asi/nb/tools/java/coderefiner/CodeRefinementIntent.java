@@ -154,14 +154,24 @@ public class CodeRefinementIntent implements Serializable {
      * Validates the intent before execution to ensure all mandatory fields
      * are populated correctly based on the intent type. This pre-flight check
      * guarantees that the intent is structurally sound before AST parsing begins.
-     *
-     * @throws AgiToolException if the intent configuration is invalid.
+     * @throws uno.anahata.asi.agi.tool.AgiToolException if the intent configuration is invalid.
      */
     public void validate() throws AgiToolException {
+        if (type == Type.UPDATE || type == Type.DELETE || type == Type.MOVE) {
+            if (memberFqn == null || memberFqn.isBlank()) {
+                throw new AgiToolException("Validation Failed: 'memberFqn' is mandatory for " + type + " operations.");
+            }
+        }
         if (declaration != null && declaration.contains("/**")) {
             throw new AgiToolException("Validation Failed: You cannot add javadoc in the declaration, javadoc should be provided in the javadoc field.");
         }
         if (type == Type.INSERT || type == Type.MOVE) {
+            if (position == null) {
+                throw new AgiToolException("Validation Failed: 'position' (RelativePosition: START, END, BEFORE, AFTER) is mandatory for " + type + " intents.");
+            }
+            if ((position == RelativePosition.BEFORE || position == RelativePosition.AFTER) && (anchorMemberName == null || anchorMemberName.isBlank())) {
+                throw new AgiToolException("Validation Failed: 'anchorMemberName' is mandatory when 'position' is " + position + ".");
+            }
             String decl = declaration != null ? declaration.stripIndent().trim() : "";
             boolean isTopLevelType = decl.contains("class ") || decl.contains("interface ") || decl.contains("enum ") || decl.contains("record ");
 
@@ -212,14 +222,15 @@ public class CodeRefinementIntent implements Serializable {
 
     /**
      * Executes the V4 AST-Guided text replacement, calculating exact bounds via
-     * the NetBeans compiler API.
+     * the NetBeans compiler API and recording modified character ranges.
      *
      * @param cc the compilation controller.
      * @param currentContent the raw text content of the file.
+     * @param modifiedRanges mutable list to collect [start, end] character ranges of modified regions.
      * @return the updated text content.
      * @throws java.lang.Exception if parsing or string replacement fails.
      */
-    public String applyToText(CompilationController cc, String currentContent) throws Exception {
+    public String applyToText(CompilationController cc, String currentContent, List<int[]> modifiedRanges) throws Exception {
         CompilationUnitTree cut = cc.getCompilationUnit();
         SourcePositions sp = cc.getTrees().getSourcePositions();
 
@@ -380,6 +391,14 @@ public class CodeRefinementIntent implements Serializable {
                 }
             }
 
+            int modStart = (int) docStart;
+            int modEnd = (member instanceof ClassTree)
+                    ? modStart + newDocStr.length() + newDeclStr.length()
+                    : modStart + newDocStr.length() + newDeclStr.length() + newBodyStr.length();
+            if (modifiedRanges != null) {
+                modifiedRanges.add(new int[]{modStart, modEnd});
+            }
+
             return currentContent.substring(0, (int) docStart)
                     + newDocStr + newDeclStr + newBodyStr
                     + currentContent.substring((int) bodyEnd);
@@ -502,6 +521,10 @@ public class CodeRefinementIntent implements Serializable {
 
             if (insertOffset > start) {
                 insertOffset -= (end - start);
+            }
+
+            if (modifiedRanges != null) {
+                modifiedRanges.add(new int[]{insertOffset, insertOffset + formattedMemberText.length()});
             }
 
             String textWithoutMember = currentContent.substring(0, start) + currentContent.substring(end);
@@ -698,6 +721,12 @@ public class CodeRefinementIntent implements Serializable {
                 suffixBuilder.append("\n");
             }
             String suffix = suffixBuilder.toString();
+
+            int start = insertOffset + prefix.length();
+            int end = start + indent.length() + memberBuilder.length();
+            if (modifiedRanges != null) {
+                modifiedRanges.add(new int[]{start, end});
+            }
 
             return currentContent.substring(0, insertOffset)
                     + prefix + indent + memberBuilder.toString() + suffix

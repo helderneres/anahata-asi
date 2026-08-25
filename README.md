@@ -1,11 +1,21 @@
 # 🧘 Anahata ASI: The AI Operating System
 **The world's first 100% Air-Gapped, Stateful Java ASI Container. Zero Telemetry. Zero Ngrok tunnels. Complete Data Sovereignty.**
 
-[![Build Status](https://github.com/anahata-os/anahata-asi/actions/workflows/deploy-artifacts.yml/badge.svg)](https://github.com/anahata-os/anahata-asi/actions/workflows/deploy-artifacts.yml)
-[![Website & Javadoc](https://github.com/anahata-os/anahata-asi/actions/workflows/deploy-website.yml/badge.svg)](https://github.com/anahata-os/anahata-asi/actions/workflows/deploy-website.yml)
-[![Maven Central](https://img.shields.io/maven-central/v/uno.anahata/anahata-asi-parent.svg)](https://central.sonatype.com/search?q=uno.anahata)
+[![Build & Deploy](https://github.com/anahata-os/anahata-asi/actions/workflows/build.yml/badge.svg)](https://github.com/anahata-os/anahata-asi/actions/workflows/build.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/uno.anahata/anahata-asi-parent.svg)](https://central.sonatype.com/artifact/uno.anahata/anahata-asi-parent)
 [![License: Apache ASL 2](https://img.shields.io/badge/License-Apache%20ASL%202-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![License: Anahata ASL 108](https://img.shields.io/badge/License-Anahata%20ASL%20108-blueviolet.svg)](https://asi.anahata.uno/ASL_108.html)
+
+> [!IMPORTANT]
+> ### ⚠️ Attention NetBeans 31 Users
+> Due to a compatibility issue between Lombok (`1.18.46`) and recent changes in `NBJavaCompiler` / JDK 26, we will not be releasing an official NB31-compatible NBM build to the NetBeans Plugin Portal until Project Lombok catches up.
+> 
+> **5 Simple Steps to use the latest version of Anahata ASI Studio on NetBeans 31:**
+> 1. **Clone the repository**: [`https://github.com/anahata-os/anahata-asi.git`](https://github.com/anahata-os/anahata-asi) and open both the **Anahata ASI Parent** project and the **Anahata ASI Studio - NetBeans** plugin in NetBeans.
+> 2. Edit `pom.xml` in **anahata-asi-parent** and change `<netbeans.version>RELEASE300</netbeans.version>` to `<netbeans.version>RELEASE310</netbeans.version>`.
+> 3. Build the parent project (**Anahata ASI Parent**).
+> 4. Right-click on **Anahata ASI Studio - NetBeans** in the Projects view and select **Install / Reload in Development IDE**.
+> 5. Enjoy the full power of Anahata ASI Studio on NetBeans 31!
 
 ---
 

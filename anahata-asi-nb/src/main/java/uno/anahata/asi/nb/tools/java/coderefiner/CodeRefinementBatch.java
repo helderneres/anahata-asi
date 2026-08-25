@@ -3,8 +3,21 @@ package uno.anahata.asi.nb.tools.java.coderefiner;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.MemberSelectTree;
+import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.Tree;
+import com.sun.source.util.SourcePositions;
+import com.sun.source.util.TreePath;
+import com.sun.source.util.TreePathScanner;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -13,11 +26,16 @@ import org.netbeans.api.java.source.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
+import org.openide.loaders.DataObject;
 import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.toolkit.resources.text.AbstractTextResourceWrite;
 import uno.anahata.asi.toolkit.resources.text.LineComment;
 import uno.anahata.asi.nb.resources.handle.NbHandle;
+import uno.anahata.asi.nb.tools.java.BatchCodeRefiner;
+import uno.anahata.asi.nb.tools.java.JavaSourceUtils;
+import uno.anahata.asi.nb.tools.java.CodeRefiner;
 
 /**
  * A robust, agent-friendly batch of structural AST modifications for a single
@@ -66,6 +84,11 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
     private List<String> importsToRemove = new ArrayList<>();
 
     /**
+     * The NetBeans formatting mode to apply after refinement. Defaults to SELECTED_RANGES.
+     */
+    @Schema(description = "The NetBeans formatting mode to apply after refinement. Defaults to SELECTED_RANGES.")
+    private FormatMode format = FormatMode.SELECTED_RANGES;
+    /**
      * The list of line-level comments calculated during the AST transformation
      * process. These are intended for UI rendering of the changes.
      */
@@ -85,13 +108,12 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
      * resulting code is semantically sound.
      * </p>
      */
-    @Override
-    protected String doCalculateResultingContent(Agi agi) throws Exception {
+    @Override protected String doCalculateResultingContent(Agi agi) throws Exception {
         if (originalContent == null) {
             captureOriginalContent(agi);
         }
 
-        uno.anahata.asi.agi.resource.Resource res = agi.getResourceManager().get(resourceUuid);
+        Resource res = agi.getResourceManager().get(resourceUuid);
         if (res == null) {
             throw new AgiToolException("Resource not found for uuid: " + resourceUuid);
         }
@@ -104,15 +126,16 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
         log.info("[V4-AST-TEXT] Replaying structural changes on: {}", originalFo.getNameExt());
 
         ClasspathInfo cpInfo = ClasspathInfo.create(originalFo);
-        //String currentContent = originalContent;
         // CRITICAL FIX: Normalize CRLF to LF to prevent AST SourcePositions drift
         String currentContent = originalContent.replace("\r\n", "\n");
+
+        List<int[]> modifiedRanges = new ArrayList<>();
 
         int index = 0;
         for (CodeRefinementIntent intent : intents) {
             try {
                 FileObject tempFo = FileUtil.createMemoryFileSystem().getRoot().createData("Temp_" + index, "java");
-                try (java.io.OutputStream os = tempFo.getOutputStream()) {
+                try (OutputStream os = tempFo.getOutputStream()) {
                     os.write(currentContent.getBytes("UTF-8"));
                 }
 
@@ -120,7 +143,7 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
                 String[] out = new String[]{currentContent};
                 js.runUserActionTask(cc -> {
                     cc.toPhase(JavaSource.Phase.RESOLVED);
-                    out[0] = intent.applyToText(cc, out[0]);
+                    out[0] = intent.applyToText(cc, out[0], modifiedRanges);
                 }, true);
                 currentContent = out[0];
                 index++;
@@ -129,12 +152,18 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
             }
         }
 
-        boolean hasExplicitImports = (importsToAdd != null && !importsToAdd.isEmpty()) || (importsToRemove != null && !importsToRemove.isEmpty());
-        if (this.optimize || hasExplicitImports) {
-            currentContent = uno.anahata.asi.nb.tools.java.CodeRefiner.optimizeImportsInMemory(cpInfo, currentContent, this.optimize, importsToAdd, importsToRemove);
+        if (this.optimize && modifiedRanges != null && !modifiedRanges.isEmpty()) {
+            currentContent = shortenFqnsInModifiedRanges(cpInfo, currentContent, modifiedRanges, this.importsToAdd);
         }
 
-        if (java.util.Objects.equals(originalContent, currentContent)) {
+        boolean hasExplicitImports = (importsToAdd != null && !importsToAdd.isEmpty()) || (importsToRemove != null && !importsToRemove.isEmpty());
+        if (this.optimize || hasExplicitImports) {
+            currentContent = CodeRefiner.optimizeImportsInMemory(cpInfo, currentContent, this.optimize, importsToAdd, importsToRemove);
+        }
+
+        currentContent = JavaSourceUtils.reformat(originalFo, currentContent, this.format, modifiedRanges);
+
+        if (Objects.equals(originalContent, currentContent)) {
             throw new AgiToolException("Update rejected: AST rewrite produced no changes.");
         }
 
@@ -142,6 +171,107 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
         this.setCalculatedComments(comments);
 
         return currentContent;
+    }
+
+    /**
+     * Shortens fully qualified type names in modified ranges to simple names using
+     * real project ClasspathInfo in RAM, collecting all discovered FQNs for the import header.
+     *
+     * @param cpInfo The project ClasspathInfo.
+     * @param content The current source code content.
+     * @param modifiedRanges The list of [start, end] character ranges of modified regions.
+     * @param importsToAddCollector Mutable list to collect discovered FQNs.
+     * @return The updated source code content with simple names.
+     */
+    private static String shortenFqnsInModifiedRanges(ClasspathInfo cpInfo, String content, List<int[]> modifiedRanges, List<String> importsToAddCollector) {
+        FileObject tempFo = null;
+        DataObject tempDobj = null;
+        try {
+            tempFo = FileUtil.createMemoryFileSystem().getRoot().createData("Temp_FqnShorten_" + System.nanoTime(), "java");
+            try (OutputStream os = tempFo.getOutputStream()) {
+                os.write(content.getBytes(StandardCharsets.UTF_8));
+            }
+
+            tempDobj = DataObject.find(tempFo);
+            JavaSource js = (cpInfo != null) ? JavaSource.create(cpInfo, tempFo) : JavaSource.forFileObject(tempFo);
+
+            record Replacement(int start, int end, String simpleName) {}
+            List<Replacement> replacements = new ArrayList<>();
+
+            js.runUserActionTask(cc -> {
+                cc.toPhase(JavaSource.Phase.RESOLVED);
+                CompilationUnitTree cut = cc.getCompilationUnit();
+                SourcePositions sp = cc.getTrees().getSourcePositions();
+
+                new TreePathScanner<Void, Void>() {
+                    @Override
+                    public Void visitMemberSelect(MemberSelectTree node, Void p) {
+                        long start = sp.getStartPosition(cut, node);
+                        long end = sp.getEndPosition(cut, node);
+                        if (start >= 0 && end > start) {
+                            boolean inRange = false;
+                            for (int[] r : modifiedRanges) {
+                                if (start >= r[0] && end <= r[1]) {
+                                    inRange = true;
+                                    break;
+                                }
+                            }
+                            if (inRange) {
+                                TreePath path = getCurrentPath();
+                                Element e = cc.getTrees().getElement(path);
+                                if (e instanceof TypeElement te) {
+                                    String fqn = te.getQualifiedName().toString();
+                                    String rawText = content.substring((int) start, (int) end).replaceAll("\\s+", "");
+                                    if (rawText.equals(fqn)) {
+                                        PackageElement pkg = cc.getElements().getPackageOf(te);
+                                        String pkgName = (pkg != null) ? pkg.getQualifiedName().toString() : "";
+                                        if (!"java.lang".equals(pkgName)) {
+                                            if (importsToAddCollector != null && !importsToAddCollector.contains(fqn)) {
+                                                importsToAddCollector.add(fqn);
+                                            }
+                                        }
+                                        replacements.add(new Replacement((int) start, (int) end, te.getSimpleName().toString()));
+                                    }
+                                }
+                            }
+                        }
+                        return super.visitMemberSelect(node, p);
+                    }
+                }.scan(new TreePath(cut), null);
+            }, true);
+
+            if (!replacements.isEmpty()) {
+                replacements.sort((a, b) -> Integer.compare(b.start, a.start));
+                List<Replacement> nonOverlapping = new ArrayList<>();
+                int lastStart = Integer.MAX_VALUE;
+                for (Replacement r : replacements) {
+                    if (r.end <= lastStart) {
+                        nonOverlapping.add(r);
+                        lastStart = r.start;
+                    }
+                }
+
+                StringBuilder updated = new StringBuilder(content);
+                for (Replacement r : nonOverlapping) {
+                    updated.replace(r.start, r.end, r.simpleName);
+                }
+                return updated.toString();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to shorten FQNs in modified ranges: {}", e.getMessage(), e);
+        } finally {
+            if (tempDobj != null) {
+                tempDobj.setModified(false);
+            }
+            if (tempFo != null && tempFo.isValid()) {
+                try {
+                    tempFo.delete();
+                } catch (IOException e) {
+                    // Ignore
+                }
+            }
+        }
+        return content;
     }
 
     /**
@@ -183,7 +313,7 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
                     + "or an import modification (importsToAdd/importsToRemove).");
         }
 
-        if (java.util.Objects.equals(originalContent, calculateResultingContent(agi))) {
+        if (Objects.equals(originalContent, calculateResultingContent(agi))) {
             throw new AgiToolException("Update rejected: The resulting content is identical to the current file content on disk.");
         }
 

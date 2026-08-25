@@ -4,10 +4,11 @@
     <parent>
         <groupId>uno.anahata</groupId>
         <artifactId>anahata-asi-parent</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.1.5-SNAPSHOT</version>
     </parent>
     
     <artifactId>anahata-asi-nb</artifactId>
+    <version>1.1.5-SNAPSHOT</version>
     <packaging>nbm</packaging>
     
     <name>Anahata ASI Studio - NetBeans</name>
@@ -39,7 +40,7 @@
         <dependency>
             <groupId>uno.anahata</groupId>
             <artifactId>anahata-asi-swing</artifactId>
-            <version>${project.version}</version>
+            <version>${project.parent.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.formdev</groupId>
@@ -382,6 +383,11 @@
             <version>${netbeans.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.netbeans.modules</groupId>
+            <artifactId>org-netbeans-core-windows</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-modules-masterfs-ui</artifactId>
             <version>${netbeans.version}</version>
@@ -497,12 +503,12 @@
             <version>${netbeans.version}</version>
         </dependency>
         <!--
-        <dependency>
-            <groupId>org.netbeans.modules</groupId>
-            <artifactId>org-netbeans-modules-git</artifactId>
-            <version>${netbeans.version}</version>
-        </dependency>
--->
+                <dependency>
+                    <groupId>org.netbeans.modules</groupId>
+                    <artifactId>org-netbeans-modules-git</artifactId>
+                    <version>${netbeans.version}</version>
+                </dependency>
+        -->
         
         <dependency>
             <groupId>org.jsoup</groupId>
@@ -541,11 +547,18 @@
         </dependency>
         <!--
         <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk18on</artifactId>
-            <version>1.83</version>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-libs-javafx</artifactId>
+            <version>${netbeans.version}</version>
         </dependency>
--->
+        -->
+        <!--
+                <dependency>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcprov-jdk18on</artifactId>
+                    <version>1.83</version>
+                </dependency>
+        -->
         <dependency>
             <groupId>org.netbeans.modules</groupId>
             <artifactId>org-netbeans-modules-dlight-nativeexecution</artifactId>
@@ -629,13 +642,13 @@
             <plugin>
                 <groupId>org.apache.netbeans.utilities</groupId>
                 <artifactId>nbm-maven-plugin</artifactId>
-                <version>14.4</version>
+                <version>14.5</version>
                 <extensions>true</extensions>
                 <configuration>
                     <author>Anahata</author>
                     <homePageUrl>https://asi.anahata.uno</homePageUrl>
                     <codeNameBase>uno.anahata.asi.nb</codeNameBase>
-                    <brandingToken>anahata</brandingToken>
+                    <distBase>${nbm.distBase}</distBase>
                     <additionalArguments>${netbeans.runparams}</additionalArguments>
                     
                     <!--
@@ -761,13 +774,17 @@
                             <type>impl</type>
                             <id>org.netbeans.modules:org-netbeans-modules-terminal-nb</id>
                         </dependency>
-                        
-                        <!--
                         <dependency>
                             <type>impl</type>
-                            <id>org.netbeans.modules:org-netbeans-modules-git</id>
+                            <id>org.netbeans.modules:org-netbeans-core-windows</id>
                         </dependency>
-                                                -->
+                        
+                        <!--
+<dependency>
+    <type>impl</type>
+    <id>org.netbeans.modules:org-netbeans-modules-git</id>
+</dependency>
+                        -->
                     </moduleDependencies>
                     <publicPackages>
                         <publicPackage>uno.anahata.asi.nb</publicPackage>
@@ -797,9 +814,34 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.7.0</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>oss</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.4.2</version>
+                <!--<version>3.5.0</version>-->
                 <configuration>
                     <archive>
                         <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>

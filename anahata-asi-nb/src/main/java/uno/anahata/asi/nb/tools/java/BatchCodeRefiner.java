@@ -19,6 +19,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import javax.swing.text.StyledDocument;
 import lombok.extern.slf4j.Slf4j;
 import org.netbeans.api.java.source.ClasspathInfo;
 import org.netbeans.api.java.source.CompilationController;
@@ -27,8 +28,11 @@ import org.netbeans.api.java.source.GeneratorUtilities;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreeMaker;
 import org.netbeans.api.java.source.WorkingCopy;
+import org.netbeans.modules.editor.indent.api.Reformat;
+import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
+import org.openide.loaders.DataObject;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.tool.AgiTool;
 import uno.anahata.asi.agi.tool.AgiToolException;
@@ -109,14 +113,9 @@ public class BatchCodeRefiner extends AnahataToolkit {
 
         String finalText = batch.calculateResultingContent(getAgi());
 
-        try (OutputStream os = fo.getOutputStream()) {
-            os.write(finalText.getBytes());
-        }
+        JavaSourceUtils.writeContent(fo, finalText, batch.isSave());
 
         batch.setResultingContent(finalText);
-        if (batch.isSave()) {
-            JavaSourceUtils.handleSave(fo);
-        }
 
         return batch.getUnifiedDiff(getAgi());
     }
@@ -292,6 +291,9 @@ public class BatchCodeRefiner extends AnahataToolkit {
      * rules are violated or the anchor is not found.
      */
     public static int getInsertIndex(CompilationInfo wc, List<? extends Tree> members, RelativePosition position, String anchor) throws AgiToolException {
+        if (position == null) {
+            throw new AgiToolException("Validation Failed: RelativePosition 'position' cannot be null for INSERT or MOVE operations.");
+        }
         if ((position == RelativePosition.BEFORE || position == RelativePosition.AFTER) && (anchor == null || anchor.isBlank())) {
             throw new AgiToolException("anchorMemberName is mandatory for relative position " + position);
         }
@@ -390,5 +392,6 @@ public class BatchCodeRefiner extends AnahataToolkit {
                 make.Class(ct.getModifiers(), ct.getSimpleName(), ct.getTypeParameters(), ct.getExtendsClause(), (List<ExpressionTree>) (List<?>) ct.getImplementsClause(), (List<ExpressionTree>) (List<?>) ct.getPermitsClause(), members);
         };
     }
+
 
 }

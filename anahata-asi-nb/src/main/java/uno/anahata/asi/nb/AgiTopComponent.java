@@ -19,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.miginfocom.swing.MigLayout;
 import org.openide.windows.TopComponent;
 import org.openide.util.ImageUtilities;
+import org.openide.windows.Mode;
+import org.openide.windows.WindowManager;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.status.AgiStatus;
 import uno.anahata.asi.swing.agi.AgiPanel;
@@ -43,7 +45,7 @@ import uno.anahata.asi.swing.internal.SwingUtils;
         persistenceType = TopComponent.PERSISTENCE_ONLY_OPENED)
 @TopComponent.Registration(mode = "editor", openAtStartup = false, position = 102)
 @Slf4j
-public final class AgiTopComponent extends TopComponent {
+public final class AgiTopComponent extends TopComponent implements ReloadableTopComponent {
 
     /**
      * The UI panel for the agi session.
@@ -81,6 +83,7 @@ public final class AgiTopComponent extends TopComponent {
      */
     public AgiTopComponent(String sessionId) {
         this.sessionId = sessionId;
+        AnahataInstaller.logLifecycle("AgiTopComponent.<init> sessionId=" + sessionId);
         setIcon(ImageUtilities.loadImage("icons/anahata_16.png"));
         setLayout(new BorderLayout());
         updateTitles();
@@ -98,6 +101,7 @@ public final class AgiTopComponent extends TopComponent {
             return;
         }
         this.sessionId = agi.getConfig().getSessionId();
+        AnahataInstaller.logLifecycle("AgiTopComponent.initPanel() sessionId=" + sessionId + " agi.isOpen=" + agi.isOpen());
         agiPanel = new AgiPanel(agi);
         agiPanel.initComponents();
 
@@ -150,36 +154,63 @@ public final class AgiTopComponent extends TopComponent {
     }
 
     /**
+     * {@inheritDoc}
+     * <p>
+     * Detaches this TopComponent from its session and panel during module
+     * reload, severing references for GC and closing without syncing open=false
+     * to the container.
+     * </p>
+     */
+    @Override
+    public void detachForNbmReload() {
+        this.agiPanel = null;
+        this.sessionId = null;
+        removeAll();
+        close();
+    }
+
+    /**
      * {@inheritDoc} Ensures the agi panel is initialized when the component is
      * opened. Uses the professional Container executor to avoid blocking the
      * EDT.
      */
     @Override
     public void componentOpened() {
+        AnahataInstaller.logLifecycle("AgiTopComponent.componentOpened() ENTER sessionId=" + sessionId + " agiPanelNull=" + (agiPanel == null));
         if (agiPanel == null) {
             showLoading();
 
             // Professional "Birthing Room" Load using the Container's Executor
             AnahataInstaller.getContainer().getExecutor().submit(() -> {
                 try {
+                    AnahataInstaller.logLifecycle("AgiTopComponent.componentOpened() background task START sessionId=" + sessionId);
                     log.info("Initializing session brain in background: {}", sessionId);
-                    final Agi agi = AnahataInstaller.getContainer().findOrCreateAgi(sessionId);
+                    final Agi agi = getAgi();
 
-                    // PREVENT RACE CONDITION: Update our internal ID immediately so 
+                    if (agi == null) {
+                        AnahataInstaller.logLifecycle("AgiTopComponent.componentOpened() background task getAgi returned NULL for sessionId=" + sessionId);
+                        SwingUtilities.invokeLater(() -> showError("Session not found: " + sessionId));
+                        return;
+                    }
+
+                    // PREVENT RACE CONDITION: Update our internal ID immediately so
                     // findTopComponent() can match us if focusUI executes first on the EDT.
                     AgiTopComponent.this.sessionId = agi.getConfig().getSessionId();
 
                     SwingUtilities.invokeLater(() -> {
                         initPanel(agi);
+                        AnahataInstaller.logLifecycle("AgiTopComponent.componentOpened() background task initPanel completed OK sessionId=" + agi.getConfig().getSessionId() + " agi.isOpen=" + agi.isOpen());
                         log.info("Session brain initialized OK: {}", agi.getShortId());
                     });
                 } catch (Exception e) {
+                    AnahataInstaller.logLifecycle("AgiTopComponent.componentOpened() background task EXCEPTION: " + e.getMessage());
                     log.error("Failed to initialize session brain", e);
                     SwingUtilities.invokeLater(() -> showError(e.getMessage()));
                 }
             });
         } else {
             Agi agi = getAgi();
+            AnahataInstaller.logLifecycle("AgiTopComponent.componentOpened() agiPanel exists, agi=" + (agi != null ? agi.getShortId() : "null") + " agi.isOpen=" + (agi != null ? agi.isOpen() : "false"));
             if (agi != null && !agi.isOpen()) {
                 // Authoritative visibility sync
                 AnahataInstaller.getContainer().open(agi);
@@ -191,12 +222,20 @@ public final class AgiTopComponent extends TopComponent {
      * {@inheritDoc}
      * <p>
      * Authoritatively updates the agi's 'open' status when the component is
-     * closed.
+     * closed, skipping container sync if the close was triggered by an
+     * nbmreload.
      * </p>
      */
     @Override
     protected void componentClosed() {
+        boolean isNbmReload = "true".equals(System.getProperty("anahata.nbmreload.pending"));
+        if (isNbmReload) {
+            AnahataInstaller.logLifecycle("AgiTopComponent.componentClosed() skipping container.close() during nbmreload sessionId=" + sessionId);
+            return;
+        }
         Agi agi = getAgi();
+        boolean isOpen = (agi != null && agi.isOpen());
+        AnahataInstaller.logLifecycle("AgiTopComponent.componentClosed() ENTER sessionId=" + sessionId + " agi=" + (agi != null ? agi.getShortId() : "null") + " agi.isOpen=" + isOpen);
         if (agi != null && agi.isOpen()) {
             log.info("Closing TopComponent for agi session: {}. Syncing with container.", agi.getShortId());
             AnahataInstaller.getContainer().close(agi);
@@ -260,19 +299,19 @@ public final class AgiTopComponent extends TopComponent {
     }
 
     /**
-     * Gets the agi session managed by this component.
-     *
-     * @return The agi session, or null if not initialized.
+     * Gets the agi session managed by this component. Null-safe if session ID
+     * is missing or invalid.
      */
     public Agi getAgi() {
         if (agiPanel != null) {
             return agiPanel.getAgi();
         }
         if (sessionId != null) {
-            // Try to find the agi in the container even if the panel isn't ready
-            return AnahataInstaller.getContainer().getActiveAgis().stream()
-                    .filter((Agi c) -> c.getConfig().getSessionId().equals(sessionId))
-                    .findFirst().orElse(null);
+            try {
+                return AnahataInstaller.getContainer().getAgi(sessionId);
+            } catch (Exception e) {
+                return null;
+            }
         }
         return null;
     }
@@ -304,9 +343,13 @@ public final class AgiTopComponent extends TopComponent {
      */
     private static final class Resolvable implements Serializable {
 
-        /** The serializable version UID. */
+        /**
+         * The serializable version UID.
+         */
         private static final long serialVersionUID = 1L;
-        /** The unique identifier of the preserved session. */
+        /**
+         * The unique identifier of the preserved session.
+         */
         private final String sessionId;
 
         /**
@@ -325,6 +368,7 @@ public final class AgiTopComponent extends TopComponent {
          * @throws ObjectStreamException if restoration fails.
          */
         Object readResolve() throws ObjectStreamException {
+            AnahataInstaller.logLifecycle("AgiTopComponent.Resolvable.readResolve() sessionId=" + sessionId);
             return new AgiTopComponent(sessionId);
         }
     }
