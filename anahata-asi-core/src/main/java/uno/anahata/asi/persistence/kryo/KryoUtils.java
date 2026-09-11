@@ -9,7 +9,10 @@ import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.util.DefaultInstantiatorStrategy;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -20,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 
 /**
@@ -59,6 +63,9 @@ public class KryoUtils {
         // Register Path serializer to avoid JPMS issues with UnixPath/WindowsPath
         kryo.addDefaultSerializer(Path.class, new PathSerializer());
 
+        // Register JDK immutable, unmodifiable, singleton, and empty collection serializers
+        JdkCollectionsSerializers.register(kryo);
+
         // Set the global factory for automated Rebindable support
         kryo.setDefaultSerializer(new RebindableSerializerFactory());
 
@@ -89,14 +96,50 @@ public class KryoUtils {
      */
     public static <T> T clone(T object) {
         if (object == null) {
-            return null;
+            throw new IllegalArgumentException ("Cannot clone a null object.");
         }
         byte[] bytes = serialize(object);
-        return (T) deserialize(bytes, object.getClass());
+        return (T) deserialize(bytes, Object.class);
     }
 
     /**
-     * Serializes an object into a byte array.
+     * Serializes an object with Kryo and writes it atomically to the target file on disk using a temporary file.
+     *
+     * @param object The object to serialize and save.
+     * @param targetFile The final destination path.
+     * @throws IOException If serialization or writing fails.
+     */
+    public static void saveToFile(Object object, Path targetFile) throws IOException {
+        Path parent = targetFile.getParent();
+        if (parent != null && !Files.exists(parent)) {
+            Files.createDirectories(parent);
+        }
+        Path tmpFile = targetFile.resolveSibling(targetFile.getFileName().toString() + ".tmp");
+        byte[] data = serialize(object);
+        Files.write(tmpFile, data);
+        try {
+            Files.move(tmpFile, targetFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+            Files.move(tmpFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    /**
+     * Reads a file from disk and deserializes it with Kryo.
+     *
+     * @param <T> The target object type.
+     * @param file The file to read.
+     * @param clazz The target class.
+     * @return The deserialized object.
+     * @throws IOException If reading the file fails.
+     */
+    public static <T> T loadFromFile(Path file, Class<T> clazz) throws IOException {
+        byte[] data = Files.readAllBytes(file);
+        return deserialize(data, clazz);
+    }
+
+    /**
+     * Serializes an object into a byte array, embedding the concrete class header.
      *
      * @param object The object to serialize.
      * @return A byte array representing the serialized object.
@@ -106,31 +149,32 @@ public class KryoUtils {
         Kryo kryo = getKryo();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         try (Output output = new Output(byteArrayOutputStream)) {
-            kryo.writeObject(output, object);
+            kryo.writeClassAndObject(output, object);
         }
         byte[] bytes = byteArrayOutputStream.toByteArray();
         long end = System.currentTimeMillis();
-        log.info("Kryo serialization of {} took {} ms, size: {} bytes", object.getClass().getSimpleName(), (end - start), bytes.length);
+        log.info("Kryo serialization of {} took {} ms, size: {}", object.getClass().getSimpleName(), (end - start), FileUtils.byteCountToDisplaySize(bytes.length));
         return bytes;
     }
 
     /**
-     * Deserializes a byte array into an object.
+     * Deserializes a byte array into an object using the embedded concrete class header.
      *
-     * @param <T>   The type of the object to deserialize.
+     * @param <T>   The expected return type.
      * @param bytes The byte array to deserialize.
-     * @param clazz The class of the object.
-     * @return The deserialized object.
+     * @param clazz The expected class or interface.
+     * @return The deserialized object cast to T.
      */
     public static <T> T deserialize(byte[] bytes, Class<T> clazz) {
         long start = System.currentTimeMillis();
         Kryo kryo = getKryo();
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
         try (Input input = new Input(byteArrayInputStream)) {
-            T object = kryo.readObject(input, clazz);
+            Object object = kryo.readClassAndObject(input);
+            String className = object != null ? object.getClass().getSimpleName() : clazz.getSimpleName();
             long end = System.currentTimeMillis();
-            log.info("Kryo deserialization of {} took {} ms, size: {} bytes", clazz.getSimpleName(), (end - start), bytes.length);
-            return object;
+            log.info("Kryo deserialization of {} took {} ms, size: {}", className, (end - start), FileUtils.byteCountToDisplaySize(bytes.length));
+            return clazz.cast(object);
         }
     }
 }

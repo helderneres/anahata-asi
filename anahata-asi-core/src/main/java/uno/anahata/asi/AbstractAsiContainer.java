@@ -8,15 +8,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.concurrent.ExecutorService;
@@ -24,7 +29,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.utils.ParserUtils;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.agi.provider.AbstractAiProvider;
@@ -32,6 +39,7 @@ import uno.anahata.asi.agi.status.AgiStatus;
 import uno.anahata.asi.persistence.kryo.KryoUtils;
 import uno.anahata.asi.agi.event.BasicPropertyChangeSource;
 import uno.anahata.asi.agi.provider.AbstractModel;
+import uno.anahata.asi.agi.provider.ResponseModality;
 
 /**
  * A hybrid static/instance class for managing global and application-specific
@@ -50,9 +58,24 @@ import uno.anahata.asi.agi.provider.AbstractModel;
 @Slf4j
 public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
 
+    // --- STATIC METHODS FOR GLOBAL ACCESS ---
     /**
-     * The unique identifier for the host application (e.g., "netbeans", "standalone"). 
-     * <p>Used to resolve application-specific subdirectories within the root 
+     * Static initializer to ensure the root working directory exists and is
+     * accessible.
+     */
+    static {
+        try {
+            Files.createDirectories(getWorkDir());
+        } catch (IOException e) {
+            throw new RuntimeException("Could not create root work dir: " + getWorkDir(), e);
+        }
+    }
+
+    /**
+     * The unique identifier for the host application (e.g., "netbeans",
+     * "standalone").
+     * <p>
+     * Used to resolve application-specific subdirectories within the root
      * Anahata working directory.</p>
      */
     private final String hostApplicationId;
@@ -60,17 +83,22 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     /**
      * The persistent preferences for this container instance.
      */
-    private final AsiContainerPreferences preferences;
-
+    //private final AsiContainerPreferences preferences;
     /**
      * The list of currently active agi sessions managed by this container.
      */
     private final List<Agi> activeAgis = new ArrayList<>();
 
     /**
-     * A master registry of AI provider instances. 
-     * <p>Keyed by the provider's unique UUID. These instances are shared 
-     * across all sessions managed by this container.</p>
+     * The list of reusable AGI session templates managed by this container.
+     */
+    private final List<Agi> templates = new ArrayList<>();
+
+    /**
+     * A master registry of AI provider instances.
+     * <p>
+     * Keyed by the provider's unique UUID. These instances are shared across
+     * all sessions managed by this container.</p>
      */
     private final Map<String, AbstractAiProvider> providerRegistry = new ConcurrentHashMap<>();
 
@@ -92,64 +120,178 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     public Map containerAttributes = new ConcurrentHashMap();
 
     /**
+     * Container-level operational notifications and boot diagnostic records.
+     */
+    private final List<String> notifications = new CopyOnWriteArrayList<>();
+
+    /**
+     * Flag controlling the execution loop of the background key file watcher daemon thread.
+     */
+    private volatile boolean keyWatcherRunning = true;
+
+    /**
+     * Dedicated daemon thread polling provider API key files on disk.
+     */
+    private Thread keyWatcherThread;
+
+    /**
      * Creates a configuration instance for a specific host application. Upon
-     * instantiation, it loads the preferences for that application.
+     * instantiation, it loads the preferences and persisted providers for that
+     * application.
      *
      * @param hostApplicationId A unique identifier for the host application
      * (e.g., "netbeans").
      */
+    @SneakyThrows
     public AbstractAsiContainer(String hostApplicationId) {
         this.hostApplicationId = hostApplicationId;
-        this.preferences = AsiContainerPreferences.load(this);
-        this.preferences.ensureTemplatesInitialized(this);
+        //this.preferences = AsiContainerPreferences.load(this);
+        //this.preferences.ensureTemplatesInitialized(this);
         this.executor = AsiExecutors.newCachedThreadPoolExecutor(hostApplicationId);
 
-        // Populate the registry from persisted providers
-        for (AbstractAiProvider provider : preferences.getRegisteredProviders()) {
-            provider.setAsiContainer(this);
-            providerRegistry.put(provider.getUuid(), provider);
+        // Populate the registry from persisted providers on disk
+        int diskProviders = loadProvidersFromDisk();
+        log.info("Loaded {} AI Providers from disk for host application '{}'", diskProviders, hostApplicationId);
+
+        int diskTemplates = loadTemplatesFromDisk();
+        log.info("Loaded {} AGI Templates from disk for host application '{}'", diskTemplates, hostApplicationId);
+
+        startKeyFileWatcherThread();
+    }
+
+    /**
+     * Scans the container's providers directory and loads all serialized AI
+     * provider entities.
+     *
+     * @return The number of providers loaded from disk.
+     */
+    @SneakyThrows
+    public int loadProvidersFromDisk() {
+        Path providersDir = getProvidersDir();
+
+        int loadedCount = 0;
+        try (Stream<Path> stream = Files.list(providersDir)) {
+            List<Path> files = stream.filter(p -> !Files.isDirectory(p))
+                    .filter(p -> p.toString().endsWith(".kryo"))
+                    .collect(Collectors.toList());
+
+            for (Path file : files) {
+                AbstractAiProvider provider;
+                try {
+                    provider = KryoUtils.loadFromFile(file, AbstractAiProvider.class);
+                } catch (Throwable t) {
+                    log.error("Failed to deserialize provider from {}. Moving to unloadable directory.", file, t);
+                    try {
+                        Path unloadablePath = getUnloadableProvidersDir().resolve(file.getFileName());
+                        Files.move(file, unloadablePath, StandardCopyOption.REPLACE_EXISTING);
+                        log.info("Moved incompatible provider to: {}", unloadablePath);
+                        addNotification("Incompatible AI provider moved to unloadable: " + file.getFileName());
+                    } catch (IOException e) {
+                        log.error("Failed to move incompatible provider to unloadable directory: {}", file, e);
+                    }
+                    continue;
+                }
+
+                provider.setAsiContainer(this);
+                try {
+                    log.info("Initializing: {}", provider);
+                    provider.initialize();
+                } catch (Exception e) {
+                    log.error("Provider '{}' failed to initialize and was disabled", provider.getProviderId(), e);
+                    provider.setEnabled(false);
+                    addNotification("Provider '" + provider.getDisplayName() + "' failed to initialize: " + e.getMessage());
+                }
+                providerRegistry.put(provider.getUuid(), provider);
+                loadedCount++;
+            }
+        }
+        return loadedCount;
+    }
+
+    /**
+     * Adds an operational notification or startup diagnostic message.
+     *
+     * @param notification The diagnostic message to record.
+     */
+    public void addNotification(String notification) {
+        if (notification != null && !notification.isBlank()) {
+            log.info("[Notification] {}", notification);
+            this.notifications.add(notification);
+            propertyChangeSupport.firePropertyChange("notifications", null, getNotifications());
         }
     }
 
     /**
-     * Fetches models concurrently in parallel across all matching providers.
+     * Clears all recorded operational notifications.
+     */
+    public void clearNotifications() {
+        this.notifications.clear();
+        propertyChangeSupport.firePropertyChange("notifications", null, getNotifications());
+    }
+
+    /**
+     * Gets an unmodifiable copy of all recorded operational notifications.
      *
-     * @param providerEnabled if true, filters to only enabled providers that have configured API keys or don't require keys.
-     * @return an aggregated list of all discovered models.
+     * @return List of notification messages.
+     */
+    public List<String> getNotifications() {
+        return Collections.unmodifiableList(new ArrayList<>(notifications));
+    }
+
+    /**
+     * Gets all loaded models across all providers from memory.
+     *
+     * @param providerEnabled if true, filters to only effectively enabled
+     * providers (enabled with valid API keys).
+     * @param modelEnabled if true, filters to only enabled models
+     * (model.isEnabled()).
+     * @return an aggregated list of matching models.
+     */
+    public List<AbstractModel> getAllModels(boolean providerEnabled, boolean modelEnabled) {
+        return getAllProviders().stream()
+                .filter(p -> !providerEnabled || p.isEffectivelyEnabled())
+                .flatMap(p -> (modelEnabled ? p.getEnabledModels() : p.getModels()).stream())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Gets all loaded models across all providers from memory.
+     *
+     * @param providerEnabled if true, filters to only effectively enabled
+     * providers.
+     * @return an aggregated list of all models.
      */
     public List<AbstractModel> getAllModels(boolean providerEnabled) {
-        List<AbstractAiProvider> targetProviders = getAllProviders().stream()
-                .filter(p -> !providerEnabled || (p.isEnabled() && (p.hasKeys() || !p.isApiKeyRequired())))
-                .collect(Collectors.toList());
-
-        List<CompletableFuture<List<? extends AbstractModel>>> futures = targetProviders.stream()
-                .map(p -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        return p.getModels();
-                    } catch (Exception e) {
-                        log.warn("Error fetching models for provider {}", p.getUuid(), e);
-                        return Collections.<AbstractModel>emptyList();
-                    }
-                }, getExecutor()))
-                .collect(Collectors.toList());
-
-        try {
-            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                    .thenApply(v -> futures.stream()
-                            .flatMap(f -> f.join().stream())
-                            .map(m -> (AbstractModel) m)
-                            .collect(Collectors.toList()))
-                    .get(30, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            log.error("Failed to execute parallel getAllModels", e);
-            return Collections.emptyList();
-        }
+        return getAllModels(providerEnabled, false);
     }
 
     /**
-     * Retrieves a shared provider instance from the master registry by its UUID. 
-     * <p>Implementation details: This is the authoritative way to resolve 
-     * providers. If the UUID is {@code null}, this method returns {@code null}.</p>
+     * Finds and filters models across providers matching a regex/text query AND
+     * all requested response modalities.
+     *
+     * @param query Optional regex or keyword query.
+     * @param modalities Optional list of response modalities (e.g. [IMAGE,
+     * AUDIO]).
+     * @param enabledOnly If true, filters to only effectively enabled providers
+     * (enabled with valid API keys).
+     * @return A list of matching {@link AbstractModel} instances across
+     * matching providers.
+     */
+    public List<AbstractModel> findModels(String query, List<ResponseModality> modalities, boolean enabledOnly) {
+        return getAllProviders().stream()
+                .filter(p -> !enabledOnly || p.isEffectivelyEnabled())
+                .flatMap(p -> p.findModels(query, modalities).stream())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Retrieves a shared provider instance from the master registry by its
+     * UUID.
+     * <p>
+     * Implementation details: This is the authoritative way to resolve
+     * providers. If the UUID is {@code null}, this method returns
+     * {@code null}.</p>
+     *
      * @param uuid The unique UUID of the provider instance.
      * @return The shared provider instance, or {@code null} if not found.
      */
@@ -173,8 +315,8 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     }
 
     /**
-     * Registers a new provider instance in the master registry and persists it
-     * to preferences.
+     * Registers a new provider instance in the master registry, binds its container reference,
+     * and persists it directly to disk in the container's providers directory.
      *
      * @param provider The provider instance to register.
      */
@@ -182,18 +324,11 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
         log.info("Registering AI provider instance: {} ({})", provider.getDisplayName(), provider.getUuid());
         provider.setAsiContainer(this);
         providerRegistry.put(provider.getUuid(), provider);
-
-        List<AbstractAiProvider> registered = preferences.getRegisteredProviders();
-        registered.removeIf(p -> p.getUuid().equals(provider.getUuid()));
-        registered.add(provider);
-
-        // Sync the template's UUID list
-        AgiConfig template = preferences.getAgiTemplate();
-        if (template != null && !template.getProviderUuids().contains(provider.getUuid())) {
-            template.getProviderUuids().add(provider.getUuid());
+        try {
+            provider.persist();
+        } catch (IOException e) {
+            log.error("Failed to persist newly registered provider: {}", provider.getUuid(), e);
         }
-
-        savePreferences();  
     }
 
     /**
@@ -205,8 +340,6 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     public void unregisterProvider(String uuid) {
         log.info("Unregistering AI provider instance: {}", uuid);
         AbstractAiProvider provider = providerRegistry.remove(uuid);
-        preferences.getRegisteredProviders().removeIf(p -> p.getUuid().equals(uuid));
-        savePreferences();
     }
 
     /**
@@ -225,20 +358,216 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     }
 
     /**
-     * Saves the current preferences for this host application to disk.
+     * Resolves the implementation version of the foundational Anahata ASI Core
+     * framework.
+     * <p>
+     * Extracts the version from the package manifest of
+     * {@link AbstractAsiContainer} or from the Maven {@code pom.properties}
+     * packaged into the Core artifact at build time.
+     * </p>
+     *
+     * @return The Core implementation version string, or {@code null} if
+     * running in an unpackaged test environment.
      */
-    public void savePreferences() {
-        preferences.save(this);
+    public static String getAsiCoreImplementationVersion() {
+        Package pkg = AbstractAsiContainer.class.getPackage();
+        if (pkg != null) {
+            String implVer = pkg.getImplementationVersion();
+            if (implVer != null && !implVer.isBlank()) {
+                return implVer;
+            }
+        }
+        try (var is = AbstractAsiContainer.class.getResourceAsStream("/uno/anahata/asi/version.properties")) {
+            if (is != null) {
+                Properties props = new Properties();
+                props.load(is);
+                String pomVer = props.getProperty("version");
+                if (pomVer != null && !pomVer.isBlank()) {
+                    return pomVer;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Could not read Core version.properties: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Resolves the Maven Group ID of this container artifact.
+     * <p>
+     * Defaults to {@code "uno.anahata"}.
+     * <b>Development Notice:</b> This method is used in development mode to
+     * locate {@code pom.properties} on the classpath when running directly off
+     * {@code target/classes}.
+     * </p>
+     *
+     * @return The Maven groupId string.
+     */
+    public String getMavenGroupId() {
+        return "uno.anahata";
+    }
+
+    /**
+     * Resolves the Maven Artifact ID of this specific host container module.
+     * <p>
+     * <b>Development Notice:</b> Subclasses representing specific host
+     * environments (e.g. {@code anahata-asi-desktop}, {@code anahata-asi-nb})
+     * should override this method so that
+     * {@link #getContainerImplementationVersion()} can fish the build version
+     * from {@code /META-INF/maven/<groupId>/<artifactId>/pom.properties} when
+     * running directly off {@code target/classes} in development mode.
+     * </p>
+     *
+     * @return The Maven artifactId string, or {@code null} if unknown.
+     */
+    public String getMavenArtifactId() {
+        return null;
+    }
+
+    /**
+     * Resolves the implementation version of this specific host container
+     * artifact.
+     * <p>
+     * <b>Resolution Hierarchy:</b>
+     * <ol>
+     * <li>Queries {@code getClass().getPackage().getImplementationVersion()}
+     * (active in packaged production JARs and NBMs).</li>
+     * <li>In development mode (when running off {@code target/classes}), fishes
+     * the version from
+     * {@code /META-INF/maven/<getMavenGroupId()>/<getMavenArtifactId()>/pom.properties}
+     * on the classpath.</li>
+     * <li>Falls back to {@link #getAsiCoreImplementationVersion()}.</li>
+     * </ol>
+     *
+     * @return The container implementation version string, or {@code null} if
+     * unresolved.
+     */
+    public String getContainerImplementationVersion() {
+        Package pkg = getClass().getPackage();
+        if (pkg != null) {
+            String implVer = pkg.getImplementationVersion();
+            if (implVer != null && !implVer.isBlank()) {
+                return implVer;
+            }
+        }
+
+        String groupId = getMavenGroupId();
+        String artifactId = getMavenArtifactId();
+        if (groupId != null && artifactId != null) {
+            String resPath = "/META-INF/maven/" + groupId + "/" + artifactId + "/pom.properties";
+            try (var is = getClass().getResourceAsStream(resPath)) {
+                if (is != null) {
+                    var props = new Properties();
+                    props.load(is);
+                    String pomVer = props.getProperty("version");
+                    if (pomVer != null && !pomVer.isBlank()) {
+                        return pomVer;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return getAsiCoreImplementationVersion();
+    }
+
+    /**
+     * Resolves the clean container version string used for the container directory.
+     * <p>
+     * Discards any qualifiers or build timestamps after the first dash ('-').
+     * For example, '1.2.0-20260904' or '1.2.0-SNAPSHOT' becomes '1.2.0'.
+     * </p>
+     *
+     * @return The clean version string, or {@code null} if unresolved.
+     */
+    public String getContainerVersion() {
+        String ver = getContainerImplementationVersion();
+        if (ver == null || ver.isBlank()) {
+            return null;
+        }
+        int dashIdx = ver.indexOf('-');
+        return (dashIdx != -1) ? ver.substring(0, dashIdx).trim() : ver.trim();
     }
 
     /**
      * Gets the root working directory for this specific host application
-     * instance. e.g., ~/.anahata/asi/netbeans
+     * instance. e.g., ~/.anahata/asi/netbeans or ~/.anahata/asi/netbeans/1.2.0
      *
      * @return The application-specific working directory path.
+     * @throws IOException If creating the directory fails.
      */
-    public Path getAppDir() {
-        return getWorkDirSubDir(hostApplicationId);
+    public Path getDirectory() throws IOException {
+        Path base = getWorkDirSubDir(hostApplicationId);
+        String version = getContainerVersion();
+        if (version != null && !version.isBlank()) {
+            Path dir = getSubdirectory(base, version);
+            if (!AsiContainerProperties.exists(dir)) {
+                AsiContainerProperties.save(dir, version, hostApplicationId, Instant.now());
+            }
+            return dir;
+        }
+        return base;
+    }
+
+    /**
+     * Retrieves the creation time of this container's directory from metadata or filesystem attributes.
+     *
+     * @return The creation {@link Instant}, or {@code null} if it could not be determined.
+     */
+    public Instant getContainerCreationTime() {
+        try {
+            Path dir = getDirectory();
+            Optional<AsiContainerProperties> propsOpt = AsiContainerProperties.load(dir);
+            if (propsOpt.isPresent() && propsOpt.get().getCreationTime() != null) {
+                return propsOpt.get().getCreationTime();
+            }
+            BasicFileAttributes attrs = Files.readAttributes(dir, BasicFileAttributes.class);
+            return attrs.creationTime().toInstant();
+        } catch (Exception e) {
+            log.warn("Could not read creation time for container directory: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Gets the directory where persisted AI provider entities are stored.
+     *
+     * @return The providers directory path.
+     * @throws IOException If creating the directory fails.
+     */
+    public Path getProvidersDir() throws IOException {
+        return getAppDirSubDir("providers");
+    }
+
+    /**
+     * Gets the directory where AI provider entities that failed to load are
+     * moved.
+     *
+     * @return The unloadable providers directory path.
+     * @throws IOException If creating the directory fails.
+     */
+    public Path getUnloadableProvidersDir() throws IOException {
+        return getSubdirectory(getProvidersDir(), "unloadable");
+    }
+
+    /**
+     * Gets the directory where AGI session templates are stored.
+     *
+     * @return The templates directory path.
+     * @throws IOException If creating the directory fails.
+     */
+    public Path getTemplatesDir() throws IOException {
+        return getAppDirSubDir("templates");
+    }
+
+    /**
+     * Gets the directory where AGI templates that failed to load are moved.
+     *
+     * @return The unloadable templates directory path.
+     * @throws IOException If creating the directory fails.
+     */
+    public Path getUnloadableTemplatesDir() throws IOException {
+        return getSubdirectory(getTemplatesDir(), "unloadable");
     }
 
     /**
@@ -248,15 +577,10 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      *
      * @param name The name of the subdirectory.
      * @return The Path to the application-specific subdirectory.
+     * @throws IOException If creating the directory fails.
      */
-    public Path getAppDirSubDir(String name) {
-        Path dir = getAppDir().resolve(name);
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            log.error("Could not create application subdirectory: {}", dir, e);
-        }
-        return dir;
+    public Path getAppDirSubDir(String name) throws IOException {
+        return getSubdirectory(getDirectory(), name);
     }
 
     /**
@@ -268,20 +592,26 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     public abstract AgiConfig createNewAgiConfig();
 
     /**
+     * Gets an unmodifiable list of all registered AI providers that are
+     * effectively enabled (the provider is enabled and either does not require
+     * an API key or has valid keys configured).
+     *
+     * @return A list of effectively enabled providers.
+     */
+    public List<AbstractAiProvider> getEffectivelyEnabledProviders() {
+        return getAllProviders().stream()
+                .filter(AbstractAiProvider::isEffectivelyEnabled)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Checks if any of the AI providers configured in the global template have
      * at least one valid API key.
      *
      * @return true if keys are configured, false otherwise.
      */
     public boolean hasAnyProviderConfigured() {
-        AgiConfig template = preferences.getAgiTemplate();
-        for (String uuid : template.getProviderUuids()) {
-            AbstractAiProvider provider = getProvider(uuid);
-            if (provider != null && provider.isEnabled() && (provider.hasKeys() || !provider.isApiKeyRequired())) {
-                return true;
-            }
-        }
-        return false;
+        return !getEffectivelyEnabledProviders().isEmpty();
     }
 
     /**
@@ -291,38 +621,40 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      * @return The newly created and opened Agi session.
      */
     public final Agi createNewAgi() {
-        return createNewAgi(preferences.createAgiConfig(this));
+        Agi defaultTemplate = getDefaultTemplate();
+        if (defaultTemplate != null) {
+            return createNewAgiFromTemplate(defaultTemplate);
+        }
+        return createNewAgi(createNewAgiConfig());
     }
 
     /**
-     * Authoritatively creates, configures, registers, and opens a brand-new Agi 
-     * session with the provided configuration. 
-     * <p>Implementation details: This method orchestrates the creation, 
-     * initial setup, pooling, and initial opening in one atomic weld. It 
-     * is the primary entry point for spawning new intelligence instances.</p>
+     * Authoritatively creates, configures, registers, and opens a brand-new Agi
+     * session using the clean framework config, bypassing any default template.
+     *
+     * @return The newly created and opened Agi session.
+     */
+    public final Agi createNewBlankAgi() {
+        return createNewAgi(createNewAgiConfig());
+    }
+
+    /**
+     * Authoritatively creates, configures, registers, and opens a brand-new Agi
+     * session with the provided configuration.
+     * <p>
+     * Implementation details: This method orchestrates the creation, initial
+     * setup, pooling, and initial opening in one atomic weld. It is the primary
+     * entry point for spawning new intelligence instances.</p>
+     *
      * @param config The session configuration.
      * @return The newly created and opened Agi session.
      */
     public final Agi createNewAgi(AgiConfig config) {
         Agi agi = new Agi(config);
         configureNewAgi(agi);
-        registerInternal(agi);
+        registerActiveAgi(agi);
         open(agi);
         return agi;
-    }
-
-    /**
-     * Notifies all active sessions that the API keys for a specific provider
-     * have been updated.
-     *
-     * @param uuid The UUID of the provider whose keys changed.
-     */
-    public void onProviderKeysChanged(String uuid) {
-        log.info("Processing API key update for shared provider instance: {}", uuid);
-        AbstractAiProvider provider = getProvider(uuid);
-        if (provider != null) {
-            provider.reloadKeyPool();
-        }
     }
 
     /**
@@ -373,7 +705,7 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      *
      * @param agi The session to register.
      */
-    private void registerInternal(Agi agi) {
+    private void registerActiveAgi(Agi agi) {
         synchronized (activeAgis) {
             for (Agi existing : activeAgis) {
                 if (existing.getConfig().getSessionId().equals(agi.getConfig().getSessionId())) {
@@ -393,24 +725,28 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     }
 
     /**
-     * Authoritatively clones an existing Agi session. 
-     * <p>Implementation details: Performs a deep clone using Kryo, assigns a 
-     * new unique session ID, and updates the nickname. By placing this logic 
-     * in the core container, we ensure architectural purity across different 
-     * UI frameworks.</p>
+     * Authoritatively clones an existing Agi session or template.
+     * <p>
+     * Implementation details: Performs a deep clone using Kryo, assigns the new
+     * session ID, and updates the nickname. By placing this logic in the core
+     * container, we ensure architectural purity across different UI frameworks.
+     * </p>
+     *
      * @param agi The source Agi session to clone.
+     * @param newSessionId Optional custom ID for the cloned session or template. If null or blank, a random UUID is generated.
      * @return The newly cloned and registered Agi session.
      */
-    public Agi cloneSession(@NonNull Agi agi) {
-        log.info("Cloning session: {}", agi.getConfig().getSessionId());
+    public Agi cloneAgi(@NonNull Agi agi, String newSessionId) {
+        log.info("Cloning {}: {}", isTemplate(agi) ? "template" : "session", agi.getConfig().getSessionId());
         try {
             Agi clonedAgi = KryoUtils.clone(agi);
 
-            String newSessionId = java.util.UUID.randomUUID().toString();
-            clonedAgi.getConfig().setSessionId(newSessionId);
+            String targetId = (newSessionId != null && !newSessionId.isBlank())
+                    ? newSessionId
+                    : UUID.randomUUID().toString();
+            clonedAgi.getConfig().setSessionId(targetId);
 
             clonedAgi.bindToContainer(this);
-            registerInternal(clonedAgi);
 
             String currentNick = clonedAgi.getNickname();
             if (currentNick != null && !currentNick.isBlank()) {
@@ -419,10 +755,16 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
                 clonedAgi.setNickname("Clone");
             }
 
-            autoSaveSession(clonedAgi, "cloneSession");
-            open(clonedAgi);
+            if (isTemplate(agi)) {
+                registerTemplate(clonedAgi);
+                saveAgi(clonedAgi);
+            } else {
+                registerActiveAgi(clonedAgi);
+                saveAgi(clonedAgi);
+                open(clonedAgi);
+            }
 
-            log.info("Session cloned successfully into new session: {}", newSessionId);
+            log.info("Cloned successfully into: {}", targetId);
             return clonedAgi;
         } catch (Exception e) {
             log.error("Failed to clone session {}", agi.getConfig().getSessionId(), e);
@@ -431,12 +773,13 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     }
 
     /**
-     * Registers a newly spawned or cloned Agi session with this container.
+     * Authoritatively clones an existing Agi session or template with an auto-generated UUID.
      *
-     * @param agi The session to register.
+     * @param agi The source Agi session to clone.
+     * @return The newly cloned and registered Agi session.
      */
-    public void registerSession(Agi agi) {
-        registerInternal(agi);
+    public Agi cloneAgi(@NonNull Agi agi) {
+        return AbstractAsiContainer.this.cloneAgi(agi, null);
     }
 
     /**
@@ -445,7 +788,7 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      *
      * @param agi The agi session to unregister.
      */
-    public void unregister(Agi agi) {
+    public void unregisterAgi(Agi agi) {
         synchronized (activeAgis) {
             List<Agi> old = new ArrayList<>(activeAgis);
             if (activeAgis.remove(agi)) {
@@ -468,10 +811,12 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
     }
 
     /**
-     * Retrieves an active Agi instance from the container pool by its unique UUID / session ID.
+     * Retrieves an active Agi instance from the container pool by its unique
+     * UUID / session ID.
      *
      * @param uuid The unique UUID or session ID of the Agi instance.
-     * @return The matching Agi instance, or {@code null} if not found or if uuid is null.
+     * @return The matching Agi instance, or {@code null} if not found or if
+     * uuid is null.
      */
     public Agi getAgi(String uuid) {
         if (uuid == null || uuid.isBlank()) {
@@ -546,21 +891,11 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      * @param agi The new session.
      */
     protected void configureNewAgi(Agi agi) {
-        AgiConfig template = preferences.getAgiTemplate();
-
-        if (agi.getConfig().getSelectedProviderUuid() == null) {
-            agi.getConfig().setSelectedProviderUuid(template.getSelectedProviderUuid());
-        }
-
-        if (agi.getConfig().getSelectedModelId() == null) {
-            agi.getConfig().setSelectedModelId(template.getSelectedModelId());
-        }
-
         // Apply selected model state to the orchestrator if IDs are present
         if (agi.getConfig().getSelectedModelId() != null) {
             log.info("Applying DNA-defined default model ({}) to new session", agi.getConfig().getSelectedModelId());
             AbstractAiProvider prov = getProvider(agi.getConfig().getSelectedProviderUuid());
-            Optional<? extends AbstractModel> am = prov.findModel(agi.getConfig().getSelectedModelId());
+            Optional<? extends AbstractModel> am = prov.getModel(agi.getConfig().getSelectedModelId());
             if (am.isPresent()) {
                 agi.setSelectedModel(am.get());
             }
@@ -588,6 +923,7 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      *
      * @return The sessions directory path.
      */
+    @SneakyThrows
     public Path getSessionsDir() {
         return getAppDirSubDir("sessions");
     }
@@ -597,10 +933,9 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      *
      * @return The saved sessions directory path.
      */
+    @SneakyThrows
     public Path getSavedSessionsDir() {
-        Path dir = getSessionsDir().resolve("saved");
-        ensureDirectory(dir);
-        return dir;
+        return getSubdirectory(getSessionsDir(), "saved");
     }
 
     /**
@@ -608,10 +943,9 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      *
      * @return The disposed sessions directory path.
      */
+    @SneakyThrows
     public Path getDisposedSessionsDir() {
-        Path dir = getSessionsDir().resolve("disposed");
-        ensureDirectory(dir);
-        return dir;
+        return getSubdirectory(getSessionsDir(), "disposed");
     }
 
     /**
@@ -619,37 +953,50 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      *
      * @return The unloadable sessions directory path.
      */
+    @SneakyThrows
     public Path getUnloadableSessionsDir() {
-        Path dir = getSessionsDir().resolve("unloadable");
-        ensureDirectory(dir);
+        return getSubdirectory(getSessionsDir(), "unloadable");
+    }
+
+    /**
+     * Ensures that a given directory exists on disk, creating it if missing.
+     *
+     * @param dir The directory path to verify and create.
+     * @return The verified directory path.
+     * @throws IOException If creating the directory fails.
+     */
+    public static Path ensureDir(Path dir) throws IOException {
+        if (!Files.exists(dir)) {
+            Files.createDirectories(dir);
+        }
         return dir;
     }
 
     /**
-     * Surgically ensures that a given directory path exists on disk, creating
-     * all necessary parent directories if they are missing.
+     * Resolves a named subdirectory against a parent path, ensuring it exists
+     * on disk.
      *
-     * @param dir The directory path to verify and create.
+     * @param parent The parent directory path.
+     * @param subdirName The name of the child directory.
+     * @return The verified subdirectory path.
+     * @throws IOException If directory creation fails.
      */
-    private void ensureDirectory(Path dir) {
-        try {
-            if (!Files.exists(dir)) {
-                Files.createDirectories(dir);
-            }
-        } catch (IOException e) {
-            log.error("Could not create directory: {}", dir, e);
-        }
+    public static Path getSubdirectory(Path parent, String subdirName) throws IOException {
+        Path dir = parent.resolve(subdirName);
+        return ensureDir(dir);
     }
 
     /**
-     * Performs an automatic backup of the session using Kryo serialization. 
-     * <p>Implementation details: Only proceeds if the agi is in a stable state 
-     * (IDLE, TOOL_PROMPT, etc.) to prevent serialization during volatile 
+     * Performs an automatic backup of the session using Kryo serialization.
+     * <p>
+     * Implementation details: Only proceeds if the agi is in a stable state
+     * (IDLE, TOOL_PROMPT, etc.) to prevent serialization during volatile
      * operations like streaming.</p>
-     * @param agi    The agi session to save.
+     *
+     * @param agi The agi session to save.
      * @param reason A description of why the save was triggered.
      */
-    public void autoSaveSession(Agi agi, String reason) {
+    public void autoSaveSession(Agi agi, String reason) throws IOException {
         AgiStatus status = agi.getStatusManager().getCurrentStatus();
 
         boolean isStable = status == AgiStatus.IDLE
@@ -665,70 +1012,74 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
             return;
         }
 
-        log.info("auto-save for session {} - status: {} - reason:" + reason,
-                reason, agi.getConfig().getSessionId(), status);
+        log.info("auto-save for {} {} - status: {} - reason: {}",
+                isTemplate(agi) ? "template" : "session", agi.getConfig().getSessionId(), status, reason);
 
-        saveSessionTo(agi, getSessionsDir());
+        saveAgi(agi);
     }
 
     /**
-     * Manually saves the session to the 'saved' directory.
+     * Gets the primary persistence directory for the given AGI session or template.
      *
-     * @param agi The agi session to save.
+     * @param agi The AGI instance.
+     * @return The templates directory if template, or sessions directory if active session.
+     * @throws IOException If creating the directory fails.
      */
-    public void manualSaveSession(Agi agi) {
-        saveSessionTo(agi, getSavedSessionsDir());
+    public Path getPersistenceDir(Agi agi) throws IOException {
+        return isTemplate(agi) ? getTemplatesDir() : getSessionsDir();
     }
 
     /**
-     * Serializes and saves a agi session to a specific directory using Kryo.
-     * This method is synchronized on the agi instance to prevent concurrent
-     * write issues.
+     * Saves the AGI instance to its designated persistence directory.
+     *
+     * @param agi The AGI instance to save.
+     * @throws IOException If saving fails.
+     */
+    public void saveAgi(Agi agi) throws IOException {
+        saveAgiTo(agi, getPersistenceDir(agi));
+    }
+
+    /**
+     * Manually saves the session to the 'saved' directory, or to templates if template.
      *
      * @param agi The agi session to save.
-     * @param dir The destination directory.
      */
-    private void saveSessionTo(Agi agi, Path dir) {
-        synchronized (agi) {
-            String sessionId = agi.getConfig().getSessionId();
-            Path file = dir.resolve(sessionId + ".kryo");
-            Path tmpFile = dir.resolve(sessionId + ".kryo.tmp");
-            try {
-                log.info("Saving session {} to {}", sessionId, file);
-                byte[] data = KryoUtils.serialize(agi);
-
-                // 1. Write to temporary file
-                Files.write(tmpFile, data);
-
-                // 2. Atomic move to destination
-                try {
-                    Files.move(tmpFile, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-                } catch (java.nio.file.AtomicMoveNotSupportedException e) {
-                    log.warn("Atomic move not supported on this filesystem, falling back to standard move for: {}", file);
-                    Files.move(tmpFile, file, StandardCopyOption.REPLACE_EXISTING);
-                }
-
-            } catch (IOException e) {
-                log.error("Failed to save session: {}", sessionId, e);
-                // Attempt to clean up the orphaned temp file
-                try {
-                    Files.deleteIfExists(tmpFile);
-                } catch (IOException ex) {
-                    log.debug("Could not delete temporary file: {}", tmpFile);
-                }
-            }
+    public void manualSaveSession(Agi agi) throws IOException {
+        if (isTemplate(agi)) {
+            saveAgi(agi);
+        } else {
+            saveAgiTo(agi, getSavedSessionsDir());
         }
     }
 
     /**
-     * Permanently disposes of a agi session, shutting it down and moving its
+     * Serializes and saves an Agi session to a specific directory using Kryo.
+     * This method is synchronized on the Agi instance to prevent concurrent
+     * write issues.
+     *
+     * @param agi The Agi session to save.
+     * @param dir The destination directory.
+     * @throws IOException If saving fails.
+     */
+    private void saveAgiTo(Agi agi, Path dir) throws IOException {
+        synchronized (agi) {
+            String sessionId = agi.getConfig().getSessionId();
+            Path file = dir.resolve(sessionId + ".kryo");
+            log.info("Saving session {} to {}", sessionId, file);
+            KryoUtils.saveToFile(agi, file);
+        }
+    }
+
+    /**
+     * Permanently disposes of a agi session or template, shutting it down and moving its
      * serialized file to the 'disposed' directory.
      *
      * @param agi The agi session to dispose.
      */
+    @SneakyThrows
     public void dispose(Agi agi) {
         String sessionId = agi.getConfig().getSessionId();
-        log.info("Disposing session: {}", sessionId);
+        log.info("Disposing {}: {}", isTemplate(agi) ? "template" : "session", sessionId);
 
         // 0. Authoritatively close the UI if it's open
         close(agi);
@@ -736,101 +1087,287 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
         // 1. Shutdown the agi (stops executors, etc.)
         agi.shutdown();
 
-        // 2. Move the session file from active to disposed
-        Path activeFile = getSessionsDir().resolve(sessionId + ".kryo");
+        // 2. Move the file from active to disposed
+        Path sourceDir = getPersistenceDir(agi);
+        Path activeFile = sourceDir.resolve(sessionId + ".kryo");
         if (Files.exists(activeFile)) {
-            try {
-                Path disposedFile = getDisposedSessionsDir().resolve(sessionId + ".kryo");
-                Files.move(activeFile, disposedFile, StandardCopyOption.REPLACE_EXISTING);
-                log.info("Moved session file to disposed directory: {}", disposedFile);
-            } catch (IOException e) {
-                log.error("Failed to move session file to disposed directory", e);
-            }
+            Path disposedFile = getSubdirectory(sourceDir, "disposed").resolve(sessionId + ".kryo");
+            Files.move(activeFile, disposedFile, StandardCopyOption.REPLACE_EXISTING);
+            log.info("Moved file to disposed directory: {}", disposedFile);
         }
 
-        // 3. Unregister from active list (fires property change)
-        unregister(agi);
+        // 3. Unregister from list (fires property change)
+        if (isTemplate(agi)) {
+            unregisterTemplate(agi);
+        } else {
+            unregisterAgi(agi);
+        }
     }
 
     /**
-     * Imports a agi session from an external file. The session is assigned a
+     * Imports an Agi session from an external file. The session is assigned a
      * new ID to avoid collisions and registered as a new active agi.
      *
      * @param path The path to the serialized session file.
-     * @return The imported Agi session, or null if import failed.
+     * @return The imported Agi session.
+     * @throws IOException If reading the session file fails.
      */
-    public Agi importSession(Path path) {
+    public Agi importSession(Path path) throws IOException {
+        log.info("Importing session from {}", path);
+        Agi agi = KryoUtils.loadFromFile(path, Agi.class);
+
+        // Always generate a new session ID for imported sessions to avoid collisions
+        agi.getConfig().setSessionId(UUID.randomUUID().toString());
+
+        agi.bindToContainer(this);
+        registerActiveAgi(agi);
+        return agi;
+    }
+
+    /**
+     * Deserializes an Agi instance from a file, rebinds it to this container, and
+     * automatically moves it to the 'unloadable' subdirectory on failure.
+     *
+     * @param path The path to the serialized AGI file.
+     * @return The loaded Agi instance, or null if loading failed.
+     */
+    public Agi loadAgi(Path path) {
         try {
-            log.info("Importing session from {}", path);
-            byte[] data = Files.readAllBytes(path);
-            Agi agi = KryoUtils.deserialize(data, Agi.class);
-
-            // Always generate a new session ID for imported sessions to avoid collisions
-            agi.getConfig().setSessionId(UUID.randomUUID().toString());
-
+            log.info("Loading AGI from {}", path);
+            Agi agi = KryoUtils.loadFromFile(path, Agi.class);
             agi.bindToContainer(this);
-            registerInternal(agi);
             return agi;
-        } catch (Exception e) {
-            log.error("Failed to import session from {}", path, e);
+        } catch (Throwable t) {
+            log.error("Failed to load AGI from {}. Moving to unloadable directory.", path, t);
+            try {
+                Path unloadablePath = getSubdirectory(path.getParent(), "unloadable").resolve(path.getFileName());
+                Files.move(path, unloadablePath, StandardCopyOption.REPLACE_EXISTING);
+                log.info("Moved incompatible AGI to: {}", unloadablePath);
+                addNotification("Incompatible AGI moved to unloadable: " + path.getFileName());
+            } catch (IOException e) {
+                log.error("Failed to move incompatible AGI to unloadable directory: {}", path, e);
+            }
             return null;
         }
     }
 
     /**
-     * Scan the sessions directory and loads all serialized agi sessions. This
-     * is typically called during application startup.
+     * Scans a directory for .kryo files in parallel, deserializes each via {@link #loadAgi(Path)},
+     * and invokes the registration callback as each finishes loading.
      *
-     * @return The number of sessions that failed to load.
+     * @param dir The directory to load from.
+     * @param registrationCallback The callback to invoke for each successfully loaded AGI.
+     * @return The count of successfully loaded AGIs.
      */
-    public int loadSessions() {
-        Path sessionsDir = getSessionsDir();
-        if (!Files.exists(sessionsDir)) {
-            return 0;
-        }
-
-        AtomicInteger failedCount = new AtomicInteger(0);
-        try (Stream<Path> stream = Files.list(sessionsDir)) {
-            stream.filter(p -> !Files.isDirectory(p)) // Only load files from the root (active sessions)
+    public int loadAgis(Path dir, Consumer<Agi> registrationCallback) {
+        AtomicInteger count = new AtomicInteger(0);
+        try (Stream<Path> stream = Files.list(dir)) {
+            stream.filter(p -> !Files.isDirectory(p))
                     .filter(p -> p.toString().endsWith(".kryo"))
                     .parallel()
                     .forEach(p -> {
-                        if (!loadSession(p)) {
-                            failedCount.incrementAndGet();
+                        Agi agi = loadAgi(p);
+                        if (agi != null) {
+                            registrationCallback.accept(agi);
+                            count.incrementAndGet();
                         }
                     });
         } catch (IOException e) {
-            log.error("Failed to list sessions in {}", sessionsDir, e);
+            log.error("Failed to list directory: {}", dir, e);
         }
-        return failedCount.get();
+        return count.get();
     }
 
     /**
-     * Loads a single agi session from a file, rebinds it to this container, and
-     * registers it.
+     * Scans the sessions directory and loads all serialized active Agi sessions.
      *
-     * @param path The path to the serialized session file.
-     * @return true if the session was loaded successfully, false otherwise.
+     * @return The number of sessions loaded.
      */
-    private boolean loadSession(Path path) {
-        try {
-            log.info("Loading session from {}", path);
-            byte[] data = Files.readAllBytes(path);
-            Agi agi = KryoUtils.deserialize(data, Agi.class);
-            agi.bindToContainer(this);
-            registerInternal(agi);
-            return true;
-        } catch (Throwable t) {
-            log.error("Failed to load session from {}. Moving to unloadable directory.", path, t);
-            try {
-                Path unloadablePath = getUnloadableSessionsDir().resolve(path.getFileName());
-                Files.move(path, unloadablePath, StandardCopyOption.REPLACE_EXISTING);
-                log.info("Moved incompatible session to: {}", unloadablePath);
-            } catch (IOException e) {
-                log.error("Failed to move incompatible session to unloadable directory: {}", path, e);
-            }
-            return false;
+    @SneakyThrows
+    public int loadSessions() {
+        return loadAgis(getSessionsDir(), this::registerActiveAgi);
+    }
+
+    // --- TEMPLATE MANAGEMENT ---
+
+    /**
+     * Checks if the given session is an AGI template managed by this container.
+     *
+     * @param agi The AGI session to check.
+     * @return true if the session is registered in the templates list.
+     */
+    public boolean isTemplate(@NonNull Agi agi) {
+        synchronized (templates) {
+            return templates.contains(agi);
         }
+    }
+
+    /**
+     * Scans the templates directory and loads all serialized AGI templates into memory.
+     *
+     * @return The number of templates loaded from disk.
+     */
+    @SneakyThrows
+    public int loadTemplatesFromDisk() {
+        return loadAgis(getTemplatesDir(), this::registerTemplate);
+    }
+
+    /**
+     * Gets an unmodifiable list of all registered AGI templates.
+     *
+     * @return List of AGI templates.
+     */
+    public List<Agi> getTemplates() {
+        synchronized (templates) {
+            return Collections.unmodifiableList(new ArrayList<>(templates));
+        }
+    }
+
+    /**
+     * Finds the default template whose session ID is "default" (case-insensitive).
+     *
+     * @return The default template, or null if none is configured.
+     */
+    public Agi getDefaultTemplate() {
+        synchronized (templates) {
+            return templates.stream()
+                    .filter(t -> "default".equalsIgnoreCase(t.getConfig().getSessionId()))
+                    .findFirst()
+                    .orElse(null);
+        }
+    }
+
+    /**
+     * Registers a template instance into the container's template registry and fires a property change event.
+     * If a template with the same session ID already exists, it is replaced.
+     *
+     * @param templateAgi The template to register.
+     */
+    public void registerTemplate(@NonNull Agi templateAgi) {
+        synchronized (templates) {
+            List<Agi> old = new ArrayList<>(templates);
+            templates.removeIf(t -> t.getConfig().getSessionId().equals(templateAgi.getConfig().getSessionId()));
+            templates.add(templateAgi);
+            propertyChangeSupport.firePropertyChange("templates", old, Collections.unmodifiableList(templates));
+            log.info("Registered AGI template: {}", templateAgi.getConfig().getSessionId());
+        }
+    }
+
+    /**
+     * Unregisters a template from the container's template registry and fires a property change event.
+     *
+     * @param templateAgi The template to unregister.
+     */
+    public void unregisterTemplate(Agi templateAgi) {
+        synchronized (templates) {
+            List<Agi> old = new ArrayList<>(templates);
+            if (templates.remove(templateAgi)) {
+                propertyChangeSupport.firePropertyChange("templates", old, Collections.unmodifiableList(templates));
+                log.info("Unregistered AGI template: {}", templateAgi.getConfig().getSessionId());
+            }
+        }
+    }
+
+    /**
+     * Authoritatively creates and opens a new active AGI session cloned directly from a template file on disk.
+     *
+     * @param templateId The unique ID of the template.
+     * @return The newly created, active, and opened AGI session.
+     */
+    public Agi createNewAgiFromTemplate(String templateId) {
+        log.info("Creating new AGI session from template: {}", templateId);
+        try {
+            Path file = getTemplatesDir().resolve(templateId + ".kryo");
+            Agi newAgi = KryoUtils.loadFromFile(file, Agi.class);
+            String newSessionId = UUID.randomUUID().toString();
+            newAgi.getConfig().setSessionId(newSessionId);
+            newAgi.getConfig().setParentUuid(null);
+            newAgi.bindToContainer(this);
+            registerActiveAgi(newAgi);
+            saveAgi(newAgi);
+            open(newAgi);
+            return newAgi;
+        } catch (Exception e) {
+            log.error("Failed to create AGI from template {}", templateId, e);
+            throw new RuntimeException("Failed to create AGI from template", e);
+        }
+    }
+
+    /**
+     * Authoritatively creates and opens a new active AGI session cloned from a template instance.
+     *
+     * @param templateAgi The template to clone from.
+     * @return The newly created, active, and opened AGI session.
+     */
+    public Agi createNewAgiFromTemplate(Agi templateAgi) {
+        return createNewAgiFromTemplate(templateAgi.getConfig().getSessionId());
+    }
+
+    /**
+     * Creates and saves a new template cloned from an active AGI session, preserving its nickname.
+     *
+     * @param sessionAgi The source session to base the template on.
+     * @param templateId The unique template ID (used as sessionId and filename).
+     * @return The created template Agi.
+     * @throws IOException If saving fails.
+     */
+    public Agi createTemplateFromSession(@NonNull Agi sessionAgi, @NonNull String templateId) throws IOException {
+        Agi templateAgi = KryoUtils.clone(sessionAgi);
+        templateAgi.getConfig().setSessionId(templateId);
+        templateAgi.getConfig().setParentUuid(null);
+        templateAgi.setOpen(false);
+        templateAgi.setStagedUserMessage(null);
+        templateAgi.clearToolPrompt();
+        templateAgi.bindToContainer(this);
+        registerTemplate(templateAgi);
+        saveAgi(templateAgi);
+        return templateAgi;
+    }
+
+    /**
+     * Creates, configures, and saves a fresh new template.
+     *
+     * @param templateId The unique template ID.
+     * @return The created template Agi.
+     * @throws IOException If saving fails.
+     */
+    public Agi createTemplate(@NonNull String templateId) throws IOException {
+        AgiConfig config = createNewAgiConfig();
+        config.setSessionId(templateId);
+        Agi templateAgi = new Agi(config);
+        configureNewAgi(templateAgi);
+        registerTemplate(templateAgi);
+        saveAgi(templateAgi);
+        return templateAgi;
+    }
+
+    /**
+     * Starts a dedicated low-priority daemon thread that polls API key files once per second.
+     * <p>
+     * This ensures that external edits to key files on disk are detected within 1 second without
+     * placing any synchronous disk I/O onto the Swing Event Dispatch Thread (EDT).
+     * </p>
+     */
+    private void startKeyFileWatcherThread() {
+        keyWatcherThread = new Thread(() -> {
+            while (keyWatcherRunning) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    break;
+                }
+                for (AbstractAiProvider provider : providerRegistry.values()) {
+                    try {
+                        provider.reloadKeyPoolIfNeeded();
+                    } catch (Throwable t) {
+                        log.warn("Error checking key file for provider {}: {}", provider.getUuid(), t.getMessage());
+                    }
+                }
+            }
+        }, "anahata-asi-key-file-watcher");
+        keyWatcherThread.setDaemon(true);
+        keyWatcherThread.setPriority(Thread.MIN_PRIORITY);
+        keyWatcherThread.start();
     }
 
     /**
@@ -838,19 +1375,11 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      */
     public void shutdown() {
         log.info("Shutting down AsiContainer: {}", hostApplicationId);
-        executor.shutdown();
-    }
-
-    // --- STATIC METHODS FOR GLOBAL ACCESS ---
-    /**
-     * Static initializer to ensure the root working directory exists.
-     */
-    static {
-        try {
-            Files.createDirectories(getWorkDir());
-        } catch (IOException e) {
-            throw new RuntimeException("Could not create root work dir: " + getWorkDir(), e);
+        keyWatcherRunning = false;
+        if (keyWatcherThread != null) {
+            keyWatcherThread.interrupt();
         }
+        executor.shutdown();
     }
 
     /**
@@ -859,6 +1388,10 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      * @return The root working directory path.
      */
     public static Path getWorkDir() {
+        String snapUserData = System.getenv("SNAP_USER_DATA");
+        if (snapUserData != null && !snapUserData.isBlank()) {
+            return Paths.get(snapUserData, ".anahata", "asi");
+        }
         return Paths.get(System.getProperty("user.home"), ".anahata", "asi");
     }
 
@@ -870,13 +1403,8 @@ public abstract class AbstractAsiContainer extends BasicPropertyChangeSource {
      * @param name The name of the subdirectory.
      * @return The Path object for the subdirectory.
      */
+    @SneakyThrows
     public static Path getWorkDirSubDir(String name) {
-        Path dir = getWorkDir().resolve(name);
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            log.error("Could not create global subdirectory: {}", dir, e);
-        }
-        return dir;
+        return getSubdirectory(getWorkDir(), name);
     }
 }

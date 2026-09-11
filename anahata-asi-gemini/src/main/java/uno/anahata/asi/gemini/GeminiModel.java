@@ -1,6 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.gemini;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.genai.Client;
 import com.google.genai.ResponseStream;
 import com.google.genai.types.Candidate;
@@ -11,7 +12,6 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.GoogleSearch;
-import com.google.genai.types.ListModelsConfig;
 import com.google.genai.types.Model;
 import com.google.genai.types.Part;
 import com.google.genai.types.ToolCodeExecution;
@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.gemini.adapter.GeminiContentAdapter;
@@ -36,10 +35,10 @@ import uno.anahata.asi.agi.message.ModelTextPart;
 import uno.anahata.asi.agi.provider.RequestConfig;
 import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.provider.StreamObserver;
-import uno.anahata.asi.agi.provider.AbstractAiProvider;
 import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.agi.provider.ApiCallInterruptedException;
 import uno.anahata.asi.agi.provider.FinishReason;
+import uno.anahata.asi.agi.provider.ResponseModality;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
 import uno.anahata.asi.agi.provider.RetryableApiException;
@@ -61,10 +60,7 @@ import uno.anahata.asi.internal.JacksonUtils;
 @Slf4j
 public class GeminiModel extends AbstractModel {
 
-    /**
-     * The owning provider instance.
-     */
-    private final GeminiAiProvider provider;
+
     /**
      * The unique model identifier (e.g. 'models/gemini-1.5-flash').
      */
@@ -87,31 +83,48 @@ public class GeminiModel extends AbstractModel {
         this.provider = provider;
         this.genaiModel = genaiModel;
         this.modelId = genaiModel.name().orElseThrow(() -> new IllegalArgumentException("Model name is required"));
-    }
-
-    /**
-     * Lazily restores or returns the native GenAI model metadata.
-     *
-     * @return The active Model instance.
-     */
-    private synchronized Model getGenaiModel() {
-        if (genaiModel == null) {
-            log.info("Restoring transient Gemini model: {}", modelId);
-            var pager = provider.getClient().models.list(ListModelsConfig.builder().build());
-            genaiModel = StreamSupport.stream(pager.spliterator(), false)
-                    .filter(m -> modelId.equals(m.name().orElse(null)))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("Could not restore Gemini model: " + modelId));
+        this.displayName = genaiModel.displayName().orElse(this.modelId);
+        this.description = genaiModel.description().orElse("");
+        this.version = genaiModel.version().orElse("");
+        this.maxInputTokens = genaiModel.inputTokenLimit().orElse(null);
+        this.maxOutputTokens = genaiModel.outputTokenLimit().orElse(null);
+        this.defaultTemperature = genaiModel.temperature().orElse(null);
+        this.defaultTopK = genaiModel.topK().orElse(null);
+        this.defaultTopP = genaiModel.topP().orElse(null);
+        this.supportedActions = new ArrayList<>(genaiModel.supportedActions().orElse(Collections.emptyList()));
+        try {
+            JsonNode node = JacksonUtils.parse(genaiModel.toJson(), JsonNode.class);
+            this.rawDescription = node.toPrettyString();
+        } catch (Exception e) {
+            this.rawDescription = genaiModel.toJson();
         }
-        return genaiModel;
+
+        List<ResponseModality> modalities = new ArrayList<>();
+        String id = getModelId().toLowerCase();
+        modalities.add(ResponseModality.TEXT);
+        if (id.contains("image") || id.contains("banana") || id.contains("omni")) {
+            modalities.add(ResponseModality.IMAGE);
+        }
+        if (id.contains("lyria") || id.contains("live") || id.contains("tts") || id.contains("audio") || id.contains("omni")) {
+            modalities.add(ResponseModality.AUDIO);
+        }
+        if (id.contains("veo") || id.contains("omni")) {
+            modalities.add(ResponseModality.VIDEO);
+        }
+        this.supportedResponseModalities = modalities;
     }
 
     /**
      * {@inheritDoc}
+     * <p>
+     * Returns the parent {@link GeminiAiProvider} instance owning this model.
+     * </p>
+     *
+     * @return The Gemini AI provider instance.
      */
     @Override
-    public AbstractAiProvider getProvider() {
-        return provider;
+    public GeminiAiProvider getProvider() {
+        return (GeminiAiProvider) provider;
     }
 
     /**
@@ -276,101 +289,6 @@ public class GeminiModel extends AbstractModel {
      * {@inheritDoc}
      */
     @Override
-    public String getDisplayName() {
-        return getGenaiModel().displayName().orElse("");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getDescription() {
-        String desc = getGenaiModel().description().orElse("");
-        String displayName = getDisplayName();
-        if (desc.isEmpty() || desc.equalsIgnoreCase(displayName)) {
-            return "";
-        }
-        return desc;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getVersion() {
-        return getGenaiModel().version().orElse("");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Integer getMaxInputTokens() {
-        return getGenaiModel().inputTokenLimit().orElse(null);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Integer getMaxOutputTokens() {
-        return getGenaiModel().outputTokenLimit().orElse(null);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<String> getSupportedActions() {
-        return getGenaiModel().supportedActions().orElse(Collections.emptyList());
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Implementation details: Escapes special HTML characters in the model
-     * metadata to ensure safe rendering in the NetBeans HTML view.</p>
-     */
-    @Override
-    public String getRawDescription() {
-        Model m = getGenaiModel();
-        String json = m.toJson();
-        String toString = m.toString();
-
-        // Return only the inner content. WrappingHtmlPane add the <html><body> tags.
-        return "<html><b>ID: </b>" + escapeHtml(getModelId()) + "<br>"
-                + "<b>Display Name: </b>" + escapeHtml(getDisplayName()) + "<br>"
-                + "<b>Version: </b>" + escapeHtml(getVersion()) + "<br>"
-                + "<b>Description: </b>" + escapeHtml(getDescription()) + "<br>"
-                + "<b>Supported Actions: </b>" + getSupportedActions() + "<br>"
-                + "<b>Labels: </b>" + m.labels().orElse(Collections.EMPTY_MAP) + "<br>"
-                + "<b>TunedModelInfo: </b>" + m.tunedModelInfo().orElse(null) + "<br>"
-                + "<hr>"
-                + "<b>toString():</b><pre style='white-space: pre-wrap; word-wrap: break-word;'></pre>"
-                + "<div style='width: 300px;'>"
-                + toString
-                + "</pre></div></html>";
-    }
-
-    /**
-     * Escapes special HTML characters in a string.
-     *
-     * @param text The text to escape.
-     * @return The escaped text.
-     */
-    private String escapeHtml(String text) {
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#x27;")
-                .replace("/", "&#x2F;");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public boolean isSupportsFunctionCalling() {
         // Currently we have no way of knowing if a model supports tool calling or not 
         // (because 'tool' is never listed as a supported action). Just always return true for now.
@@ -409,17 +327,6 @@ public class GeminiModel extends AbstractModel {
         return getSupportedActions().contains("createCachedContent");
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<String> getSupportedResponseModalities() {
-        List<String> modalities = new ArrayList<>();
-        modalities.add("TEXT");
-        modalities.add("IMAGE");
-        modalities.add("AUDIO");
-        return modalities;
-    }
 
     /**
      * {@inheritDoc}
@@ -445,30 +352,6 @@ public class GeminiModel extends AbstractModel {
         return getAvailableServerTools().stream()
                 .filter(st -> st.getId().equals(GoogleSearch.class))
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Float getDefaultTemperature() {
-        return getGenaiModel().temperature().orElse(null);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Integer getDefaultTopK() {
-        return getGenaiModel().topK().orElse(null);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Float getDefaultTopP() {
-        return getGenaiModel().topP().orElse(null);
     }
 
     /**
@@ -529,7 +412,7 @@ public class GeminiModel extends AbstractModel {
      */
     @Override
     public Response generateContent(GenerationRequest request) {
-        Client client = provider.getClient();
+        Client client = getProvider().getClient();
         GeminiGenerateContentParameters prepared = prepareGenerateContentParameters(request);
 
         log.info("Sending request to Gemini model: {} {} content elements", getModelId(), prepared.history().size());
@@ -556,7 +439,7 @@ public class GeminiModel extends AbstractModel {
                 throw new ApiCallInterruptedException(e);
             }
             if (isRetryable(e)) {
-                provider.hokusPocus();
+                getProvider().hokusPocus();
                 throw new RetryableApiException(client.apiKey(), e.toString(), e);
             }
             throw e;
@@ -579,7 +462,7 @@ public class GeminiModel extends AbstractModel {
      */
     @Override
     public void generateContentStream(GenerationRequest request, StreamObserver<Response<? extends AbstractModelMessage>> observer) {
-        Client client = provider.getClient();
+        Client client = getProvider().getClient();
         GeminiGenerateContentParameters prepared = prepareGenerateContentParameters(request);
         Agi agi = request.config().getAgi();
 
@@ -638,7 +521,7 @@ public class GeminiModel extends AbstractModel {
                     target.setModelId(lastGeminiResponse.getModelVersion());
 
                     if (target.getFinishReason() == null) {
-                        target.setFinishReason(FinishReason.GOD_FUCKING_KNOWS);
+                        target.setFinishReason(FinishReason.GOD_KNOWS);
                     }
                 }
             }
@@ -649,7 +532,7 @@ public class GeminiModel extends AbstractModel {
             if (isInterruption(e)) {
                 observer.onError(new ApiCallInterruptedException(e));
             } else if (isRetryable(e)) {
-                provider.hokusPocus();
+                getProvider().hokusPocus();
                 observer.onError(new RetryableApiException(client.apiKey(), e.toString(), e));
             } else {
                 observer.onError(e);

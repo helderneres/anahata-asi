@@ -4,11 +4,28 @@
 package uno.anahata.asi.swing;
 
 import java.awt.Component;
+import java.awt.GraphicsEnvironment;
 import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import uno.anahata.asi.AsiContainerProperties;
+import uno.anahata.asi.AsiContainerUpgrade;
+import uno.anahata.asi.Version;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +41,8 @@ import uno.anahata.asi.mistral.MistralAiProvider;
 import uno.anahata.asi.modal.ModalProvider;
 import uno.anahata.asi.novarouteai.NovaRouteAiProvider;
 import uno.anahata.asi.nvidia.NvidiaAiProvider;
+import uno.anahata.asi.ollama.OllamaAiProvider;
+import uno.anahata.asi.openrouter.OpenRouterAiProvider;
 import uno.anahata.asi.openai.OpenAiResponsesProvider;
 import uno.anahata.asi.openai.compatible.OpenAiChatCompletionsProvider;
 import uno.anahata.asi.swing.agi.AgiPanel;
@@ -32,7 +51,16 @@ import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactor
 import uno.anahata.asi.swing.agi.message.part.tool.param.PathParameterRenderer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ResourceUUIDParameterRenderer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.UriParameterRenderer;
+import uno.anahata.asi.swing.components.ExceptionDialog;
 import uno.anahata.asi.swing.internal.SwingUtils;
+import uno.anahata.asi.swing.provider.AiProviderUiRegistry;
+import uno.anahata.asi.swing.provider.AnthropicProviderPanel;
+import uno.anahata.asi.swing.provider.DiscoverModelsTask;
+import uno.anahata.asi.swing.provider.GeminiAiProviderPanel;
+import uno.anahata.asi.swing.provider.OllamaAiProviderPanel;
+import uno.anahata.asi.swing.provider.OpenAiChatCompletionsProviderPanel;
+import uno.anahata.asi.swing.provider.OpenAiResponsesProviderPanel;
+import uno.anahata.asi.swing.settings.AsiContainerSettingsFrame;
 import uno.anahata.asi.swing.toolkit.radio.RadioRenderer;
 import uno.anahata.asi.swing.toolkit.render.ToolkitUiRegistry;
 import uno.anahata.asi.toolkit.resources.text.FullTextFileCreate;
@@ -53,6 +81,8 @@ import uno.anahata.asi.yam.tools.Radio;
 @Setter
 public abstract class AbstractSwingAsiContainer extends AbstractAsiContainer {
     
+    protected static String javaFxVersionInfo;
+
     static {
         //Legengary Radio toolkit
         ToolkitUiRegistry.getInstance().register(Radio.class, RadioRenderer.class);
@@ -62,50 +92,95 @@ public abstract class AbstractSwingAsiContainer extends AbstractAsiContainer {
         ParameterRendererFactory.registerById("uri", UriParameterRenderer.class);
         ParameterRendererFactory.registerById("resource", ResourceUUIDParameterRenderer.class);
         ParameterRendererFactory.registerById("path", PathParameterRenderer.class);
+
+        // Provider UI Panel Registry
+        AiProviderUiRegistry.getInstance().register(GeminiAiProvider.class, GeminiAiProviderPanel.class);
+        AiProviderUiRegistry.getInstance().register(AnthropicProvider.class, AnthropicProviderPanel.class);
+        AiProviderUiRegistry.getInstance().register(OpenAiChatCompletionsProvider.class, OpenAiChatCompletionsProviderPanel.class);
+        AiProviderUiRegistry.getInstance().register(OpenAiResponsesProvider.class, OpenAiResponsesProviderPanel.class);
+        AiProviderUiRegistry.getInstance().register(OllamaAiProvider.class, OllamaAiProviderPanel.class);
     }
     
     /**
+     * Checks if the JavaFX Platform class is present on the classpath without loading it.
+     *
+     * @return true if JavaFX is available.
+     */
+    public static boolean isJavaFxAvailable() {
+        try {
+            Class.forName("javafx.application.Platform", false, AbstractSwingAsiContainer.class.getClassLoader());
+            return true;
+        } catch (ClassNotFoundException e) {
+            try {
+                Class.forName("javafx.application.Platform", false, Thread.currentThread().getContextClassLoader());
+                return true;
+            } catch (ClassNotFoundException ignored) {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Returns the detected JavaFX version and supported conditional features string,
+     * initializing the platform lazily via {@link uno.anahata.asi.swing.internal.JavaFxBridge}
+     * if available on the classpath.
+     *
+     * @return formatted JavaFX version and feature string, or null if JavaFX is not available.
+     */
+    public static synchronized String getJavaFxVersionInfo() {
+        if (javaFxVersionInfo == null && isJavaFxAvailable()) {
+            javaFxVersionInfo = uno.anahata.asi.swing.internal.JavaFxBridge.init();
+        }
+        return javaFxVersionInfo;
+    }
+
+    /**
      * List of all known AI Providers.
      */
-    public static final List<Class<? extends AbstractAiProvider>> AVAILABLE_PROVIDER_CLASSES = List.of(OpenAiChatCompletionsProvider.class,
-        uno.anahata.asi.openai.OpenAiResponsesProvider.class,
-        uno.anahata.asi.anthropic.AnthropicProvider.class,
-        uno.anahata.asi.minimax.MinimaxAnthropicProvider.class,
-        uno.anahata.asi.mistral.MistralAiProvider.class,
-        uno.anahata.asi.gemini.GeminiAiProvider.class,
-        uno.anahata.asi.gemini.GeminiGoogleCloudExpressAIProvider.class,
-        uno.anahata.asi.huggingface.HuggingFaceProvider.class,
-        uno.anahata.asi.modal.ModalProvider.class,
-        uno.anahata.asi.novarouteai.NovaRouteAiProvider.class,
-        uno.anahata.asi.nvidia.NvidiaAiProvider.class
+    public static final List<Class<? extends AbstractAiProvider>> AVAILABLE_PROVIDER_CLASSES = List.of(
+        OpenAiChatCompletionsProvider.class,
+        OpenAiResponsesProvider.class,
+        AnthropicProvider.class,
+        MinimaxAnthropicProvider.class,
+        MistralAiProvider.class,
+        GeminiAiProvider.class,
+        GeminiGoogleCloudExpressAIProvider.class,
+        HuggingFaceProvider.class,
+        ModalProvider.class,
+        NovaRouteAiProvider.class,
+        NvidiaAiProvider.class,
+        OllamaAiProvider.class,
+        OpenRouterAiProvider.class
     );
 
 
     /**
-     * The single-instance Preferences dashboard frame for this container.
+     * The single-instance Settings Command Center frame for this container.
      */
-    private javax.swing.JFrame preferencesFrame;
+    private AsiContainerSettingsFrame settingsFrame;
 
     /**
      * Constructs a new Swing ASI container.
-     * 
+     *
      * @param hostApplicationId The unique ID of the host application.
      */
-    public AbstractSwingAsiContainer(String hostApplicationId) {
+    public AbstractSwingAsiContainer(String hostApplicationId) throws IOException{
         super(hostApplicationId);
-        
+
         if (getProvider("GeminiGCExpress") == null) {
             registerProvider(new GeminiGoogleCloudExpressAIProvider());
         }
 
-        if (getProvider("Gemni") == null) {
-            registerProvider(new GeminiAiProvider("Gemini", "Google AI Studio", false));
+        if (getProvider("Gemini") == null) {
+            GeminiAiProvider g = new GeminiAiProvider("Gemini", "Google AI Studio", false);
+            registerProvider(g);
         }
 
         if (getProvider("GeminiVertex") == null) {
-            registerProvider(new GeminiAiProvider("GeminiVertex", "Google Cloud (Vertex)", true));
+            GeminiAiProvider g = new GeminiAiProvider("GeminiVertex", "Google Cloud (Vertex)", true);
+            registerProvider(g);
         }
-        
+
         if (getProvider("NovaRouteAI") == null) {
             registerProvider(new NovaRouteAiProvider());
         }
@@ -114,11 +189,10 @@ public abstract class AbstractSwingAsiContainer extends AbstractAsiContainer {
             log.info("Registering OpenAI");
             registerProvider(new OpenAiResponsesProvider());
         }
-        
+
         if (getProvider("Anthropic") == null) {
-            log.info("Registering OpenAI");
+            log.info("Registering Anthropic");
             AnthropicProvider anthropic = new AnthropicProvider();
-            anthropic.setEnabled(false);
             registerProvider(anthropic);
         }
 
@@ -126,7 +200,7 @@ public abstract class AbstractSwingAsiContainer extends AbstractAsiContainer {
             log.info("Registering MiniMax (Anthropic)");
             registerProvider(new MinimaxAnthropicProvider());
         }
-        
+
         if (getProvider("Modal") == null) {
             log.info("Registering Modal");
             registerProvider(new ModalProvider());
@@ -140,7 +214,6 @@ public abstract class AbstractSwingAsiContainer extends AbstractAsiContainer {
         if (getProvider("HuggingFace") == null) {
             log.info("Registering HF");
             HuggingFaceProvider hf = new HuggingFaceProvider();
-            hf.setEnabled(false);
             registerProvider(hf);
         }
 
@@ -148,6 +221,165 @@ public abstract class AbstractSwingAsiContainer extends AbstractAsiContainer {
             log.info("Registering NVIDIA");
             registerProvider(new NvidiaAiProvider());
         }
+
+        if (getProvider("OpenRouter") == null) {
+            log.info("Registering OpenRouter");
+            registerProvider(new OpenRouterAiProvider());
+        }
+        //Ollamas can be added manually or else the default one will be trying to connect to localhost all the time as it doesn't need api keys
+        /*
+        if (getProvider("Ollama") == null) {
+            log.info("Registering Ollama");
+            registerProvider(new OllamaAiProvider());
+        }
+        */
+
+        // Background Model Discovery for effectively enabled providers
+        for (AbstractAiProvider provider : getEffectivelyEnabledProviders()) {
+            new DiscoverModelsTask(provider, false).start();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Intercepts container directory resolution prior to creation to detect predecessor version
+     * directories. Prompts the user via Swing UI dialog and automatically migrates persistent
+     * settings if requested.
+     * </p>
+     */
+    @Override
+    public synchronized Path getDirectory() throws IOException {
+        Path base = getWorkDirSubDir(getHostApplicationId());
+        String version = getContainerVersion();
+        if (version == null || version.isBlank()) {
+            return base;
+        }
+        Path targetDir = base.resolve(version);
+
+        if (!Files.exists(targetDir)) {
+            Version currentVer = Version.parse(version).orElse(null);
+            if (currentVer != null) {
+                Optional<Path> predecessorOpt = AsiContainerUpgrade.findPredecessor(base, currentVer);
+                if (predecessorOpt.isPresent()) {
+                    Path predecessorDir = predecessorOpt.get();
+                    Version prevVer = Version.parse(predecessorDir.getFileName().toString()).orElse(null);
+                    String prevVerStr = prevVer != null ? prevVer.getCleanVersion() : predecessorDir.getFileName().toString();
+
+                    boolean userWantsImport = promptUpgrade(prevVerStr, currentVer.getCleanVersion());
+                    if (userWantsImport) {
+                        ensureDir(targetDir);
+                        int count = AsiContainerUpgrade.copySettings(predecessorDir, targetDir);
+                        log.info("Successfully imported {} settings from version {} to {}", count, prevVerStr, currentVer);
+                        showImportSuccess(count, prevVerStr);
+                    }
+                }
+            }
+
+            ensureDir(targetDir);
+            if (!AsiContainerProperties.exists(targetDir)) {
+                AsiContainerProperties.save(targetDir, version, getHostApplicationId(), Instant.now());
+            }
+        }
+
+        return targetDir;
+    }
+
+    /**
+     * Prompts the user via a native Swing dialog asking whether they would like to import
+     * persistent settings from an earlier detected version.
+     *
+     * @param previousVersion The predecessor version string.
+     * @param currentVersion The running container version string.
+     * @return {@code true} if the user elected to import, {@code false} to start fresh.
+     */
+    protected boolean promptUpgrade(String previousVersion, String currentVersion) {
+        if (GraphicsEnvironment.isHeadless()) {
+            return false;
+        }
+        AtomicBoolean accepted = new AtomicBoolean(false);
+        try {
+            SwingUtils.runInEDTAndWait(() -> {
+                String title = "Import Settings from Previous Version";
+                String message = "Anahata ASI found settings from an earlier version (" + previousVersion + ").\n\n"
+                        + "Would you like to import your AI providers, templates, and sessions into version " + currentVersion + "?";
+                Object[] options = {"Import", "Start Fresh"};
+                int choice = JOptionPane.showOptionDialog(
+                        null,
+                        message,
+                        title,
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        options,
+                        options[0]
+                );
+                accepted.set(choice == JOptionPane.YES_OPTION);
+            });
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Upgrade prompt interrupted: {}", e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to display upgrade prompt: {}", e.getMessage(), e);
+        }
+        return accepted.get();
+    }
+
+    /**
+     * Displays an informational dialog confirming that settings were successfully
+     * imported from an earlier version.
+     *
+     * @param count The number of entities imported.
+     * @param prevVerStr The predecessor version string.
+     */
+    private void showImportSuccess(int count, String prevVerStr) {
+        if (GraphicsEnvironment.isHeadless()) {
+            return;
+        }
+        try {
+            SwingUtils.runInEDTAndWait(() -> {
+                JOptionPane.showMessageDialog(
+                        null,
+                        "Successfully imported " + count + " settings from version " + prevVerStr + ".\n\n"
+                        + "Your AI providers, templates, and sessions are ready.",
+                        "Settings Imported",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+            });
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Import success dialog interrupted: {}", e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to display import success dialog: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Displays the global ASI settings Command Center in maximized mode.
+     */
+    public void showSettings() {
+        showSettings(0);
+    }
+
+    /**
+     * Displays the global ASI settings Command Center with a specific tab selected.
+     * <p>
+     * Reuses the existing {@link AsiContainerSettingsFrame} instance if already open,
+     * bringing it to front and selecting the requested tab index.
+     * </p>
+     *
+     * @param initialTabIndex The index of the tab to open.
+     */
+    public synchronized void showSettings(int initialTabIndex) {
+        if (settingsFrame == null || !settingsFrame.isDisplayable()) {
+            settingsFrame = new AsiContainerSettingsFrame(this, initialTabIndex);
+        } else {
+            settingsFrame.getSettingsPanel().selectTab(initialTabIndex);
+        }
+        settingsFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        settingsFrame.toFront();
+        settingsFrame.requestFocus();
+        settingsFrame.setVisible(true);
     }
 
     /**
@@ -219,9 +451,12 @@ public abstract class AbstractSwingAsiContainer extends AbstractAsiContainer {
         if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
             File selectedFile = chooser.getSelectedFile();
             log.info("User selected file for import: {}", selectedFile);
-            Agi imported = importSession(selectedFile.toPath());
-            if (imported != null) {
+            try {
+                Agi imported = importSession(selectedFile.toPath());
                 open(imported);
+            } catch (IOException ex) {
+                log.error("Could not import session with UI for " + selectedFile, ex);
+                ExceptionDialog.show(null, "Import AGI", "Import AGI failed", ex);
             }
         }
     }

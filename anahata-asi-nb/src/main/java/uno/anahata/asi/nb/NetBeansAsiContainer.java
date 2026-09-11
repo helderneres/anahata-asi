@@ -2,6 +2,7 @@
 package uno.anahata.asi.nb;
 
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -93,10 +94,10 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
 
     /**
      * Default constructor for the NetBeans container.
+     * @throws java.io.IOException if an error occurs initializing the container.
      */
-    public NetBeansAsiContainer() {
+    public NetBeansAsiContainer() throws IOException {
         super("netbeans");
-        new SwingTask<>(this, "Discovering AI Models", () -> getAllModels(true)).start();
     }
 
     /**
@@ -109,6 +110,32 @@ public class NetBeansAsiContainer extends AbstractSwingAsiContainer {
     @Override
     public AgiConfig createNewAgiConfig() {
         return new NetBeansAgiConfig(this);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Queries the NetBeans Module System for the active implementation or specification version
+     * of the Anahata ASI NetBeans module ({@code uno.anahata.asi.nb}).
+     * </p>
+     */
+    @Override
+    public String getContainerImplementationVersion() {
+        try {
+            org.openide.modules.ModuleInfo info = org.openide.modules.Modules.getDefault().ownerOf(getClass());
+            if (info != null) {
+                String implVer = info.getImplementationVersion();
+                if (implVer != null && !implVer.isBlank()) {
+                    return implVer;
+                }
+                if (info.getSpecificationVersion() != null) {
+                    return info.getSpecificationVersion().toString();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Could not resolve NetBeans module version from ModuleInfo", e);
+        }
+        return super.getContainerImplementationVersion();
     }
 
     @Override

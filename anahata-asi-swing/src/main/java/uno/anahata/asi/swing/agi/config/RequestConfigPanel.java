@@ -5,6 +5,7 @@ package uno.anahata.asi.swing.agi.config;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -13,6 +14,7 @@ import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
+import javax.swing.Icon;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -24,10 +26,12 @@ import net.miginfocom.swing.MigLayout;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.agi.provider.RequestConfig;
+import uno.anahata.asi.agi.provider.ResponseModality;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.provider.ThinkingLevel;
 import uno.anahata.asi.swing.components.ScrollablePanel;
 import uno.anahata.asi.swing.components.SliderSpinner;
+import uno.anahata.asi.swing.icons.IconUtils;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 
 /**
@@ -371,19 +375,52 @@ public class RequestConfigPanel extends ScrollablePanel implements PropertyChang
 
     /**
      * Dynamically populates modalities toggles supported by the selected model.
+     *
      * @param model The active AI model.
      */
     private void updateModalities(AbstractModel model) {
         modalitiesPanel.removeAll();
-        for (String modality : model.getSupportedResponseModalities()) {
-            JCheckBox cb = new JCheckBox(modality);
-            cb.setSelected(config.getResponseModalities().contains(modality));
+        List<ResponseModality> supported = model != null ? model.getSupportedResponseModalities() : null;
+        for (ResponseModality modality : ResponseModality.values()) {
+            boolean isSupported = supported != null && supported.contains(modality);
+
+            Icon icon = IconUtils.getModalityIcon(modality, 16);
+
+            String text = isSupported
+                    ? modality.getDisplayName()
+                    : modality.getDisplayName() + " (not sure if the model supports it, but you can try)";
+
+            JCheckBox cb = new JCheckBox();
             cb.setOpaque(false);
+            cb.setSelected(config.getResponseModalities().contains(modality));
+
+            JLabel iconLabel = new JLabel(icon);
+            iconLabel.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 4));
+
+            JLabel textLabel = new JLabel(text);
+            if (!isSupported) {
+                textLabel.setForeground(new Color(130, 130, 130));
+                textLabel.setToolTipText("Modality unverified for this model, but you may still request it.");
+            } else {
+                textLabel.setFont(textLabel.getFont().deriveFont(Font.BOLD));
+            }
+
+            JPanel rowPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+            rowPanel.setOpaque(false);
+            rowPanel.add(cb);
+            rowPanel.add(iconLabel);
+            rowPanel.add(textLabel);
+
             cb.addActionListener(e -> {
-                if (cb.isSelected()) config.getResponseModalities().add(modality);
-                else config.getResponseModalities().remove(modality);
+                if (cb.isSelected()) {
+                    if (!config.getResponseModalities().contains(modality)) {
+                        config.getResponseModalities().add(modality);
+                    }
+                } else {
+                    config.getResponseModalities().remove(modality);
+                }
             });
-            modalitiesPanel.add(cb);
+            modalitiesPanel.add(rowPanel);
         }
     }
 

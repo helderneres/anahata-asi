@@ -120,6 +120,10 @@
                         <div class="carousel-caption">Universal Alliance - Exploring the provider-agnostic model registry.</div>
                     </div>
                     <div class="carousel-slide fade">
+                        <img src="screenshots/ollamaaiproviderpanel.png" alt="Local Ollama AI Provider" class="clickable-media" data-caption="Local Ollama - Real-time GPU VRAM telemetry and 1-Click model pulling from ollama.com.">
+                        <div class="carousel-caption">Local Ollama - Real-time GPU VRAM Telemetry & 1-Click Model Pulling.</div>
+                    </div>
+                    <div class="carousel-slide fade">
                         <img src="screenshots/desktop/AsiContainerPreferencesGlobalToolPermissions.png" alt="Global Tool Permissions" class="clickable-media" data-caption="Container Authority - Managing global tool permissions in the Command Center.">
                         <div class="carousel-caption">Container Authority - Managing global tool permissions in the Command Center.</div>
                     </div>
@@ -131,62 +135,100 @@
                     <a class="next" onclick="plusSlides(1)">&#10095;</a>
                 </div>
 
-                <!-- Standalone Native Downloads (Split into Stable & Snapshot) -->
-                <div style="margin-top: 2rem; margin-bottom: 4rem;">
-                    <!-- Section 1: Latest Stable Release -->
-                    <div style="margin-bottom: 2.5rem;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-                            <h3 style="margin: 0; color: var(--white); font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-certificate" style="color: var(--barca-gold);"></i> Official Stable Releases
-                            </h3>
-                            <span id="desktop-stable-ver" class="badge" style="background: var(--barca-gold); color: black; font-weight: 800; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem;">...</span>
+                <!-- Downloads & Installation Channels Section -->
+                <section id="downloads" class="toolkit-section" style="margin-top: 2rem; margin-bottom: 3.5rem;">
+                    <div class="toolkit-header"><i class="fas fa-cloud-download-alt"></i><h2>Downloads & Installation Channels</h2></div>
+                    <p>Anahata ASI Desktop is distributed as high-performance, native self-contained packages with zero external JVM dependencies. Choose your platform below:</p>
+                    
+                    <div class="nb-card" style="margin-top: 1.5rem; border-top: 2px solid var(--barca-gold); border-radius: 8px; padding: 1.8rem;">
+                        <!-- Top Controls: Channel Toggle Buttons -->
+                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 1.2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                            <div style="color: var(--white); font-weight: 700; font-size: 1.05rem;">
+                                Select Distribution Channel:
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" id="btn-desk-stable" onclick="selectDesktopChannel('stable')" style="background: rgba(49, 151, 149, 0.2); border: 1px solid var(--primary-light); color: var(--white); padding: 8px 18px; border-radius: 6px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: var(--transition);"><i class="fas fa-certificate" style="color: var(--barca-gold); margin-right: 6px;"></i> Official Stable <span id="desktop-stable-badge" class="badge" style="background: var(--barca-gold); color: black; margin-left: 6px; padding: 2px 6px; border-radius: 4px;">...</span></button>
+                                <button type="button" id="btn-desk-snapshot" onclick="selectDesktopChannel('snapshot')" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); color: var(--text-muted); padding: 8px 18px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: var(--transition);"><i class="fas fa-bolt" style="margin-right: 6px;"></i> Dev (Snapshots) <span id="desktop-snapshot-badge" class="badge" style="background: var(--primary-light); color: white; margin-left: 6px; padding: 2px 6px; border-radius: 4px;">...</span></button>
+                            </div>
                         </div>
-                        <div class="download-grid" style="margin-top: 0;">
-                            <a href="https://github.com/anahata-os/anahata-asi/releases/latest" id="dl-win-stable" class="dl-card" style="border-top: 3px solid var(--barca-gold);">
-                                <i class="fab fa-windows" style="color: var(--barca-gold);"></i>
+
+                        <!-- 5 Download Cards Grid -->
+                        <div class="download-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.2rem; margin-top: 0;">
+                            <a href="https://github.com/anahata-os/anahata-asi/releases/latest" id="dyn-dl-appimage" class="dl-card" style="border-top: 3px solid var(--barca-gold);">
+                                <i class="fab fa-linux" style="color: #fcc624;"></i>
+                                <h3>Linux (Universal)</h3>
+                                <span id="dyn-size-appimage" class="dl-size">.AppImage (1-Click)</span>
+                            </a>
+                            <a href="https://github.com/anahata-os/anahata-asi/releases/latest" id="dyn-dl-deb" class="dl-card" style="border-top: 3px solid #E95420;">
+                                <i class="fab fa-ubuntu" style="color: #E95420;"></i>
+                                <h3>Ubuntu / Debian</h3>
+                                <span id="dyn-size-deb" class="dl-size">.deb (Native Package)</span>
+                            </a>
+                            <a href="https://github.com/anahata-os/anahata-asi/releases/latest" id="dyn-dl-win" class="dl-card" style="border-top: 3px solid #00a4ef;">
+                                <i class="fab fa-windows" style="color: #00a4ef;"></i>
                                 <h3>Windows</h3>
-                                <span class="dl-size">.zip (Portable)</span>
+                                <span id="dyn-size-win" class="dl-size">.zip (Portable)</span>
                             </a>
-                            <a href="https://github.com/anahata-os/anahata-asi/releases/latest" id="dl-mac-stable" class="dl-card dl-mac-btn" style="border-top: 3px solid var(--barca-gold);">
-                                <i class="fab fa-apple" style="color: var(--barca-gold);"></i>
+                            <a href="https://github.com/anahata-os/anahata-asi/releases/latest" id="dyn-dl-mac" class="dl-card dl-mac-btn" style="border-top: 3px solid #a2aaad;">
+                                <i class="fab fa-apple" style="color: #a2aaad;"></i>
                                 <h3>macOS</h3>
-                                <span class="dl-size">.zip (App Bundle)</span>
+                                <span id="dyn-size-mac" class="dl-size">.zip (App Bundle)</span>
                             </a>
-                            <a href="https://github.com/anahata-os/anahata-asi/releases/latest" id="dl-lin-stable" class="dl-card" style="border-top: 3px solid var(--barca-gold);">
-                                <i class="fab fa-linux" style="color: var(--barca-gold);"></i>
-                                <h3>Linux</h3>
-                                <span class="dl-size">.tar.gz (Binary)</span>
+                            <a href="https://github.com/anahata-os/anahata-asi/releases/latest" id="dyn-dl-lin" class="dl-card" style="border-top: 3px solid var(--text-muted);">
+                                <i class="fas fa-file-archive" style="color: var(--text-muted);"></i>
+                                <h3>Linux (Tarball)</h3>
+                                <span id="dyn-size-lin" class="dl-size">.tar.gz (Binary)</span>
                             </a>
+                        </div>
+
+                        <!-- Debian/Ubuntu .deb Command Helper -->
+                        <div style="margin-top: 1.5rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 1rem 1.4rem;">
+                            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.4rem;">
+                                <i class="fas fa-terminal" style="color: var(--barca-gold); margin-right: 6px;"></i> Quick Install for Debian / Ubuntu (.deb):
+                            </div>
+                            <div style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;">
+                                <code style="font-size: 0.9rem; color: var(--barca-gold);">sudo apt install ./Anahata-ASI-Desktop-*.deb</code>
+                                <button onclick="navigator.clipboard.writeText('sudo apt install ./Anahata-ASI-Desktop-*.deb'); this.innerHTML='<i class=\'fas fa-check\'></i>'; setTimeout(() => this.innerHTML='<i class=\'fas fa-copy\'></i>', 2000);" style="background: none; border: none; color: var(--barca-gold); cursor: pointer; font-size: 1rem;" title="Copy Command"><i class="fas fa-copy"></i></button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Section 2: Latest Rolling Snapshot -->
-                    <div>
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-                            <h3 style="margin: 0; color: var(--white); font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-bolt" style="color: var(--primary-light);"></i> Latest Rolling Snapshots
-                            </h3>
-                            <span id="desktop-snapshot-ver" class="badge" style="background: var(--primary-light); color: white; font-weight: 800; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem;">...</span>
-                        </div>
-                        <div class="download-grid" style="margin-top: 0;">
-                            <a href="https://github.com/anahata-os/anahata-asi/releases/tag/latest-snapshot" id="dl-windows" class="dl-card" style="border-top: 3px solid var(--primary-light);">
-                                <i class="fab fa-windows"></i>
-                                <h3>Windows</h3>
-                                <span class="dl-size">.zip (Portable)</span>
-                            </a>
-                            <a href="https://github.com/anahata-os/anahata-asi/releases/tag/latest-snapshot" id="dl-macos" class="dl-card dl-mac-btn" style="border-top: 3px solid var(--primary-light);">
-                                <i class="fab fa-apple"></i>
-                                <h3>macOS</h3>
-                                <span class="dl-size">.zip (App Bundle)</span>
-                            </a>
-                            <a href="https://github.com/anahata-os/anahata-asi/releases/tag/latest-snapshot" id="dl-linux" class="dl-card" style="border-top: 3px solid var(--primary-light);">
-                                <i class="fab fa-linux"></i>
-                                <h3>Linux</h3>
-                                <span class="dl-size">.tar.gz (Binary)</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
+                    <script>
+                        let currentDesktopChannel = 'stable';
+
+                        function selectDesktopChannel(ch) {
+                            currentDesktopChannel = ch;
+                            const btnSt = document.getElementById('btn-desk-stable');
+                            const btnSn = document.getElementById('btn-desk-snapshot');
+
+                            if (ch === 'stable') {
+                                btnSt.style.background = 'rgba(49, 151, 149, 0.2)';
+                                btnSt.style.borderColor = 'var(--primary-light)';
+                                btnSt.style.color = 'var(--white)';
+                                btnSt.style.fontWeight = '800';
+
+                                btnSn.style.background = 'rgba(255, 255, 255, 0.05)';
+                                btnSn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                                btnSn.style.color = 'var(--text-muted)';
+                                btnSn.style.fontWeight = '600';
+                            } else {
+                                btnSn.style.background = 'rgba(49, 151, 149, 0.2)';
+                                btnSn.style.borderColor = 'var(--primary-light)';
+                                btnSn.style.color = 'var(--white)';
+                                btnSn.style.fontWeight = '800';
+
+                                btnSt.style.background = 'rgba(255, 255, 255, 0.05)';
+                                btnSt.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                                btnSt.style.color = 'var(--text-muted)';
+                                btnSt.style.fontWeight = '600';
+                            }
+
+                            if (typeof updateDesktopBinariesDisplay === 'function') {
+                                updateDesktopBinariesDisplay();
+                            }
+                        }
+                    </script>
+                </section>
 
                 <p id="dl-subtitle" class="tagline" style="text-align: left;">The authoritative cross-platform ASI launcher.</p>
 

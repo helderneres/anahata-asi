@@ -18,6 +18,7 @@ import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
+import uno.anahata.asi.agi.provider.ResponseModality;
 
 /**
  * A utility class for loading, scaling, and managing a global registry of icons.
@@ -35,6 +36,22 @@ public class IconUtils {
 
     /** A global registry for mapping icon IDs to actual Icon objects. */
     private static final Map<String, Icon> ICON_REGISTRY = new ConcurrentHashMap<>();
+
+    /**
+     * Cache key identifying a scaled icon by its resource name and dimensions.
+     *
+     * @param name The icon resource name.
+     * @param width The target width in pixels.
+     * @param height The target height in pixels.
+     */
+    private record IconCacheKey(String name, int width, int height) {
+    }
+
+    /** 
+     * In-memory cache for scaled {@link ImageIcon} instances to prevent repeated 
+     * disk I/O, decoding, and {@link Image#SCALE_SMOOTH} downsampling on UI threads. 
+     */
+    private static final Map<IconCacheKey, ImageIcon> SCALED_ICON_CACHE = new ConcurrentHashMap<>();
 
     /**
      * Registers an icon in the global registry.
@@ -93,6 +110,16 @@ public class IconUtils {
      * @return A scaled ImageIcon, or null if the resource is not found.
      */
     public static ImageIcon getIcon(String name, int width, int height) {
+        if (name == null) {
+            return null;
+        }
+
+        IconCacheKey cacheKey = new IconCacheKey(name, width, height);
+        ImageIcon cached = SCALED_ICON_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         try {
             java.net.URL resource = IconUtils.class.getResource("/icons/" + name);
             if (resource == null) {
@@ -108,6 +135,7 @@ public class IconUtils {
 
             // If the size matches, return as is
             if (originalIcon.getIconWidth() == width && originalIcon.getIconHeight() == height) {
+                SCALED_ICON_CACHE.put(cacheKey, originalIcon);
                 return originalIcon;
             }
             
@@ -121,6 +149,7 @@ public class IconUtils {
                 return null;
             }
             
+            SCALED_ICON_CACHE.put(cacheKey, scaledIcon);
             return scaledIcon;
         } catch (Exception e) {
             log.error("Error loading icon: {}", name, e);
@@ -274,8 +303,42 @@ public class IconUtils {
         // Draw the Anahata badge in the bottom-right corner
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.drawImage(badgeIcon.getImage(), 8, 8, null);
-        
+
         g.dispose();
         return new ImageIcon(combined);
+    }
+
+    /**
+     * Returns the appropriate vector icon for a given ResponseModality.
+     *
+     * @param size The size of the icon in pixels.
+     * @param modality The response modality.
+     * @return The vector icon representing the modality, or null if modality is
+     * null.
+     */
+    public static Icon getModalityIcon(ResponseModality modality, int size) {
+        if (modality == null) {
+            return null;
+        }
+        return switch (modality) {
+            case TEXT ->
+                new TextModalityIcon(size);
+            case IMAGE ->
+                new ImageModalityIcon(size);
+            case AUDIO ->
+                new SpeakerIcon(size);
+            case VIDEO ->
+                new VideoModalityIcon(size);
+        };
+    }
+
+    /**
+     * Returns the default 16px vector icon for a given ResponseModality.
+     *
+     * @param modality The response modality.
+     * @return The vector icon representing the modality.
+     */
+    public static Icon getModalityIcon(ResponseModality modality) {
+        return getModalityIcon(modality, 16);
     }
 }

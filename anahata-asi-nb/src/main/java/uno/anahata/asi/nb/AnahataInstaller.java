@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import lombok.SneakyThrows;
 import org.netbeans.core.windows.persistence.PersistenceManager;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
@@ -24,6 +25,7 @@ import uno.anahata.asi.nb.ui.resources.NbResourceUI;
 import uno.anahata.asi.nb.util.AnahataUpdateCenterUtils;
 import uno.anahata.asi.nb.util.ElementHandleModule;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
+import uno.anahata.asi.swing.internal.SwingTask;
 import uno.anahata.asi.swing.internal.SwingUtils;
 
 /**
@@ -53,6 +55,7 @@ public class AnahataInstaller extends ModuleInstall {
      *
      * @return The container instance.
      */
+    @SneakyThrows
     public static synchronized NetBeansAsiContainer getContainer() {
         if (container == null) {
             container = new NetBeansAsiContainer();
@@ -94,8 +97,23 @@ public class AnahataInstaller extends ModuleInstall {
         logLifecycle("AnahataInstaller.restored() ENTER");
         log.info("Anahata ASI NetBeans Module Restored");
 
-        // Auto-register the official Anahata Update Center if not present
-        AnahataUpdateCenterUtils.registerDefaultUpdateCenter();
+        // Auto-register and bootstrap Anahata Update Centers asynchronously using container-scoped SwingTask
+        SwingTask<Void> bootstrapTask = new SwingTask<>(
+                getContainer(),
+                "Bootstrap Anahata Update Centers",
+                () -> {
+                    try {
+                        Thread.sleep(3000); // Allow NetBeans initial UI and window restoration to settle first
+                    } catch (InterruptedException ignored) {
+                    }
+                    AnahataUpdateCenterUtils.bootstrap();
+                    return null;
+                },
+                null,
+                ex -> log.log(Level.WARNING, "Failed to bootstrap Anahata Update Centers on startup", ex),
+                false
+        );
+        bootstrapTask.start();
 
         // Register the NetBeans-native resource UI strategy
         ResourceUiRegistry.getInstance().setResourceUI(new NbResourceUI());

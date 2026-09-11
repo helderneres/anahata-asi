@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     <!-- Docs Dropdown -->
                     <div class="dropdown">
-                        <a href="#" class="dropdown-toggle ${(isActive('quickstart.html') || currentPath.includes('apidocs') || isActive('core.html') || isActive('swing.html') || isActive('yam.html') || isActive('gemini.html') || isActive('openai.html') || isActive('anthropic.html') || isActive('compatible.html')) ? 'active-link' : ''}">
+                        <a href="#" class="dropdown-toggle ${(isActive('quickstart.html') || currentPath.includes('apidocs') || isActive('core.html') || isActive('swing.html') || isActive('yam.html') || isActive('gemini.html') || isActive('openai.html') || isActive('anthropic.html') || isActive('novaroute.html') || isActive('openrouter.html') || isActive('ollama.html') || isActive('compatible.html')) ? 'active-link' : ''}">
                             Docs <i class="fas fa-chevron-down"></i>
                         </a>
                         <div class="dropdown-menu">
@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <a href="${prefix}gemini.html" class="${isActive('gemini.html') ? 'active-item' : ''}"><i class="fas fa-plug"></i> Gemini Provider</a>
                             <a href="${prefix}openai.html" class="${isActive('openai.html') ? 'active-item' : ''}"><i class="fas fa-bolt"></i> OpenAI Provider</a>
                             <a href="${prefix}anthropic.html" class="${isActive('anthropic.html') ? 'active-item' : ''}"><i class="fas fa-ghost"></i> Anthropic Provider</a>
+                            <a href="${prefix}novaroute.html" class="${isActive('novaroute.html') ? 'active-item' : ''}"><i class="fas fa-route" style="color: var(--barca-gold);"></i> NovaRouteAI Provider</a>
+                            <a href="${prefix}openrouter.html" class="${isActive('openrouter.html') ? 'active-item' : ''}"><i class="fas fa-network-wired" style="color: var(--barca-gold);"></i> OpenRouter Provider</a>
+                            <a href="${prefix}ollama.html" class="${isActive('ollama.html') ? 'active-item' : ''}"><i class="fas fa-server"></i> Ollama Provider</a>
                             <a href="${prefix}compatible.html" class="${isActive('compatible.html') ? 'active-item' : ''}"><i class="fas fa-globe"></i> Universal Alliance</a>
                         </div>
                     </div>
@@ -268,8 +271,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     const winAsset = assets.find(asset => asset.name.endsWith('-windows.zip'));
                     const macAsset = assets.find(asset => asset.name.endsWith('-macos.zip'));
                     const linAsset = assets.find(asset => asset.name.endsWith('-linux.tar.gz'));
+                    const appImageAsset = assets.find(asset => asset.name.endsWith('-linux.AppImage'));
+                    const debAsset = assets.find(asset => asset.name.endsWith('-linux.deb'));
                     const nbmAsset = assets.find(asset => asset.name.endsWith('.nbm'));
                     const intellijAsset = assets.find(asset => (asset.name.includes('anahata-asi-intellij') || asset.name.includes('uno-anahata-asi-intellij')) && asset.name.endsWith('.zip'));
+
+                    window.desktopAssets = window.desktopAssets || { stable: {}, snapshot: {} };
+                    window.desktopAssets.snapshot = {
+                        appimage: appImageAsset ? { url: appImageAsset.browser_download_url, size: `${Math.round(appImageAsset.size / (1024 * 1024))} MB` } : null,
+                        deb: debAsset ? { url: debAsset.browser_download_url, size: `${Math.round(debAsset.size / (1024 * 1024))} MB` } : null,
+                        win: winAsset ? { url: winAsset.browser_download_url, size: `${Math.round(winAsset.size / (1024 * 1024))} MB` } : null,
+                        mac: macAsset ? { url: macAsset.browser_download_url, size: `${Math.round(macAsset.size / (1024 * 1024))} MB` } : null,
+                        lin: linAsset ? { url: linAsset.browser_download_url, size: `${Math.round(linAsset.size / (1024 * 1024))} MB` } : null
+                    };
 
                     if (winAsset && winSnapBtn) {
                         winSnapBtn.href = winAsset.browser_download_url;
@@ -299,6 +313,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         const match = linAsset.name.match(/Anahata-ASI-Desktop-(.*?)-linux/);
                         if (match)
                             snapVersion = match[1];
+                    } else if (appImageAsset) {
+                        const match = appImageAsset.name.match(/Anahata-ASI-Desktop-(.*?)-linux/);
+                        if (match)
+                            snapVersion = match[1];
+                    }
+
+                    const deskSnapBadge = document.getElementById('desktop-snapshot-badge');
+                    if (deskSnapBadge) {
+                        deskSnapBadge.textContent = snapVersion.startsWith("v") ? snapVersion : `v${snapVersion}`;
                     }
 
                     if (deskSnapshotVer) {
@@ -366,8 +389,28 @@ document.addEventListener('DOMContentLoaded', () => {
                         const winStableAsset = stableAssets.find(a => a.name.endsWith('-windows.zip'));
                         const macStableAsset = stableAssets.find(a => a.name.endsWith('-macos.zip'));
                         const linStableAsset = stableAssets.find(a => a.name.endsWith('-linux.tar.gz'));
+                        const appImageStableAsset = stableAssets.find(a => a.name.endsWith('-linux.AppImage'));
+                        const debStableAsset = stableAssets.find(a => a.name.endsWith('-linux.deb'));
                         const nbmStableAsset = stableAssets.find(a => a.name.endsWith('.nbm'));
                         const intellijStableAsset = stableAssets.find(a => (a.name.includes('anahata-asi-intellij') || a.name.includes('uno-anahata-asi-intellij')) && a.name.endsWith('.zip'));
+
+                        window.desktopAssets = window.desktopAssets || { stable: {}, snapshot: {} };
+                        window.desktopAssets.stable = {
+                            appimage: appImageStableAsset ? { url: appImageStableAsset.browser_download_url, size: `${Math.round(appImageStableAsset.size / (1024 * 1024))} MB` } : null,
+                            deb: debStableAsset ? { url: debStableAsset.browser_download_url, size: `${Math.round(debStableAsset.size / (1024 * 1024))} MB` } : null,
+                            win: winStableAsset ? { url: winStableAsset.browser_download_url, size: `${Math.round(winStableAsset.size / (1024 * 1024))} MB` } : null,
+                            mac: macStableAsset ? { url: macStableAsset.browser_download_url, size: `${Math.round(macStableAsset.size / (1024 * 1024))} MB` } : null,
+                            lin: linStableAsset ? { url: linStableAsset.browser_download_url, size: `${Math.round(linStableAsset.size / (1024 * 1024))} MB` } : null
+                        };
+
+                        const deskStableBadge = document.getElementById('desktop-stable-badge');
+                        if (deskStableBadge) {
+                            deskStableBadge.textContent = formattedTag;
+                        }
+
+                        if (typeof updateDesktopBinariesDisplay === 'function') {
+                            updateDesktopBinariesDisplay();
+                        }
 
                         if (winStableAsset && winStableBtn) {
                             winStableBtn.href = winStableAsset.browser_download_url;
@@ -399,10 +442,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const match = asset.name.match(/(?:anahata-asi-nb|uno-anahata-asi-nb)-(.*?)\.nbm/);
                                     const verStr = match ? match[1] : rawTag;
                                     if (asset.name.includes('300')) {
-                                        window.nbNbmAssets.stable['300'] = `https://repo1.maven.org/maven2/uno/anahata/anahata-asi-nb/${verStr}/anahata-asi-nb-${verStr}.nbm`;
+                                        window.nbNbmAssets.stable['300'] = asset.browser_download_url;
                                         window.nbNbmVersions.stable['300'] = verStr;
                                     } else if (asset.name.includes('310')) {
-                                        window.nbNbmAssets.stable['310'] = `https://repo1.maven.org/maven2/uno/anahata/anahata-asi-nb/${verStr}/anahata-asi-nb-${verStr}.nbm`;
+                                        window.nbNbmAssets.stable['310'] = asset.browser_download_url;
                                         window.nbNbmVersions.stable['310'] = verStr;
                                     }
                                 }
@@ -436,6 +479,46 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error resolving dynamic asset URLs:', error);
+        }
+    };
+
+    // Dynamic Desktop Binaries Display Updater
+    window.updateDesktopBinariesDisplay = () => {
+        const isStable = (typeof currentDesktopChannel !== 'undefined') ? (currentDesktopChannel === 'stable') : true;
+        const assets = isStable ? window.desktopAssets?.stable : window.desktopAssets?.snapshot;
+        if (!assets) return;
+
+        const appimageBtn = document.getElementById('dyn-dl-appimage');
+        const debBtn = document.getElementById('dyn-dl-deb');
+        const winBtn = document.getElementById('dyn-dl-win');
+        const macBtn = document.getElementById('dyn-dl-mac');
+        const linBtn = document.getElementById('dyn-dl-lin');
+
+        const appimageSize = document.getElementById('dyn-size-appimage');
+        const debSize = document.getElementById('dyn-size-deb');
+        const winSize = document.getElementById('dyn-size-win');
+        const macSize = document.getElementById('dyn-size-mac');
+        const linSize = document.getElementById('dyn-size-lin');
+
+        if (assets.appimage && appimageBtn) {
+            appimageBtn.href = assets.appimage.url;
+            if (appimageSize) appimageSize.textContent = `.AppImage (1-Click) • ${assets.appimage.size || ''}`;
+        }
+        if (assets.deb && debBtn) {
+            debBtn.href = assets.deb.url;
+            if (debSize) debSize.textContent = `.deb (Native Package) • ${assets.deb.size || ''}`;
+        }
+        if (assets.win && winBtn) {
+            winBtn.href = assets.win.url;
+            if (winSize) winSize.textContent = `.zip (Portable) • ${assets.win.size || ''}`;
+        }
+        if (assets.mac && macBtn) {
+            macBtn.href = assets.mac.url;
+            if (macSize) macSize.textContent = `.zip (App Bundle) • ${assets.mac.size || ''}`;
+        }
+        if (assets.lin && linBtn) {
+            linBtn.href = assets.lin.url;
+            if (linSize) linSize.textContent = `.tar.gz (Binary) • ${assets.lin.size || ''}`;
         }
     };
 

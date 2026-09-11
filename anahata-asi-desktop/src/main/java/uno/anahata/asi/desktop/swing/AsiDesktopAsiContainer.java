@@ -3,6 +3,7 @@
  */
 package uno.anahata.asi.desktop.swing;
 
+import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import lombok.Setter;
@@ -13,7 +14,6 @@ import uno.anahata.asi.swing.AbstractSwingAsiContainer;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.resources.DefaultResourceUI;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
-import uno.anahata.asi.javafx.util.JavaFxUtils;
 
 /**
  * A specialized {@link uno.anahata.asi.AbstractAsiContainer} for the standalone
@@ -29,8 +29,6 @@ public class AsiDesktopAsiContainer extends AbstractSwingAsiContainer {
         log.info("Performing global Standalone environment configuration...");
         // Register the universal/standalone resource UI strategy
         ResourceUiRegistry.getInstance().setResourceUI(new DefaultResourceUI());
-        // Pre-boot JavaFX Platform with setImplicitExit(false) for multi-stage stability
-        JavaFxUtils.ensureInitialized();
     }
 
     /**
@@ -46,8 +44,9 @@ public class AsiDesktopAsiContainer extends AbstractSwingAsiContainer {
 
     /**
      * Constructs a new StandaloneAsiContainer with 'AsiDesktop' as hostApplicationId.
+     * @throws IOException If container directory initialization fails.
      */
-    public AsiDesktopAsiContainer() {
+    public AsiDesktopAsiContainer() throws IOException {
         this ("AsiDesktop");
     }
     
@@ -55,7 +54,7 @@ public class AsiDesktopAsiContainer extends AbstractSwingAsiContainer {
      * Constructs a new AsiDesktopAsiContainer.
      * @param hostApplicationId the unique identifier of the host application
      */
-    public AsiDesktopAsiContainer(String hostApplicationId) {
+    public AsiDesktopAsiContainer(String hostApplicationId) throws IOException {
         super(hostApplicationId);
         
         /*
@@ -147,5 +146,17 @@ public class AsiDesktopAsiContainer extends AbstractSwingAsiContainer {
     @Override
     public AgiConfig createNewAgiConfig() {
         return new AsiDesktopAgiConfig(this);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns {@code "anahata-asi-desktop"} to allow fishing {@code pom.properties}
+     * in development mode when running directly off {@code target/classes}.
+     * </p>
+     */
+    @Override
+    public String getMavenArtifactId() {
+        return "anahata-asi-desktop";
     }
 }

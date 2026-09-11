@@ -59,3 +59,6 @@ target/site/apidocs/
 *.ipr
 *.iws
 .idea/
+/dist-deb/
+/AppDir/
+/anahata-asi-desktop/lwjgl_libs/

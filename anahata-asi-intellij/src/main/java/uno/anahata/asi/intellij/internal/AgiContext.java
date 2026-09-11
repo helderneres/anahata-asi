@@ -19,7 +19,7 @@ import java.util.Optional;
  * This is the IntelliJ counterpart of the NetBeans {@code FilesContextActionLogic}. It adds
  * and removes files (recursing into directories) from a session's context, and reports
  * membership so the decorator can badge in-context files. All session lookups go through the
- * live {@link IntellijAsiContainer#getInstances()} registry.
+ * live {@link IntellijAsiContainer#getInstance()} registry.
  * </p>
  *
  * @author anahata
@@ -38,16 +38,13 @@ public final class AgiContext {
     }
 
     /**
-     * Returns all active sessions across every live tool-window container.
+     * Returns all active sessions from the application-level ASI container.
      *
      * @return the active sessions.
      */
     public static List<Agi> activeSessions() {
-        List<Agi> all = new ArrayList<>();
-        for (IntellijAsiContainer container : IntellijAsiContainer.getInstances()) {
-            all.addAll(container.getActiveAgis());
-        }
-        return all;
+        IntellijAsiContainer container = IntellijAsiContainer.getInstance();
+        return container != null ? container.getActiveAgis() : List.of();
     }
 
     /**

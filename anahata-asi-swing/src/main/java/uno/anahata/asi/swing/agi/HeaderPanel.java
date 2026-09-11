@@ -23,11 +23,12 @@ import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.persistence.kryo.KryoUtils;
 import uno.anahata.asi.agi.provider.AbstractAiProvider;
 import uno.anahata.asi.agi.provider.AbstractModel;
+import uno.anahata.asi.swing.components.ExceptionDialog;
 import uno.anahata.asi.swing.icons.SaveIcon;
 import uno.anahata.asi.swing.icons.SearchIcon;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 import uno.anahata.asi.swing.internal.SwingTask;
-import uno.anahata.asi.swing.provider.AiProviderRegistryViewer;
+import uno.anahata.asi.swing.provider.AiModelsPanel;
 import uno.anahata.asi.swing.provider.AiProviderRenderer;
 import uno.anahata.asi.swing.provider.ModelRenderer;
 
@@ -87,6 +88,11 @@ public class HeaderPanel extends JPanel {
     private JButton searchModelsButton;
 
     /**
+     * Active listener for changes in the selected provider's models list.
+     */
+    private EdtPropertyChangeListener providerModelsListener;
+
+    /**
      * Constructs the header panel and initializes references.
      *
      * @param agiPanel The parent aggregator panel.
@@ -119,17 +125,24 @@ public class HeaderPanel extends JPanel {
 
         // Session Buttons
         saveSessionButton = new JButton(new SaveIcon(ICON_SIZE));
-        saveSessionButton.setToolTipText("Save Session");
+        saveSessionButton.setToolTipText(agi.isTemplate() ? "Save Template" : "Save Session");
         saveSessionButton.addActionListener(e -> saveSession());
         add(saveSessionButton);
 
+        if (!agi.isTemplate()) {
+            JButton saveAsTemplateBtn = new JButton(new uno.anahata.asi.swing.icons.CopyIcon(ICON_SIZE));
+            saveAsTemplateBtn.setToolTipText("Save as Template...");
+            saveAsTemplateBtn.addActionListener(e -> saveAsTemplate());
+            add(saveAsTemplateBtn);
+        }
+
         cloneSessionButton = new JButton(new uno.anahata.asi.swing.icons.CloneIcon(ICON_SIZE));
-        cloneSessionButton.setToolTipText("Clone Session");
+        cloneSessionButton.setToolTipText(agi.isTemplate() ? "Duplicate Template" : "Clone Session");
         cloneSessionButton.addActionListener(e -> cloneSession());
         add(cloneSessionButton);
 
         disposeSessionButton = new JButton(new uno.anahata.asi.swing.icons.DeleteIcon(ICON_SIZE));
-        disposeSessionButton.setToolTipText("Dispose Session");
+        disposeSessionButton.setToolTipText(agi.isTemplate() ? "Delete Template" : "Dispose Session");
         disposeSessionButton.addActionListener(e -> disposeSession());
         add(disposeSessionButton);
 
@@ -226,15 +239,13 @@ public class HeaderPanel extends JPanel {
      */
     private void showProviderRegistry() {
         new SwingTask<List<AbstractModel>>(agiPanel, "Collecting Models from Providers", () -> {
-            return agi.getProviders().stream()
-                    .filter(AbstractAiProvider::isEnabled)
-                    .flatMap(provider -> provider.getModels().stream())
-                    .collect(Collectors.toList());
+            return agi.getConfig().getAsiContainer().getAllModels(false);
         }, allModels -> {
-            JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "AI Provider & Model Registry", JDialog.ModalityType.MODELESS);
+            JFrame frame = new JFrame("AI Provider & Model Registry");
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-            AiProviderRegistryViewer viewer = new AiProviderRegistryViewer(allModels, selectedModel -> {
-                dialog.dispose();
+            AiModelsPanel viewer = new AiModelsPanel(allModels, agi.getConfig().getAsiContainer(), selectedModel -> {
+                frame.dispose();
                 // 1. Update domain model first so updateModelsForSelectedProvider picks it up
                 agi.setSelectedModel(selectedModel);
 
@@ -250,72 +261,96 @@ public class HeaderPanel extends JPanel {
                 }
             });
 
-            dialog.getContentPane().add(viewer);
-            dialog.setPreferredSize(new Dimension(1200, 800));
-            dialog.pack();
-            dialog.setLocationRelativeTo(this);
-            dialog.setVisible(true);
+            frame.getContentPane().add(viewer);
+            frame.setPreferredSize(new Dimension(1200, 800));
+            frame.pack();
+            frame.setLocationRelativeTo(this);
+            frame.setVisible(true);
         }).start();
     }
 
     /**
      * Updates the model combo box items based on the currently selected
      * provider.
-     * <p>This operation is performed asynchronously to avoid freezing the EDT 
-     * while the provider fetches fresh models from its API.</p>
      */
     private void updateModelsForSelectedProvider() {
         AbstractAiProvider selectedProvider = (AbstractAiProvider) providerComboBox.getSelectedItem();
         
+        if (providerModelsListener != null) {
+            providerModelsListener.unbind();
+            providerModelsListener = null;
+        }
+
         if (selectedProvider != null) {
-            // Visual feedback: disable selection while discovery is in progress
-            modelComboBox.setEnabled(false);
-            
-            new SwingTask<List<? extends AbstractModel>>(agiPanel, "Discovering Models", () -> {
-                return selectedProvider.getModels();
-            }, models -> {
-                DefaultComboBoxModel<AbstractModel> comboModel = new DefaultComboBoxModel<>();
-                for (AbstractModel model : models) {
-                    comboModel.addElement(model);
-                }
-                modelComboBox.setModel(comboModel);
-                modelComboBox.setEnabled(true);
-                
-                // Restore selection from domain if it belongs to this provider
-                AbstractModel currentAgiModel = agi.getSelectedModel();
-                if (currentAgiModel != null && currentAgiModel.getProviderId().equals(selectedProvider.getProviderId())) {
-                    for (int i = 0; i < modelComboBox.getItemCount(); i++) {
-                        if (modelComboBox.getItemAt(i).getModelId().equals(currentAgiModel.getModelId())) {
-                            modelComboBox.setSelectedIndex(i);
-                            return;
-                        }
-                    }
-                }
-                
-                // Fallback to first model if nothing selected
-                if (modelComboBox.getItemCount() > 0 && (modelComboBox.getSelectedIndex() == -1 || agi.getSelectedModel() == null)) {
-                    modelComboBox.setSelectedIndex(0);
-                }
-                
-                // Explicitly sync back to domain to ensure the Agi session is aware of the final choice
-                AbstractModel selected = (AbstractModel) modelComboBox.getSelectedItem();
-                if (selected != null) {
-                    agi.setSelectedModel(selected);
-                }
-            }, error -> {
-                log.error("Failed to discover models for provider: {}", selectedProvider.getDisplayName(), error);
-                modelComboBox.setEnabled(true);
-            }, false).start();
+            providerModelsListener = new EdtPropertyChangeListener(this, selectedProvider, "models", evt -> {
+                refreshModelsComboFromProvider(selectedProvider);
+            });
+            refreshModelsComboFromProvider(selectedProvider);
         } else {
             modelComboBox.setModel(new DefaultComboBoxModel<>());
         }
     }
 
     /**
-     * Triggers a manual save and exports the session to a .kryo file chosen by
-     * the user.
+     * Refreshes the models combo box from the provider's local models list, preserving the current selection.
+     *
+     * @param selectedProvider The active AI provider.
+     */
+    private void refreshModelsComboFromProvider(AbstractAiProvider selectedProvider) {
+        List<AbstractModel> models = selectedProvider.getEnabledModels();
+        if (models.isEmpty()) {
+            models = selectedProvider.getModels();
+        }
+
+        DefaultComboBoxModel<AbstractModel> comboModel = new DefaultComboBoxModel<>();
+        for (AbstractModel model : models) {
+            comboModel.addElement(model);
+        }
+        modelComboBox.setModel(comboModel);
+        modelComboBox.setEnabled(true);
+
+        // 1. Check if the newly selected provider has a model with the exact same model ID
+        AbstractModel currentAgiModel = agi.getSelectedModel();
+        if (currentAgiModel != null) {
+            String targetModelId = currentAgiModel.getModelId();
+            for (int i = 0; i < modelComboBox.getItemCount(); i++) {
+                if (modelComboBox.getItemAt(i).getModelId().equals(targetModelId)) {
+                    modelComboBox.setSelectedIndex(i);
+                    AbstractModel matched = modelComboBox.getItemAt(i);
+                    agi.setSelectedModel(matched);
+                    return;
+                }
+            }
+        }
+
+        // 2. Fallback to first model if no matching modelId found
+        if (modelComboBox.getItemCount() > 0) {
+            modelComboBox.setSelectedIndex(0);
+        }
+
+        // Explicitly sync back to domain
+        AbstractModel selected = (AbstractModel) modelComboBox.getSelectedItem();
+        if (selected != null) {
+            agi.setSelectedModel(selected);
+        }
+    }
+
+    /**
+     * Saves the current AGI session or template.
      */
     private void saveSession() {
+        if (agi.isTemplate()) {
+            new SwingTask<>(agiPanel, "Save Template", () -> {
+                agi.save();
+                log.info("Template {} saved successfully.", agi.getConfig().getSessionId());
+                JOptionPane.showMessageDialog(this,
+                        "Template '" + agi.getConfig().getSessionId() + "' saved successfully.",
+                        "Template Saved", JOptionPane.INFORMATION_MESSAGE);
+                return null;
+            }).start();
+            return;
+        }
+
         new SwingTask<>(agiPanel, "Save Session", () -> {
             // 1. Perform standard auto-save
             agi.save();
@@ -362,26 +397,100 @@ public class HeaderPanel extends JPanel {
     }
 
     /**
-     * Clones the current session and opens it in a new tab.
+     * Creates and saves a new template based on the current active session.
      */
-    private void cloneSession() {
-        new SwingTask<>(agiPanel, "Clone Session", () -> {
-            agi.getConfig().getAsiContainer().cloneSession(agi);
-            return null;
-        }).start();
+    private void saveAsTemplate() {
+        String defaultId = agi.getNickname() != null && !agi.getNickname().isBlank()
+                ? agi.getNickname().toLowerCase().replaceAll("[^a-z0-9_-]", "-")
+                : "template-" + agi.getShortId();
+
+        String templateId = JOptionPane.showInputDialog(this,
+                "Enter unique ID for the new template based on this session:",
+                defaultId);
+
+        if (templateId != null && !templateId.trim().isEmpty()) {
+            templateId = templateId.trim();
+            final String finalId = templateId;
+            AbstractAsiContainer container = agi.getConfig().getAsiContainer();
+            boolean exists = container.getTemplates().stream()
+                    .anyMatch(t -> t.getConfig().getSessionId().equalsIgnoreCase(finalId));
+            if (exists) {
+                JOptionPane.showMessageDialog(this,
+                        "A template with ID '" + templateId + "' already exists.",
+                        "Template Exists", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            try {
+                container.createTemplateFromSession(agi, templateId);
+                JOptionPane.showMessageDialog(this,
+                        "Template '" + templateId + "' created successfully!",
+                        "Template Saved", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                log.error("Failed to create template from session", ex);
+                ExceptionDialog.show(this, "Save as Template", "Failed to create template from session", ex);
+            }
+        }
     }
 
     /**
-     * Disposes the current session.
+     * Clones the current session or template.
+     */
+    private void cloneSession() {
+        if (agi.isTemplate()) {
+            String defaultId = agi.getConfig().getSessionId() + "-copy";
+            String newId = JOptionPane.showInputDialog(this,
+                    "Enter unique ID for the duplicated template:",
+                    defaultId);
+            if (newId != null && !newId.trim().isEmpty()) {
+                newId = newId.trim();
+                final String finalId = newId;
+                AbstractAsiContainer container = agi.getConfig().getAsiContainer();
+                boolean exists = container.getTemplates().stream()
+                        .anyMatch(t -> t.getConfig().getSessionId().equalsIgnoreCase(finalId));
+                if (exists) {
+                    JOptionPane.showMessageDialog(this,
+                            "A template with ID '" + newId + "' already exists.",
+                            "Template Exists", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                try {
+                    container.cloneAgi(agi, newId);
+                    JOptionPane.showMessageDialog(this,
+                            "Template '" + newId + "' duplicated successfully!",
+                            "Template Duplicated", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    log.error("Failed to duplicate template", ex);
+                    ExceptionDialog.show(this, "Duplicate Template", "Failed to duplicate template", ex);
+                }
+            }
+        } else {
+            new SwingTask<>(agiPanel, "Clone Session", () -> {
+                agi.getConfig().getAsiContainer().cloneAgi(agi);
+                return null;
+            }).start();
+        }
+    }
+
+    /**
+     * Disposes the current session or template.
      */
     private void disposeSession() {
-        int result = JOptionPane.showConfirmDialog(this, 
-            "Are you sure you want to dispose this session?\n\n"
-                    + "If you ever need it back, you can import it from the 'diposed' sessions folder ", 
-            "Dispose Session", JOptionPane.YES_NO_OPTION);
+        boolean isTemplate = agi.isTemplate();
+        String title = isTemplate ? "Delete Template" : "Dispose Session";
+        String msg = isTemplate
+                ? "Are you sure you want to delete this template?\n\nIt will be moved to the 'templates/disposed' directory."
+                : "Are you sure you want to dispose this session?\n\nIf you ever need it back, you can import it from the 'disposed' sessions folder.";
+
+        int result = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION);
 
         if (result == JOptionPane.YES_OPTION) {
-            agi.getConfig().getAsiContainer().dispose(agi);
+            try {
+                agi.getConfig().getAsiContainer().dispose(agi);
+            } catch (Exception e) {
+                log.error("Exception disposing {}", isTemplate ? "template" : "session", e);
+                ExceptionDialog.show(agiPanel, title, "Could not dispose " + (isTemplate ? "template" : "session") + "!", e);
+            }
         }
     }
 

@@ -1,109 +1,91 @@
 # Continuous Integration & Deployment (CI/CD)
 
-## Artifact Publishing
-All project artifacts (NBMs, IntelliJ IDEA plugin distributions, native Desktop installers, JARs, POMs) and website/Javadoc deployments are compiled, validated, and published via a unified, multi-job GitHub Action (`build.yml`), triggered on pushes to the `main` branch or release tags (`v*`).
+## 1. Architectural Strategy & Pipeline Overview
+All project artifacts (NetBeans NBMs, IntelliJ IDEA plugin distributions, native Desktop installers across Linux/Windows/macOS, Core JARs, POMs), documentation vaults, and website deployments are compiled, validated, and published via a unified master GitHub Action: **`.github/workflows/build3.yml`**.
 
-### Publishing Pipelines
-1.  **Platform NBMs & NetBeans Generation Suffixes**:
-    - Multi-target matrix build for NetBeans releases (e.g. `300` for `RELEASE300`, `310` for `RELEASE310`).
-    - Deterministic version stamping: `1.1.0-SNAPSHOT` -> `1.1.0.300-SNAPSHOT` (Dev) / `1.1.0` -> `1.1.0.300` (Release).
-    - Published to **Sonatype Central Snapshot repository** on pushes to `main`, and **Sonatype Central Release portal** on release tags.
-    - **Website & Direct Downloads**: Direct NBM download links on `asi.anahata.uno` resolve from **Maven Central** (for Stable releases) and **Sonatype Snapshots** (for Dev builds).
-    - Automated catalog generation: `mvn nbm:autoupdate` produces `updates.xml` (for stable releases) and `dev-updates.xml` (for dev snapshots), deploying both uncompressed `.xml` and compressed `.xml.gz` catalogs per NetBeans generation (`/nb/30/`, `/nb/31/`) with fail-fast validation in CI.
-2.  **IntelliJ IDEA Plugin Distribution**:
-    - Packaged as a standalone distribution ZIP (`anahata-asi-intellij-${version}.zip`) via `maven-assembly-plugin`.
-    - Bundles all core and swing dependencies alongside PSI-based IDE tools.
-3.  **Native Desktop Installers**:
-    - Compiled on a cross-platform matrix (Linux, Windows, macOS) and packaged into portable native standalone app-bundles (`.zip` and `.tar.gz`) using `jpackage`.
-4.  **Atomic GitHub Releases**:
-    - The synchronized release job purges old snapshots and uploads all binaries (NBMs, IntelliJ plugin ZIP, and the 3 native desktop installers) together in a single, atomic, collision-free transaction to the `latest-snapshot` release (or versioned release on `v*` tags).
+The pipeline is triggered automatically on pushes to the `main` branch (Dev Snapshot mode) or through the **1-Click Production Release Dispatcher** (`.github/workflows/deploy-to-prod.yml`) on official release tags (`v*`).
 
-### Credentials
--   Both paths use the `sonatype-central` server ID for credential management in GitHub Actions.
--   **Verification**: The build uses the `central-publishing-maven-plugin` to handle the deferred deployment and portal integration.
+---
 
-## Website & Javadoc Deployment
-The project website, update catalogs, and aggregated Javadocs are deployed to **GitHub Pages** using the modern Actions-based deployment method.
+## 2. The 3-Tier Distribution Architecture
 
--   **Workflow**: `.github/workflows/build.yml`
--   **Custom Domain**: [https://asi.anahata.uno](https://asi.anahata.uno)
--   **Deployment Method**: Hybrid Cloud Deployment. The runner compiles the new version's Javadocs, pulls the historical `apidocs/` vault from the persistent `gh-pages` branch, merges them, auto-indexes the landing page via an inline Python script, deploys NetBeans update center catalogs, and commits the updated vault back to `gh-pages` automatically.
+To prevent vendor lock-in, eliminate CDN sync race conditions, and strictly protect Sonatype Maven Central monthly quotas, distribution is split into 3 decoupled tiers:
 
-### Update Center Strategy
-- **Stable Channel**: `https://asi.anahata.uno/nb/30/updates.xml` (NetBeans 30) / `https://asi.anahata.uno/nb/31/updates.xml` (NetBeans 31).
-- **Development Channel**: `https://asi.anahata.uno/nb/30/dev-updates.xml` / `https://asi.anahata.uno/nb/31/dev-updates.xml`.
-- **Hosting & Fail-Fast Delivery**: Catalogs are published in both uncompressed (`.xml`) and gzip-compressed (`.xml.gz`) formats. The CI build fails immediately if `target/netbeans_site/updates.xml` is missing.
+| Tier | Target Repository | Scope & Artifacts | Automation / Gating |
+| :--- | :--- | :--- | :--- |
+| **Tier 1: Maven Central** | `repo1.maven.org` | Lightweight Core JARs (`core`, `swing`, `providers`, `desktop`, `parent` POM) & standalone Update Center NBM (~4 MB total). | **Gated by `deploy_central` checkbox** on official production releases only. Zero snapshot uploads. |
+| **Tier 2: GitHub Releases** | GitHub Releases CDN (`v*` & `latest-snapshot`) | **ALL binary distributions**: NetBeans 30/31 NBMs (~140 MB), IntelliJ plugin `.zip`, Linux `.AppImage`, Linux `.deb`, Linux `.tar.gz`, Windows `.zip`, macOS `.zip`. | **Always active unconditionally** on both snapshot builds and official production releases. |
+| **Tier 3: User-Facing Channels** | Update Centers & App Stores | NetBeans `updates.xml` catalogs, Canonical Snap Store (`stable`), JetBrains Marketplace. | **Granularly gated by target checkboxes** in `deploy-to-prod.yml` to prevent unwanted user update notifications. |
 
-## Triggering Releases on GitHub
+---
 
-### 1. Rolling Snapshots (Automatic on `main`)
-Every push to `main` automatically:
-- Builds target-specific NBMs (`1.1.0.300-SNAPSHOT`, `1.1.0.310-SNAPSHOT`) and deploys them to the **Sonatype Central Snapshot repository**.
-- Generates snapshot update catalogs (`/nb/30/dev-updates.xml.gz`, `/nb/31/dev-updates.xml.gz`).
-- Compiles native Desktop binaries (Linux, Windows, macOS) and the IntelliJ plugin ZIP.
-- Atomically refreshes the `latest-snapshot` release tag on GitHub.
-- Updates the live website and latest Javadoc vault on `asi.anahata.uno`.
+## 3. Master Pipeline Specifications (`build3.yml`)
 
-### 2. Official Stable GA Releases
-To cut an official release (e.g. `v1.1.0`), choose any of the three synchronized release methods:
+### 3.1. Single-Runner Linux Master Pipeline (`build-and-deploy`)
+Runs on `ubuntu-latest` and executes all core platform tasks in a single checkout:
+1. **One-Pass Whole Reactor Build**:
+   - Compiles all 13 modules, runs test suites, and aggregates Javadocs.
+   - If `IS_RELEASE == true` and `inputs.deploy_central == true`, deploys lightweight core JARs to Sonatype Central. Otherwise, builds strictly locally.
+2. **Parameterized NetBeans NBM Stamping Loop**:
+   - Compiles NetBeans 30 (`RELEASE300`) and NetBeans 31 (`RELEASE310`) NBMs.
+   - Stamps versions (`1.1.x.300` / `1.1.x.310`) and generates `updates.xml` (release) or `dev-updates.xml` (dev).
+   - Configures `distBase` to point to **GitHub Releases CDN**, eliminating Central 404 sync race conditions.
+3. **Standalone Update Center Plugin (`anahata-asi-nb-uc`)**:
+   - Ultra-lightweight (~35 KB) module with zero implementation locks.
+   - Deploys to Maven Central for Apache NetBeans Plugin Portal verification when `deploy_central` and `release_nb_uc` are selected.
+4. **IntelliJ IDEA Plugin Packaging**:
+   - Packages `anahata-asi-intellij-*.zip` directly from compiled classes.
+5. **Linux Native Desktop Suite**:
+   - **`jpackage` App-Image**: Bundles private JRE with Generational ZGC (`-XX:+UseZGC -XX:+ZGenerational`) and adaptive memory scaling (`-XX:MaxRAMPercentage=60.0`).
+   - **Universal `.AppImage`**: Standalone cross-distro executable for all Linux distributions.
+   - **Debian Package (`.deb`)**: Native installer with system desktop integration.
+   - **Portable `.tar.gz`**: Standalone binary directory.
+   - **Canonical Snap Store**: Builds and publishes `.snap` container (`channel: edge` on dev snapshots, `channel: stable` on release when `release_snap == true`).
+6. **Website, Javadoc Vault & GitHub Pages**:
+   - Compiles static web portal from `anahata-asi-web`.
+   - Merges versioned Javadocs into the persistent `apidocs/` vault on `gh-pages`.
+   - Prunes obsolete development snapshot docs and auto-indexes `apidocs/index.html` with smart version badges.
+   - Deploys live to **`https://asi.anahata.uno`**.
 
-#### Method A: 1-Click GitHub Actions Web UI (Recommended for Team)
-Anyone with maintainer permissions can trigger a release from their browser (even on a smartphone):
-1. Navigate to **Actions** &rarr; **🚀 1-Click Production Release Dispatcher** (`manual-release.yml`).
-2. Click **Run workflow**.
-3. *(Optional)* Leave inputs blank to automatically strip `-SNAPSHOT` from POMs and auto-increment the next patch cycle, or specify custom versions (e.g. Release: `1.1.0`, Next: `1.2.0-SNAPSHOT`).
-4. Click **Run workflow** &mdash; the cloud runner handles version bumping, commits, tag creation, and rollover automatically!
+### 3.2. Parallel Multi-OS Matrix Builders
+- **Windows Builder (`build-desktop-windows`)**: Runs on `windows-latest` to build native Windows portable `.zip`.
+- **macOS Builder (`build-desktop-macos`)**: Runs on `macos-latest` to build native macOS App Bundle `.zip`.
 
-#### Method B: Transactional Cross-Platform Release Scripts
-Run the automated pre-flight release coordinator locally:
-- **macOS / Linux / Git Bash**:
-  ```bash
-  ./release.sh 1.1.0 1.2.0-SNAPSHOT
-  git push origin main --tags
-  ```
-- **Windows (CMD / PowerShell)**:
-  ```cmd
-  release.bat 1.1.0 1.2.0-SNAPSHOT
-  git push origin main --tags
-  ```
+### 3.3. Unified Release Publisher (`publish-release`)
+- Collects all staged binaries from all three VM runners.
+- Purges stale snapshot assets and publishes fresh packages to GitHub Releases in a single transaction.
 
-#### Method C: Direct CLI Git Tagging
-1. **Set Release Version**:
-   ```bash
-   mvn versions:set -DnewVersion=1.1.0 -DgenerateBackupPoms=false
-   git commit -am "chore(release): prepare v1.1.0"
-   git push origin main
-   ```
-2. **Push Git Tag**:
-   ```bash
-   git tag v1.1.0
-   git push origin v1.1.0
-   ```
-3. **Prepare Next Development Cycle**:
-   ```bash
-   mvn versions:set -DnewVersion=1.2.0-SNAPSHOT -DgenerateBackupPoms=false
-   git commit -am "chore: open 1.2.0-SNAPSHOT development cycle"
-   git push origin main
-   ```
+---
 
-### 3. Automated Release Cloud Execution
-When a `v*` tag is pushed (via Web UI, script, or CLI):
-- **`build.yml` (Artifacts Pipeline)**:
-  - Stamps NetBeans generation suffixes (`1.1.0.300`, `1.1.0.310`).
-  - Activates `-P release`, signs all artifacts with GPG, and deploys to the **Sonatype Central Release Portal** (`central-publishing-maven-plugin`).
-  - Packages standalone IntelliJ `.zip` distribution and native Desktop app-images (Linux, Windows, macOS).
-  - Publishes the official GitHub Release for `v1.1.0` marked as `Latest` with all binaries attached.
-- **`build.yml` (Website & Javadoc Pipeline)**:
-  - Archives versioned Javadocs under `apidocs/1.1.0/` and persists to `gh-pages`.
-  - Deploys official `updates.xml` catalogs to `/nb/30/` and `/nb/31/` on `asi.anahata.uno`.
+## 4. 1-Click Production Release Dispatcher (`deploy-to-prod.yml`)
 
-### Javadoc Strategy
-We maintain a stateful, multi-version Javadoc repository in the cloud without local git bloat.
--   **Storage Path**: `apidocs/${project.version}/`
--   **Aggregation**: Javadocs are aggregated at the parent level using `javadoc:aggregate`.
--   **Persistence**: The deployment workflow automatically preserves all historical stable release folders on the `gh-pages` branch, while maintaining a rolling, live-updated `Latest` directory for SNAPSHOT builds.
--   **Access**: The dynamic directory entry point is [https://asi.anahata.uno/apidocs/index.html](https://asi.anahata.uno/apidocs/index.html).
+To cut an official release (e.g. `v1.1.14`):
+1. Navigate to **Actions** &rarr; **🚀 1-Click Production Release Dispatcher (V3)**.
+2. Select target options (defaults to `false` for safety):
+   - `release_version` & `next_snapshot` (leave empty for automatic SemVer calculation).
+   - ☐ `deploy_central` &mdash; Deploy Core Platform JARs to Maven Central.
+   - ☐ `release_nb_300` &mdash; Release NetBeans 30 ASI Studio (Update `nb/30/updates.xml`).
+   - ☐ `release_nb_310` &mdash; Release NetBeans 31 ASI Studio (Update `nb/31/updates.xml`).
+   - ☐ `release_nb_uc` &mdash; Release NetBeans Update Center Plugin.
+   - ☐ `release_intellij` &mdash; Release IntelliJ IDEA Plugin (.zip).
+   - ☐ `release_snap` &mdash; Release ASI Desktop Snap Package (to Canonical Snap Store `stable`).
+   - ☐ `release_desktop` &mdash; Release ASI Desktop Native Installers (Windows & Mac).
+3. Click **Run workflow** &mdash; the dispatcher tags the release commit, advances POMs to the next snapshot development cycle, and triggers `build3.yml` in Release Mode.
 
-## Current Status & Transition Plan
--   **V1**: The `anahata.uno` domain is currently pointed to the V1 website (hosted in the `anahata-netbeans-ai` project).
--   **V2 (ASI)**: The V2 portal is live at `asi.anahata.uno`.
+---
+
+## 5. Current Status & Pending Roadmap
+
+### Completed:
+- ✅ Full CI unification into `build3.yml` with parallel Windows/macOS runners.
+- ✅ Sonatype Central quota preservation (Studio NBMs served from GitHub Releases).
+- ✅ Dynamic versioning for Canonical Snap Store (`snapcraft.yaml`).
+- ✅ Multi-format Linux packaging (`.AppImage`, `.deb`, `.tar.gz`, `.snap`).
+- ✅ Tabbed responsive download portals on `nb.html` and `desktop.html`.
+
+### Pending / Next Steps:
+- ⏳ **Canonical Snap Classic Confinement**: Awaiting forum review on `forum.snapcraft.io`.
+- ⏳ **GitHub Pages APT Repository**: Set up automated `dpkg-scanpackages` indexing at `https://asi.anahata.uno/apt/`.
+- ⏳ **FUSE-Independent AppImage Runtime**: Ensure 1-click double-click launch on modern Ubuntu without manual `libfuse2` installation.
+- ⏳ **Flathub (Flatpak) Manifest**: Submit `uno.anahata.asi.desktop` to Flathub.
+- ⏳ **JetBrains Marketplace**: Connect automated upload token for IntelliJ plugin releases.

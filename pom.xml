@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>uno.anahata</groupId>
     <artifactId>anahata-asi-parent</artifactId>
-    <version>1.1.5-SNAPSHOT</version>
+    <version>1.2.5-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Anahata ASI Parent</name>
     <description>Parent POM for the Anahata ASI multi-module project.</description>
@@ -49,10 +49,6 @@
             <id>sonatype-central</id>
             <url>https://central.sonatype.com/</url>
         </repository>
-        <snapshotRepository>
-            <id>sonatype-central</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-        </snapshotRepository>
     </distributionManagement>
 
     <repositories>
@@ -70,16 +66,6 @@
             </releases>
             <snapshots>
                 <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>sonatype-snapshots</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
             </snapshots>
         </repository>
     </repositories>
@@ -106,7 +92,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <netbeans.version>RELEASE300</netbeans.version>
         <!-- Dependency Group Versions -->
-        <lombok.version>1.18.46</lombok.version>
+        <lombok.version>1.18.48</lombok.version>
         <swagger.version>2.2.22</swagger.version><!--2.2.48 seems the latest-->
         <jackson.version>2.17.1</jackson.version><!--2.32.2 seems the latest-->
         <slf4j.version>2.0.17</slf4j.version>
@@ -351,6 +337,14 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>${maven-jar-plugin.version}</version>
+                    <configuration>
+                        <archive>
+                            <manifest>
+                                <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                            </manifest>
+                        </archive>
+                    </configuration>
                 </plugin>
                 <!-- Surefire Plugin for running tests -->
                 <plugin>
@@ -436,6 +430,32 @@
     </build>
     
     <profiles>
+        <!--
+                <profile>
+                    <id>sonatype-snapshots</id>
+                    <activation>
+                        <property>
+                            <name>env.GITHUB_ACTIONS</name>
+                        </property>
+                    </activation>
+                    <properties>
+                        <altSnapshotDeploymentRepository>sonatype-central::https://central.sonatype.com/repository/maven-snapshots/</altSnapshotDeploymentRepository>
+                    </properties>
+                    <repositories>
+                        <repository>
+                            <id>sonatype-snapshots</id>
+                            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+                            <releases>
+                                <enabled>false</enabled>
+                            </releases>
+                            <snapshots>
+                                <enabled>true</enabled>
+                            </snapshots>
+                        </repository>
+                    </repositories>
+                </profile>
+        
+        -->
         <profile>
             <id>release</id>
             <properties>

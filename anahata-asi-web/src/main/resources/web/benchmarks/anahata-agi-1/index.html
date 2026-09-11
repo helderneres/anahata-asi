@@ -3,10 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anahata-AGI-1 Suite | Pure-Java AI Performance Leaderboard</title>
+    <title>Anahata-AGI-1 Suite | Live Results & Leaderboard</title>
     <link rel="icon" type="image/png" href="../../assets/favicon.png">
     <link rel="stylesheet" href="../../style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .bench-filter { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; border-radius: 8px; padding: 10px 14px; font-size: 0.9rem; outline: none; }
+        .bench-filter option { background-color: #0f172a; color: #f1f5f9; }
+        .bench-filter:focus { border-color: var(--barca-gold, #edbb00); }
+        .tab-btn { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 8px 18px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; }
+        .tab-btn.active { background: rgba(237, 187, 0, 0.15); border-color: var(--barca-gold, #edbb00); color: var(--barca-gold, #edbb00); }
+        .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+        .sortable-th { cursor: pointer; user-select: none; transition: color 0.15s ease; white-space: nowrap; }
+        .sortable-th:hover { color: var(--barca-gold, #edbb00); }
+        .sort-icon { margin-left: 4px; font-size: 0.75rem; color: #64748b; }
+        .sort-icon.active { color: var(--barca-gold, #edbb00); }
+        .bench-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .bench-table th { text-align: left; padding: 0.8rem; color: #cbd5e1; border-bottom: 2px solid rgba(255,255,255,0.12); white-space: nowrap; }
+        .bench-table td { padding: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: middle; }
+        .run-row { cursor: pointer; transition: background 0.15s ease; }
+        .run-row:hover { background: rgba(255,255,255,0.03); }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; }
+        .badge-pass { background: #16a34a; color: #fff; }
+        .badge-fail { background: #dc2626; color: #fff; }
+        .badge-cert { background: #16a34a; color: #fff; }
+        .badge-pending { background: rgba(255,255,255,0.1); color: #94a3b8; }
+        .badge-thinking { background: rgba(237, 187, 0, 0.15); color: var(--barca-gold, #edbb00); border: 1px solid rgba(237, 187, 0, 0.3); font-size: 0.68rem; margin-left: 4px; }
+        .stat-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.2rem; text-align: center; }
+        .stat-card .num { font-size: 1.9rem; font-weight: 800; color: var(--barca-gold, #edbb00); }
+        .stat-card .lbl { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.25rem; }
+        a.video-link { color: #60a5fa; text-decoration: none; font-size: 1.1rem; }
+        a.video-link:hover { color: var(--barca-gold, #edbb00); }
+        .token-sub { font-size: 0.75rem; color: #94a3b8; margin-top: 3px; }
+        .expand-icon { transition: transform 0.2s ease; display: inline-block; color: #94a3b8; }
+        .expand-icon.open { transform: rotate(90deg); color: var(--barca-gold, #edbb00); }
+        .detail-card { background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1.2rem; margin: 0.5rem 0; }
+        .telemetry-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1rem; }
+        .telemetry-pill { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px 12px; }
+        .telemetry-pill .t-val { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+        .telemetry-pill .t-lbl { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
+        .obs-box { background: rgba(220, 38, 38, 0.08); border: 1px solid rgba(220, 38, 38, 0.25); border-radius: 6px; padding: 10px 14px; font-family: monospace; font-size: 0.82rem; color: #fca5a5; white-space: pre-wrap; margin-top: 0.8rem; }
+        .video-player-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; border-radius: 8px; margin-top: 1rem; }
+        .video-player-wrap iframe { position: absolute; top:0; left: 0; width: 100%; height: 100%; border: 0; }
+    </style>
 </head>
 <body>
     <div id="main-nav"></div>
@@ -17,108 +56,76 @@
             <h1 class="fade-in">Anahata <span style="color: var(--barca-gold);">AGI-1</span> Suite</h1>
             <p class="tagline">The Flagship Pure-Java Agentic Benchmark Suite</p>
             <p class="hero-description" style="max-width: 850px; margin: 0 auto 2rem; color: var(--text-muted); font-size: 1.1rem; line-height: 1.7;">
-                Evaluating Large Language Models across real-world Java engineering challenges: interactive Swing/JavaFX GUIs, LWJGL 3D graphics, AST refactoring, and JNA native C-library bindings.
+                Live, filterable results for every model challenged on real-world Java engineering tasks. This page is generated automatically from the benchmark engine's <code>catalog.json</code> and <code>results.json</code>.
             </p>
         </div>
     </header>
 
     <main>
-        <!-- Active Suite Challenges Index -->
-        <section id="challenges" class="dark-bg">
-            <div class="container">
-                <div class="section-header" style="text-align: center; margin-bottom: 3rem;">
-                    <h2>🏆 Active Suite Challenges</h2>
-                    <p style="color: var(--text-muted); font-size: 1.1rem;">Explore individual prompt score sheets, model telemetry, and visual runs.</p>
+        <section id="dashboard" class="dark-bg" style="padding-top: 1.5rem; padding-bottom: 4rem;">
+            <div class="container" style="max-width: 1200px; margin: 0 auto;">
+
+                <div id="loading" style="text-align:center; color: var(--text-muted); padding: 3rem 0;">
+                    <i class="fas fa-spinner fa-spin"></i>&nbsp; Loading benchmark data…
                 </div>
 
-                <div class="feature-grid">
-                    <!-- Test #1: JAVA-JNA-1 -->
-                    <div class="feature-card" style="border-top: 4px solid var(--barca-gold);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <span style="background: var(--barca-gold); color: black; font-size: 0.75rem; font-weight: 800; padding: 3px 10px; border-radius: 4px; text-transform: uppercase;">Test #1</span>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Sponsor:</span>
-                                <img src="../../assets/logos/uno.anahata.asi.novarouteai.NovaRouteAiProvider.png" alt="NovaRouteAI" style="height: 22px; vertical-align: middle;">
-                                <span style="font-size: 0.85rem; color: var(--barca-gold); font-weight: 700;">NovaRouteAI</span>
-                            </div>
-                        </div>
-                        <h3 style="font-size: 1.3rem; color: var(--white); margin-bottom: 0.8rem;"><i class="fas fa-microchip" style="color: var(--barca-gold); margin-right: 8px;"></i> JAVA-JNA-1</h3>
-                        <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                            You are currently being benchmarked in the official <strong>Anahata-AGI-1 Suite</strong> (<code>JAVA-JNA-1</code>). Your performance is evaluated across 3 criteria: <strong>Accuracy & Technical Completion (50%)</strong>, <strong>Developer & Artistic Score (20%)</strong>, and <strong>Efficiency & Latency (30%)</strong>. <strong>Goal:</strong> Build a real-time, interactive host system dashboard using JNA (<code>com.sun.jna.Library</code>) to monitor host system telemetry. You have complete creative freedom to decide what metrics to retrieve, what UI framework to use, and how to design the interface.
-                        </p>
-                        <a href="java-jna-1.html" class="btn-primary" style="align-self: flex-start; text-decoration: none;">View JAVA-JNA-1 Results &rarr;</a>
+                <div id="error" style="display:none; text-align:center; color:#f87171; padding:2rem;" ></div>
+
+                <div id="dashboardContent" style="display:none;">
+                    <!-- Stats -->
+                    <div id="stats" class="responsive-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;"></div>
+
+                    <!-- Top-level View Tabs -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                        <button id="tabResultsBtn" class="tab-btn active" onclick="window.switchTab('results')"><i class="fas fa-chart-line"></i> Benchmark Results &amp; Runs</button>
+                        <button id="tabSpecsBtn" class="tab-btn" onclick="window.switchTab('specs')"><i class="fas fa-vial"></i> Test Catalog &amp; Specifications (<span id="specTestCount">4</span>)</button>
                     </div>
 
-                    <!-- Test #2: JAVA-ARKANOID-1 -->
-                    <div class="feature-card" style="border-top: 4px solid var(--primary-light);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <span style="background: var(--primary-light); color: white; font-size: 0.75rem; font-weight: 800; padding: 3px 10px; border-radius: 4px; text-transform: uppercase;">Test #2</span>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Sponsor:</span>
-                                <img src="../../assets/logos/uno.anahata.asi.novarouteai.NovaRouteAiProvider.png" alt="NovaRouteAI" style="height: 22px; vertical-align: middle;">
-                                <span style="font-size: 0.85rem; color: var(--barca-gold); font-weight: 700;">NovaRouteAI</span>
-                            </div>
+                    <!-- Tab 1: Results View -->
+                    <div id="tabResultsView">
+                        <!-- Filters -->
+                        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; margin-bottom: 1.5rem;">
+                            <input id="search" class="bench-filter" type="text" placeholder="🔍 Search model, provider, test…" style="flex: 1 1 220px; min-width: 180px;">
+                            <select id="testFilter" class="bench-filter"><option value="">All Tests</option></select>
+                            <select id="providerFilter" class="bench-filter"><option value="">All Providers</option></select>
+                            <select id="passedFilter" class="bench-filter">
+                                <option value="">All Status</option>
+                                <option value="true">Passed</option>
+                                <option value="false">Failed</option>
+                            </select>
+                            <select id="sortBy" class="bench-filter">
+                                <option value="newest">Sort: Newest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="scoreDesc">Sort: Score (High-Low)</option>
+                                <option value="scoreAsc">Sort: Score (Low-High)</option>
+                                <option value="durationAsc">Sort: Duration (Fastest)</option>
+                                <option value="durationDesc">Sort: Duration (Slowest)</option>
+                                <option value="tokensAsc">Sort: Total Tokens (Fewest)</option>
+                                <option value="tokensDesc">Sort: Total Tokens (Most)</option>
+                                <option value="thoughtsDesc">Sort: Reasoning Tokens (Most)</option>
+                                <option value="turnsAsc">Sort: Turns (Fewest)</option>
+                            </select>
+                            <button id="resetBtn" class="bench-filter" style="cursor:pointer; background: var(--barca-gold, #edbb00); color:#000; font-weight:700; border:none;">Reset</button>
                         </div>
-                        <h3 style="font-size: 1.3rem; color: var(--white); margin-bottom: 0.8rem;"><i class="fas fa-gamepad" style="color: var(--primary-light); margin-right: 8px;"></i> JAVA-ARKANOID-1</h3>
-                        <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                            Build a fully playable, retro Arkanoid brick-breaker game in Swing with collision physics, power-ups, score counter, and smooth 60 FPS EDT animation loop.
-                        </p>
-                        <a href="java-arkanoid-1.html" class="btn-primary" style="align-self: flex-start; text-decoration: none;">View JAVA-ARKANOID-1 Results &rarr;</a>
+
+                        <!-- Runs Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h2 style="margin: 0;"><i class="fas fa-list"></i> Recorded Runs <span id="runCount" style="font-size:0.85rem; color: var(--text-muted);"></span></h2>
+                            <span style="font-size:0.8rem; color:#94a3b8;"><i class="fas fa-mouse-pointer"></i> Click column headers to sort &bull; Click row to expand telemetry</span>
+                        </div>
+                        <div style="overflow-x: auto;" id="runs"></div>
+                    </div>
+
+                    <!-- Tab 2: Test Specs View -->
+                    <div id="tabSpecsView" style="display:none;">
+                        <div style="margin-bottom: 1.2rem;">
+                            <h2 style="margin: 0 0 0.4rem 0;"><i class="fas fa-vial" style="color: var(--barca-gold, #edbb00);"></i> Anahata-AGI-1 Benchmark Challenges</h2>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Complete challenge prompts, sandbox toolkits, and permission policies evaluated across all candidate models.</p>
+                        </div>
+                        <div id="testCatalogCards" class="responsive-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.2rem;"></div>
                     </div>
                 </div>
-            </div>
-        </section>
 
-        <!-- Master Suite Leaderboard Table -->
-        <section id="leaderboard">
-            <div class="container">
-                <div class="section-header" style="text-align: center; margin-bottom: 3rem;">
-                    <h2>📊 Master Candidate Leaderboard</h2>
-                    <p style="color: var(--text-muted); font-size: 1.1rem;">Models earn <strong>Anahata AGI Certification</strong> upon achieving an average score > 85% across all suite tests.</p>
-                </div>
-
-                <div class="comparison-container" style="overflow-x: auto; margin-bottom: 3rem;">
-                    <table class="comparison-table" style="width: 100%; border-collapse: collapse; text-align: left; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; font-size: 0.95rem;">
-                        <thead>
-                            <tr style="border-bottom: 2px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02);">
-                                <th style="padding: 1.2rem; color: var(--barca-gold);">Model ID</th>
-                                <th style="padding: 1.2rem; color: var(--white);">Sponsor Provider</th>
-                                <th style="padding: 1.2rem; color: var(--white);">JAVA-JNA-1</th>
-                                <th style="padding: 1.2rem; color: var(--white);">JAVA-ARKANOID-1</th>
-                                <th style="padding: 1.2rem; color: var(--primary-light);"><strong>Suite Average</strong></th>
-                                <th style="padding: 1.2rem; color: var(--barca-gold);">Certification</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                <td style="padding: 1.2rem;"><code>gemini-3.6-flash</code></td>
-                                <td style="padding: 1.2rem;">
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <img src="../../assets/logos/uno.anahata.asi.gemini.GeminiAiProvider.png" alt="Google Cloud" style="height: 20px;">
-                                        <span>Google Cloud</span>
-                                    </div>
-                                </td>
-                                <td style="padding: 1.2rem; color: var(--verified-green); font-weight: 700;">98.0%</td>
-                                <td style="padding: 1.2rem; color: var(--verified-green); font-weight: 700;">95.0%</td>
-                                <td style="padding: 1.2rem; background: rgba(44, 122, 123, 0.05); border-left: 3px solid var(--primary-light);"><strong>96.5%</strong></td>
-                                <td style="padding: 1.2rem;"><span style="background: var(--verified-green); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: 800;">Certified AGI</span></td>
-                            </tr>
-                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                <td style="padding: 1.2rem;"><code>kimi/Kimi-K3</code></td>
-                                <td style="padding: 1.2rem;">
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <img src="../../assets/logos/uno.anahata.asi.novarouteai.NovaRouteAiProvider.png" alt="NovaRouteAI" style="height: 20px;">
-                                        <span>NovaRouteAI</span>
-                                    </div>
-                                </td>
-                                <td style="padding: 1.2rem; color: var(--text-muted);">Pending</td>
-                                <td style="padding: 1.2rem; color: var(--text-muted);">Pending</td>
-                                <td style="padding: 1.2rem; background: rgba(44, 122, 123, 0.05); border-left: 3px solid var(--primary-light);"><strong>--</strong></td>
-                                <td style="padding: 1.2rem;"><span style="background: rgba(255,255,255,0.1); color: var(--text-muted); padding: 4px 10px; border-radius: 4px; font-size: 0.8rem;">Pending</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
         </section>
     </main>
@@ -131,5 +138,413 @@
         </div>
     </footer>
     <script src="../../nav.js"></script>
+    <script>
+    (function () {
+        var catalog = { tests: [] };
+        var results = [];
+        var expandedRows = {};
+        var currentSortCol = 'timestamp';
+        var currentSortDir = 'desc';
+
+        function modelOf(r) { return r && r.participant ? (r.participant.modelId || 'unknown') : 'unknown'; }
+        function providerOf(r) { return r && r.participant ? (r.participant.providerUuid || 'unknown') : 'unknown'; }
+        function thinkingOf(r) { return r && r.participant ? r.participant.thinkingLevel : null; }
+        function titleOf(code) {
+            var t = (catalog.tests || []).filter(function (x) { return x.testCode === code; })[0];
+            return t ? t.title : code;
+        }
+        function testDefOf(code) {
+            return (catalog.tests || []).filter(function (x) { return x.testCode === code; })[0];
+        }
+        function avgScore(r) {
+            var s = (r.judgeScores || []).filter(function (x) { return x != null; }).map(function (x) { return x.score; });
+            if (!s.length) return null;
+            return s.reduce(function (a, b) { return a + b; }, 0) / s.length;
+        }
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+            });
+        }
+        function fmt(n) {
+            return Number(n || 0).toLocaleString();
+        }
+        function extractYouTubeId(url) {
+            if (!url) return null;
+            var m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{11})/);
+            return m ? m[1] : null;
+        }
+
+        window.switchTab = function (tab) {
+            var resultsView = document.getElementById('tabResultsView');
+            var specsView = document.getElementById('tabSpecsView');
+            var resBtn = document.getElementById('tabResultsBtn');
+            var specsBtn = document.getElementById('tabSpecsBtn');
+            if (tab === 'specs') {
+                resultsView.style.display = 'none';
+                specsView.style.display = 'block';
+                resBtn.classList.remove('active');
+                specsBtn.classList.add('active');
+            } else {
+                resultsView.style.display = 'block';
+                specsView.style.display = 'none';
+                resBtn.classList.add('active');
+                specsBtn.classList.remove('active');
+            }
+        };
+
+        window.sortByCol = function (col) {
+            if (currentSortCol === col) {
+                currentSortDir = (currentSortDir === 'asc' ? 'desc' : 'asc');
+            } else {
+                currentSortCol = col;
+                if (col === 'score' || col === 'tokens' || col === 'timestamp') {
+                    currentSortDir = 'desc';
+                } else {
+                    currentSortDir = 'asc';
+                }
+            }
+
+            var sortSelect = document.getElementById('sortBy');
+            if (col === 'timestamp') sortSelect.value = (currentSortDir === 'desc' ? 'newest' : 'oldest');
+            else if (col === 'score') sortSelect.value = (currentSortDir === 'desc' ? 'scoreDesc' : 'scoreAsc');
+            else if (col === 'duration') sortSelect.value = (currentSortDir === 'asc' ? 'durationAsc' : 'durationDesc');
+            else if (col === 'tokens') sortSelect.value = (currentSortDir === 'asc' ? 'tokensAsc' : 'tokensDesc');
+            else if (col === 'turns') sortSelect.value = 'turnsAsc';
+
+            render();
+        };
+
+        function syncUrlParams() {
+            var params = new URLSearchParams();
+            var search = document.getElementById('search').value;
+            var testF = document.getElementById('testFilter').value;
+            var provF = document.getElementById('providerFilter').value;
+            var passF = document.getElementById('passedFilter').value;
+            var sort = document.getElementById('sortBy').value;
+
+            if (search) params.set('search', search);
+            if (testF) params.set('test', testF);
+            if (provF) params.set('provider', provF);
+            if (passF !== '') params.set('status', passF);
+            if (sort !== 'newest') params.set('sort', sort);
+
+            var q = params.toString();
+            var url = window.location.pathname + (q ? '?' + q : '');
+            window.history.replaceState({}, '', url);
+        }
+
+        function applyUrlParams() {
+            var params = new URLSearchParams(window.location.search);
+            if (params.has('search')) document.getElementById('search').value = params.get('search');
+            if (params.has('test')) document.getElementById('testFilter').value = params.get('test');
+            if (params.has('provider')) document.getElementById('providerFilter').value = params.get('provider');
+            if (params.has('status')) document.getElementById('passedFilter').value = params.get('status');
+            if (params.has('sort')) {
+                var s = params.get('sort');
+                document.getElementById('sortBy').value = s;
+                if (s === 'oldest') { currentSortCol = 'timestamp'; currentSortDir = 'asc'; }
+                else if (s === 'scoreDesc') { currentSortCol = 'score'; currentSortDir = 'desc'; }
+                else if (s === 'scoreAsc') { currentSortCol = 'score'; currentSortDir = 'asc'; }
+                else if (s === 'durationAsc') { currentSortCol = 'duration'; currentSortDir = 'asc'; }
+                else if (s === 'durationDesc') { currentSortCol = 'duration'; currentSortDir = 'desc'; }
+                else if (s === 'tokensAsc') { currentSortCol = 'tokens'; currentSortDir = 'asc'; }
+                else if (s === 'tokensDesc') { currentSortCol = 'tokens'; currentSortDir = 'desc'; }
+                else if (s === 'turnsAsc') { currentSortCol = 'turns'; currentSortDir = 'asc'; }
+            }
+        }
+
+        function render() {
+            syncUrlParams();
+            var search = (document.getElementById('search').value || '').toLowerCase();
+            var testF = document.getElementById('testFilter').value;
+            var provF = document.getElementById('providerFilter').value;
+            var passF = document.getElementById('passedFilter').value;
+
+            var filtered = results.filter(function (r) {
+                if (testF && r.testCode !== testF) return false;
+                if (provF && providerOf(r) !== provF) return false;
+                if (passF !== '' && String(r.passed) !== passF) return false;
+                if (search) {
+                    var hay = (modelOf(r) + ' ' + providerOf(r) + ' ' + r.testCode + ' ' + titleOf(r.testCode) + ' ' + (r.asiContainer || '') + ' ' + (r.observations || '')).toLowerCase();
+                    if (hay.indexOf(search) === -1) return false;
+                }
+                return true;
+            });
+
+            filtered.sort(function (a, b) {
+                var mul = (currentSortDir === 'asc') ? 1 : -1;
+                if (currentSortCol === 'timestamp') {
+                    return mul * (a.timestamp || '').localeCompare(b.timestamp || '');
+                } else if (currentSortCol === 'model') {
+                    return mul * modelOf(a).localeCompare(modelOf(b));
+                } else if (currentSortCol === 'provider') {
+                    return mul * providerOf(a).localeCompare(providerOf(b));
+                } else if (currentSortCol === 'test') {
+                    return mul * (a.testCode || '').localeCompare(b.testCode || '');
+                } else if (currentSortCol === 'passed') {
+                    return mul * ((a.passed === b.passed) ? 0 : (a.passed ? 1 : -1));
+                } else if (currentSortCol === 'duration') {
+                    return mul * ((a.durationSeconds || 0) - (b.durationSeconds || 0));
+                } else if (currentSortCol === 'turns') {
+                    return mul * ((a.turns || 0) - (b.turns || 0));
+                } else if (currentSortCol === 'tokens') {
+                    return mul * ((a.totalTokens || 0) - (b.totalTokens || 0));
+                } else if (currentSortCol === 'score') {
+                    var sa = avgScore(a) != null ? avgScore(a) : -1;
+                    var sb = avgScore(b) != null ? avgScore(b) : -1;
+                    return mul * (sa - sb);
+                }
+                return (b.timestamp || '').localeCompare(a.timestamp || '');
+            });
+
+            renderStats(results);
+            renderCatalogCards();
+            renderRuns(filtered);
+        }
+
+        function renderCatalogCards() {
+            var container = document.getElementById('testCatalogCards');
+            if (!container) return;
+            if (!catalog.tests || !catalog.tests.length) {
+                container.innerHTML = '<p style="color: var(--text-muted);">No challenge definitions available.</p>';
+                return;
+            }
+            document.getElementById('specTestCount').textContent = catalog.tests.length;
+            var html = catalog.tests.map(function (t) {
+                var tkList = '';
+                if (t.toolkits && t.toolkits.length) {
+                    tkList = t.toolkits.map(function (tk) {
+                        var pKeys = Object.keys(tk.permissions || {});
+                        var pStr = pKeys.length ? ' (' + pKeys.map(function (k) { return '<code style="color:var(--barca-gold,#edbb00);">' + esc(k) + ': ' + esc(tk.permissions[k]) + '</code>'; }).join(', ') + ')' : '';
+                        return '<li><code>' + esc(tk.toolkit) + '</code>' + pStr + '</li>';
+                    }).join('');
+                } else {
+                    tkList = '<li><span style="color:#94a3b8;">Container Defaults (All Toolkits)</span></li>';
+                }
+
+                return '<div class="stat-card" style="text-align: left; padding: 1.4rem;">' +
+                    '<div style="font-size:0.8rem; font-weight:800; color:var(--barca-gold, #edbb00); text-transform:uppercase;">' + esc(t.testCode) + '</div>' +
+                    '<h3 style="font-size:1.15rem; margin: 0.3rem 0 0.8rem 0; color:#f1f5f9;">' + esc(t.title) + '</h3>' +
+                    '<div style="font-size:0.85rem; margin-bottom: 0.8rem;"><strong>Toolkits &amp; Sandbox Permissions:</strong><ul style="margin:4px 0 0 16px; padding:0;">' + tkList + '</ul></div>' +
+                    '<details open style="font-size:0.85rem; color:#94a3b8; cursor:pointer;">' +
+                    '<summary style="color:#60a5fa; font-weight:600; margin-bottom:4px;">Task Prompt Instructions</summary>' +
+                    '<pre style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 10px 12px; font-size:0.8rem; color:#e2e8f0; white-space:pre-wrap; font-family:monospace; margin-top:6px; line-height:1.5;">' + esc(t.rawPrompt) + '</pre>' +
+                    '</details>' +
+                    '</div>';
+            }).join('');
+            container.innerHTML = html;
+        }
+
+        function renderStats(all) {
+            var passed = all.filter(function (r) { return r.passed; }).length;
+            var models = {}; all.forEach(function (r) { models[modelOf(r)] = 1; });
+            var providers = {}; all.forEach(function (r) { providers[providerOf(r)] = 1; });
+            var totalDur = all.reduce(function (a, r) { return a + (r.durationSeconds || 0); }, 0);
+            var avgDur = all.length ? (totalDur / all.length).toFixed(1) : '0';
+            document.getElementById('stats').innerHTML =
+                stat('' + all.length, 'Total Runs') +
+                stat('' + passed, 'Passed') +
+                stat('' + Object.keys(models).length, 'Models') +
+                stat('' + Object.keys(providers).length, 'Providers') +
+                stat(avgDur + 's', 'Avg Duration');
+        }
+        function stat(num, lbl) { return '<div class="stat-card"><div class="num">' + esc(num) + '</div><div class="lbl">' + esc(lbl) + '</div></div>'; }
+
+        window.toggleRunDetails = function (idx) {
+            expandedRows[idx] = !expandedRows[idx];
+            render();
+        };
+
+        function getSortIcon(col) {
+            if (currentSortCol !== col) {
+                return '<i class="fas fa-sort sort-icon"></i>';
+            }
+            return (currentSortDir === 'asc')
+                ? '<i class="fas fa-sort-up sort-icon active"></i>'
+                : '<i class="fas fa-sort-down sort-icon active"></i>';
+        }
+
+        function renderRuns(filtered) {
+            document.getElementById('runCount').textContent = '(' + filtered.length + ')';
+            if (!filtered.length) {
+                document.getElementById('runs').innerHTML = '<p style="color: var(--text-muted); padding: 2rem 0; text-align:center;">No runs match the current filters.</p>';
+                return;
+            }
+            var rows = filtered.map(function (r, idx) {
+                var a = avgScore(r);
+                var scoreStr = a != null ? a.toFixed(1) : '<span style="color: var(--text-muted);">Unrated</span>';
+                var vid = r.videoUrl ? ' <a class="video-link" href="' + esc(r.videoUrl) + '" target="_blank" rel="noopener" title="Watch on YouTube" onclick="event.stopPropagation();"><i class="fab fa-youtube" style="color: #ef4444;"></i></a>' : '';
+                var judges = (r.judgeScores || []).filter(function (s) { return s != null; }).map(function (s) {
+                    return esc(s.name) + ':' + s.score;
+                }).join(', ');
+
+                var thinkLvl = thinkingOf(r);
+                var thinkBadge = (thinkLvl && thinkLvl !== 'THINKING_LEVEL_UNSPECIFIED' && thinkLvl !== 'NONE')
+                    ? '<span class="badge badge-thinking">' + esc(thinkLvl) + '</span>'
+                    : '';
+
+                var isExpanded = !!expandedRows[idx];
+                var chevron = '<i class="fas fa-chevron-right expand-icon ' + (isExpanded ? 'open' : '') + '"></i>';
+
+                var tDef = testDefOf(r.testCode);
+                var promptTooltip = esc(tDef ? (tDef.title + '\n\n' + tDef.rawPrompt) : r.testCode);
+
+                var mainRow = '<tr class="run-row" onclick="window.toggleRunDetails(' + idx + ')">' +
+                    '<td style="text-align:center; width: 30px;">' + chevron + '</td>' +
+                    '<td>' + esc((r.timestamp || '').substring(0, 10)) + '</td>' +
+                    '<td><code>' + esc(modelOf(r)) + '</code>' + thinkBadge + '</td>' +
+                    '<td>' + esc(providerOf(r)) + '</td>' +
+                    '<td title="' + promptTooltip + '" style="cursor:help;">' +
+                    '<code>' + esc(r.testCode) + '</code> <i class="fas fa-info-circle" style="color:#60a5fa; font-size:0.75rem;"></i>' +
+                    '<br><span style="color: var(--text-muted); font-size:0.8rem;">' + esc(titleOf(r.testCode)) + '</span></td>' +
+                    '<td>' + (r.passed ? '<span class="badge badge-pass">Pass</span>' : '<span class="badge badge-fail">Fail</span>') + '</td>' +
+                    '<td>' + (r.durationSeconds || 0) + 's</td>' +
+                    '<td>' + (r.turns || 0) + '</td>' +
+                    '<td><strong>' + fmt(r.totalTokens) + '</strong>' +
+                    '<div class="token-sub">In: ' + fmt(r.promptTokens) + ' | Out: ' + fmt(r.candidatesTokens) + ' | Think: ' + fmt(r.thoughtsTokens) + '</div></td>' +
+                    '<td><strong>' + scoreStr + '</strong></td>' +
+                    '<td>' + (judges || '<span style="color: var(--text-muted);">—</span>') + '</td>' +
+                    '<td style="text-align:center;">' + vid + '</td>' +
+                    '</tr>';
+
+                var detailRow = '';
+                if (isExpanded) {
+                    var ytid = extractYouTubeId(r.videoUrl);
+                    var videoPlayer = ytid
+                        ? '<div class="video-player-wrap"><iframe src="https://www.youtube.com/embed/' + ytid + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>'
+                        : '';
+
+                    var judgeDetails = (r.judgeScores || []).map(function (j) {
+                        return '<div style="margin-bottom: 4px;"><strong>' + esc(j.name) + ': ' + j.score + '</strong>' +
+                            (j.comments ? ' — <span style="color: var(--text-muted);">' + esc(j.comments) + '</span>' : '') + '</div>';
+                    }).join('');
+
+                    var obs = (r.observations && r.observations.trim())
+                        ? '<div class="obs-box"><strong>Observations & Feedback:</strong>\n' + esc(r.observations) + '</div>'
+                        : '';
+
+                    var specHtml = '';
+                    if (tDef) {
+                        var tkList = '';
+                        if (tDef.toolkits && tDef.toolkits.length) {
+                            tkList = tDef.toolkits.map(function (tk) {
+                                var pKeys = Object.keys(tk.permissions || {});
+                                var pStr = pKeys.length ? ' (' + pKeys.map(function (k) { return '<code style="color:var(--barca-gold,#edbb00);">' + esc(k) + ': ' + esc(tk.permissions[k]) + '</code>'; }).join(', ') + ')' : '';
+                                return '<li style="margin-top:2px;"><code>' + esc(tk.toolkit) + '</code>' + pStr + '</li>';
+                            }).join('');
+                        } else {
+                            tkList = '<li><span style="color:#94a3b8;">Container Defaults (All Standard Toolkits)</span></li>';
+                        }
+
+                        specHtml = '<div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 6px; padding: 12px; margin-top: 0.8rem;">' +
+                            '<div style="font-weight:700; color:var(--barca-gold, #edbb00); margin-bottom:6px;"><i class="fas fa-terminal"></i> Challenge Specification: ' + esc(tDef.testCode) + ' — ' + esc(tDef.title) + '</div>' +
+                            '<div style="font-size:0.82rem; margin-bottom:6px;"><strong>Enabled Toolkits &amp; Permissions:</strong><ul style="margin:4px 0 8px 18px; padding:0;">' + tkList + '</ul></div>' +
+                            '<div style="font-size:0.82rem;"><strong>Raw Prompt Delivered to Model:</strong>' +
+                            '<pre style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; padding: 10px; font-size: 0.8rem; color: #e2e8f0; white-space: pre-wrap; font-family: monospace; margin-top:4px;">' + esc(tDef.rawPrompt) + '</pre></div>' +
+                            '</div>';
+                    }
+
+                    detailRow = '<tr style="background: rgba(0,0,0,0.2);"><td colspan="12" style="padding: 0 1rem 1.2rem 1rem;">' +
+                        '<div class="detail-card">' +
+                        '<div class="telemetry-grid">' +
+                        '<div class="telemetry-pill"><div class="t-val">' + fmt(r.promptTokens) + '</div><div class="t-lbl">Prompt (Input)</div></div>' +
+                        '<div class="telemetry-pill"><div class="t-val">' + fmt(r.candidatesTokens) + '</div><div class="t-lbl">Candidate (Output)</div></div>' +
+                        '<div class="telemetry-pill"><div class="t-val">' + fmt(r.thoughtsTokens) + '</div><div class="t-lbl">Thoughts (Reasoning)</div></div>' +
+                        '<div class="telemetry-pill"><div class="t-val">' + fmt(r.totalTokens) + '</div><div class="t-lbl">Total Tokens</div></div>' +
+                        '<div class="telemetry-pill"><div class="t-val">' + (r.durationSeconds || 0) + 's</div><div class="t-lbl">Wall Clock Duration</div></div>' +
+                        '<div class="telemetry-pill"><div class="t-val">' + (r.turns || 0) + '</div><div class="t-lbl">Turns</div></div>' +
+                        '<div class="telemetry-pill"><div class="t-val">' + esc(r.asiContainer || 'NetBeans') + '</div><div class="t-lbl">ASI Container</div></div>' +
+                        '</div>' +
+                        (r.sessionId ? '<div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px;">Session ID: <code>' + esc(r.sessionId) + '</code></div>' : '') +
+                        (judgeDetails ? '<div style="margin-top: 0.8rem;"><h4>Judge Evaluations:</h4>' + judgeDetails + '</div>' : '') +
+                        obs +
+                        specHtml +
+                        videoPlayer +
+                        '</div></td></tr>';
+                }
+
+                return mainRow + detailRow;
+            }).join('');
+
+            document.getElementById('runs').innerHTML =
+                '<table class="bench-table"><thead><tr>' +
+                '<th style="width: 30px;"></th>' +
+                '<th class="sortable-th" onclick="window.sortByCol(\'timestamp\')">Date ' + getSortIcon('timestamp') + '</th>' +
+                '<th class="sortable-th" onclick="window.sortByCol(\'model\')">Model ' + getSortIcon('model') + '</th>' +
+                '<th class="sortable-th" onclick="window.sortByCol(\'provider\')">Provider ' + getSortIcon('provider') + '</th>' +
+                '<th class="sortable-th" onclick="window.sortByCol(\'test\')">Test ' + getSortIcon('test') + '</th>' +
+                '<th class="sortable-th" onclick="window.sortByCol(\'passed\')">Status ' + getSortIcon('passed') + '</th>' +
+                '<th class="sortable-th" onclick="window.sortByCol(\'duration\')">Duration ' + getSortIcon('duration') + '</th>' +
+                '<th class="sortable-th" onclick="window.sortByCol(\'turns\')">Turns ' + getSortIcon('turns') + '</th>' +
+                '<th class="sortable-th" onclick="window.sortByCol(\'tokens\')">Tokens ' + getSortIcon('tokens') + '</th>' +
+                '<th class="sortable-th" onclick="window.sortByCol(\'score\')">Score ' + getSortIcon('score') + '</th>' +
+                '<th>Judges</th>' +
+                '<th style="text-align:center;">Video</th>' +
+                '</tr></thead><tbody>' + rows + '</tbody></table>';
+        }
+
+        function populateSelects() {
+            var testSel = document.getElementById('testFilter');
+            catalog.tests.forEach(function (t) {
+                var o = document.createElement('option'); o.value = t.testCode; o.textContent = t.testCode + ' — ' + t.title;
+                testSel.appendChild(o);
+            });
+            var provSel = document.getElementById('providerFilter');
+            var provs = {}; results.forEach(function (r) { provs[providerOf(r)] = 1; });
+            Object.keys(provs).sort().forEach(function (p) {
+                var o = document.createElement('option'); o.value = p; o.textContent = p; provSel.appendChild(o);
+            });
+        }
+
+        function load() {
+            Promise.all([
+                fetch('catalog.json').then(function (r) { return r.json(); }),
+                fetch('results.json').then(function (r) { return r.json(); })
+            ]).then(function (data) {
+                catalog = data[0] || { tests: [] };
+                results = data[1] || [];
+                populateSelects();
+                applyUrlParams();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'block';
+                render();
+            }).catch(function (e) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Could not load benchmark data (' + e.message + '). Ensure this page is served over HTTP and that catalog.json / results.json exist.';
+            });
+        }
+
+        ['search', 'testFilter', 'providerFilter', 'passedFilter'].forEach(function (id) {
+            document.getElementById(id).addEventListener('input', render);
+        });
+        document.getElementById('sortBy').addEventListener('change', function () {
+            var s = document.getElementById('sortBy').value;
+            if (s === 'newest') { currentSortCol = 'timestamp'; currentSortDir = 'desc'; }
+            else if (s === 'oldest') { currentSortCol = 'timestamp'; currentSortDir = 'asc'; }
+            else if (s === 'scoreDesc') { currentSortCol = 'score'; currentSortDir = 'desc'; }
+            else if (s === 'scoreAsc') { currentSortCol = 'score'; currentSortDir = 'asc'; }
+            else if (s === 'durationAsc') { currentSortCol = 'duration'; currentSortDir = 'asc'; }
+            else if (s === 'durationDesc') { currentSortCol = 'duration'; currentSortDir = 'desc'; }
+            else if (s === 'tokensAsc') { currentSortCol = 'tokens'; currentSortDir = 'asc'; }
+            else if (s === 'tokensDesc') { currentSortCol = 'tokens'; currentSortDir = 'desc'; }
+            else if (s === 'turnsAsc') { currentSortCol = 'turns'; currentSortDir = 'asc'; }
+            render();
+        });
+        document.getElementById('resetBtn').addEventListener('click', function () {
+            document.getElementById('search').value = '';
+            document.getElementById('testFilter').value = '';
+            document.getElementById('providerFilter').value = '';
+            document.getElementById('passedFilter').value = '';
+            document.getElementById('sortBy').value = 'newest';
+            currentSortCol = 'timestamp';
+            currentSortDir = 'desc';
+            render();
+        });
+
+        load();
+    })();
+    </script>
 </body>
 </html>

@@ -3,6 +3,7 @@
  */
 package uno.anahata.asi.agi;
 
+import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -185,7 +186,6 @@ public class Agi extends BasicPropertyChangeSource {
         this.statusManager = new StatusManager(this);
         this.toolManager = new ToolManager(this);
         this.requestConfig = new RequestConfig(this);
-        this.requestConfig.setResponseModalities(new ArrayList<>(config.getDefaultResponseModalities()));
 
         // Final manager initialization cascade
         contextManager.init();
@@ -245,7 +245,7 @@ public class Agi extends BasicPropertyChangeSource {
         if (providerId != null) {            
             if (modelId != null) {
                 AbstractAiProvider prov = container.getProvider(providerId);            
-                Optional<? extends AbstractModel> model = prov.findModel(modelId);
+                Optional<? extends AbstractModel> model = prov.getModel(modelId);
                 if (model.isPresent()) {
                     log.info("Restoring transient selected model: {}", modelId);
                     setSelectedModel(model.get());
@@ -272,14 +272,29 @@ public class Agi extends BasicPropertyChangeSource {
      * 
      * @param reason the reason for the autosave
      */
-    public void autoSave(String reason) {
-        config.getAsiContainer().autoSaveSession(this, reason);
+    public void autoSave(String reason)  {
+        try {
+            config.getAsiContainer().autoSaveSession(this, reason);
+        } catch (Exception e) {
+            log.error("Could not auto save session " + this, e);
+        }
+        
+    }
+
+    /**
+     * Checks if this session is a template managed by the container.
+     *
+     * @return true if this session is in the container's templates list.
+     */
+    public boolean isTemplate() {
+        return config != null && config.getAsiContainer() != null && config.getAsiContainer().isTemplate(this);
     }
 
     /**
      * Manually saves the session to the 'saved' directory.
+     * @throws java.io.IOException
      */
-    public void save() {
+    public void save() throws IOException {
         config.getAsiContainer().manualSaveSession(this);
     }
 
@@ -306,13 +321,22 @@ public class Agi extends BasicPropertyChangeSource {
      */
     public void setSelectedModel(AbstractModel selectedModel) {
         AbstractModel oldModel = this.selectedModel;
+        if (Objects.equals(oldModel, selectedModel)) {
+            return;
+        }
         this.selectedModel = selectedModel;
 
+        boolean modelIdChanged;
         // Mirror state to the DNA (AgiConfig)
         if (selectedModel != null) {
-            this.config.setSelectedProviderUuid(selectedModel.getProvider().getUuid());
-            this.config.setSelectedModelId(selectedModel.getModelId());
+            String newProviderUuid = selectedModel.getProvider().getUuid();
+            String newModelId = selectedModel.getModelId();
+            modelIdChanged = !Objects.equals(this.config.getSelectedProviderUuid(), newProviderUuid)
+                    || !Objects.equals(this.config.getSelectedModelId(), newModelId);
+            this.config.setSelectedProviderUuid(newProviderUuid);
+            this.config.setSelectedModelId(newModelId);
         } else {
+            modelIdChanged = this.config.getSelectedProviderUuid() != null || this.config.getSelectedModelId() != null;
             this.config.setSelectedProviderUuid(null);
             this.config.setSelectedModelId(null);
         }
@@ -338,7 +362,9 @@ public class Agi extends BasicPropertyChangeSource {
         getResourceManager().resetTokenCounts();
 
         propertyChangeSupport.firePropertyChange("selectedModel", oldModel, selectedModel);
-        autoSave("model changed to: " + selectedModel.getModelId());
+        if (modelIdChanged) {
+            autoSave("model changed to: " + (selectedModel != null ? selectedModel.getModelId() : "none"));
+        }
     }
 
     /**
@@ -845,6 +871,28 @@ public class Agi extends BasicPropertyChangeSource {
     }
 
     /**
+     * Resolves the effective maximum output tokens configured for this session.
+     * <p>
+     * Evaluates the user's explicit request configuration override first
+     * ({@link RequestConfig#maxOutputTokens}). If not explicitly specified by
+     * the user, it falls back to the selected model's default maximum output tokens
+     * ({@link AbstractModel#maxOutputTokens}). If no model is active or both
+     * values are null, returns null.
+     * </p>
+     *
+     * @return the effective maximum output tokens, or {@code null} if unconstrained.
+     */
+    public Integer getEffectiveUserMaxOutputTokens() {
+        if (requestConfig != null && requestConfig.getMaxOutputTokens() != null) {
+            return requestConfig.getMaxOutputTokens();
+        }
+        if (selectedModel != null && selectedModel.getMaxOutputTokens() != null) {
+            return selectedModel.getMaxOutputTokens();
+        }
+        return null;
+    }
+
+    /**
      * Gets a human-readable display name for the session.
      *
      * @return The session display name (nickname or short ID).
@@ -900,7 +948,8 @@ public class Agi extends BasicPropertyChangeSource {
     public void shutdown() {
         shutdown.set(true);
         log.info("Shuts down Agi for session {}", config.getSessionId());
-        config.getAsiContainer().unregister(this);
+        //this line seems unnecessary as the only caller of this method already unregisters the agi
+        //config.getAsiContainer().unregisterAgi(this);
         if (executor != null && !executor.isShutdown()) {
             executor.shutdown();
         }

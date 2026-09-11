@@ -30,23 +30,18 @@ import java.util.zip.ZipFile;
 import java.io.IOException;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.project.MavenProject;
-import org.netbeans.api.autoupdate.OperationContainer;
-import org.netbeans.api.autoupdate.OperationSupport;
-import org.netbeans.api.autoupdate.UpdateElement;
-import org.netbeans.api.autoupdate.UpdateManager;
-import org.netbeans.api.autoupdate.UpdateUnit;
 import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.nb.module.NetBeansModuleUtils;
 
 import uno.anahata.asi.nb.tools.project.Projects;
 import uno.anahata.asi.toolkit.java.Java;
-import uno.anahata.asi.swing.toolkit.SwingJava;
+import uno.anahata.asi.swing.toolkit.DesktopJava;
 import uno.anahata.asi.agi.tool.AgiToolkit;
 import uno.anahata.asi.agi.tool.AgiToolParam;
 import uno.anahata.asi.agi.tool.AgiTool;
-import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.nb.NetBeansAsiContainer;
 import uno.anahata.asi.nb.resources.handle.NbHandle;
+import uno.anahata.asi.swing.AbstractSwingAsiContainer;
 import uno.anahata.asi.toolkit.java.classpath.VeryPrettyClassPathPrinter;
 
 /**
@@ -58,7 +53,7 @@ import uno.anahata.asi.toolkit.java.classpath.VeryPrettyClassPathPrinter;
  */
 @Slf4j
 @AgiToolkit("A NetBeans-aware toolkit for compiling and executing Java code.")
-public class NbJava extends SwingJava {
+public class NbJava extends DesktopJava {
 
     /**
      * {@inheritDoc}
@@ -98,7 +93,11 @@ public class NbJava extends SwingJava {
      * <p>
      * Injects NetBeans-specific instructions explaining the distinction between
      * the Plugins Classpath (for module uno.anahata.asi.nb) and the NbJava
-     * toolkit's Default Classpath.</p>
+     * toolkit's Default Classpath.
+     * </p>
+     *
+     * @return the list of system instruction blocks.
+     * @throws Exception if an error occurs while assembling instructions.
      */
     @Override
     public List<String> getSystemInstructions() throws Exception {
@@ -117,7 +116,11 @@ public class NbJava extends SwingJava {
      * <p>
      * Appends an indicator to the RAG message specifying whether the NbJava
      * toolkit's default classpath is identical to the plugin's classpath, as
-     * well as the active JavaFX runtime status.</p>
+     * well as the active JavaFX runtime status.
+     * </p>
+     *
+     * @param ragMessage the incoming RAG message to populate.
+     * @throws Exception if an error occurs during message population.
      */
     @Override
     public void populateMessage(RagMessage ragMessage) throws Exception {
@@ -126,15 +129,20 @@ public class NbJava extends SwingJava {
         String defaultCp = getDefaultClasspath();
         boolean identical = java.util.Objects.equals(pluginCp, defaultCp);
         ragMessage.addTextPart("\nNbJava toolkit's default classpath and Plugins default classpath identical: " + (identical ? "Yes" : "No"));
-        String fxVersion = NetBeansModuleUtils.getJavaFxVersion();
-        ragMessage.addTextPart("\nJavaFX Runtime Status: " + (fxVersion != null ? "Active (" + fxVersion + ")" : "Not Available (Use IDE.installJavaFxSupport to activate)"));
+        if (AbstractSwingAsiContainer.getJavaFxVersionInfo() == null) {
+            ragMessage.addTextPart("\nJavaFX Runtime Status: Not Available (Use IDE.installJavaFxSupport to activate)");
+        }
     }
 
     /**
      * {@inheritDoc}
      * <p>
      * Overrides the factory to inject the specialized
-     * {@link NetBeansJarHandler}.</p>
+     * {@link NetBeansJarHandler}.
+     * </p>
+     *
+     * @return a new {@link VeryPrettyClassPathPrinter} configured with NetBeans
+     * handlers.
      */
     @Override
     protected VeryPrettyClassPathPrinter createClassPathPrinter() {
@@ -153,7 +161,11 @@ public class NbJava extends SwingJava {
      * {@inheritDoc}
      * <p>
      * Invalidates the MR-JAR registry when the classpath changes to ensure
-     * environmental consistency.</p>
+     * environmental consistency.
+     * </p>
+     *
+     * @param defaultCompilerClasspath the new default compiler classpath
+     * string.
      */
     @Override
     public void setDefaultClasspath(String defaultCompilerClasspath) {
@@ -194,7 +206,11 @@ public class NbJava extends SwingJava {
      * Implements the surgical fallback by searching for missing classes within
      * the registered Multi-Release JARs using the current JVM version.
      * Restricted to "org.lwjgl." as it is just to workaround a netbeans bug in
-     * JarClassLoader.</p>
+     * JarClassLoader.
+     * </p>
+     *
+     * @param name the binary name of the requested class.
+     * @return the byte array of the class file, or {@code null} if not found.
      */
     @Override
     protected byte[] findClassFallbackBytes(String name) {
@@ -231,7 +247,11 @@ public class NbJava extends SwingJava {
      * {@inheritDoc}
      * <p>
      * Dynamically augments the default compiler classpath with the JavaFX
-     * module classpath if JavaFX is enabled in NetBeans.</p>
+     * module classpath if JavaFX is enabled in NetBeans.
+     * </p>
+     *
+     * @return the full default classpath string including active JavaFX
+     * modules.
      */
     @Override
     public String getDefaultClasspath() {
@@ -247,7 +267,10 @@ public class NbJava extends SwingJava {
      * {@inheritDoc}
      * <p>
      * Provides the JavaFX module's ClassLoader as a sibling classloader if
-     * JavaFX support is enabled in NetBeans.</p>
+     * JavaFX support is enabled in NetBeans.
+     * </p>
+     *
+     * @return a list of sibling class loaders including JavaFX if available.
      */
     @Override
     protected List<ClassLoader> getExtraClassLoaders() {
@@ -258,7 +281,7 @@ public class NbJava extends SwingJava {
         }
         return loaders;
     }
-    
+
     /**
      * Lazily populates the Multi-Release JAR registry by scanning the current
      * default classpath.
@@ -472,12 +495,12 @@ public class NbJava extends SwingJava {
      *
      * @param sourceCode Source code of a public class named **Anahata** that
      * has **no package declaration** and **extends AnahataTool**.
-     * @param compilerOptions Optional additional compiler options.
-     * @param includeTestContext Whether to include the project's test source
-     * folders and test dependencies.
+     * @param projectPath The absolute path of the NetBeans project to run in.
      * @param includeProjectDependencies Whether to include the project's
      * COMPILE and EXECUTE dependencies.
-     * @param projectPath The absolute path of the NetBeans project to run in.
+     * @param includeTestContext Whether to include the project's test source
+     * folders and test dependencies.
+     * @param compilerOptions Optional additional compiler options.
      * @return The result of the execution.
      * @throws Exception on error.
      */
@@ -488,7 +511,7 @@ public class NbJava extends SwingJava {
             + "Only use this tool (`compileAndExecuteInProject`) if your script explicitly needs to import or instantiate Java types compiled from the target project's local `ClassPath.SOURCE` (its 'target/classes' folder) or types from its project-specific external `.jar` dependencies that are NOT already on the default classpath."
     )
     public Object compileAndExecuteInProject(
-            @AgiToolParam(value = "Source code of a public class named **Anahata** that has **no package declaration**, extends **SwingAgiTool**, and implements the call() method of java.util.concurrent.Callable.", rendererId = "java") String sourceCode,
+            @AgiToolParam(value = "Source code of a public class named **Anahata** that has **no package declaration**, extends **DesktopAgiTool**, and implements the call() method of java.util.concurrent.Callable.", rendererId = "java") String sourceCode,
             @AgiToolParam("The absolute path of the NetBeans project to run in.") String projectPath,
             @AgiToolParam("Controls whether the `.jar` dependencies and open-project dependency outputs from the project's main `ClassPath.COMPILE` and `ClassPath.EXECUTE` are added to the script's custom URLClassLoader.\n"
                     + "Mechanism: If `true`, it extracts all external `.jar` files and the `target/classes` directories of any open NetBeans projects this project depends on, and adds them to the script's classpath.\n"
