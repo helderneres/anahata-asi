@@ -248,17 +248,17 @@ public class Resources extends AnahataToolkit {
      * @param resourceIds The list of resource UUIDs.
      * @param providing True to enable, false to disable.
      */
-    @AgiTool(value = "Sets the 'providing' flag of various resources by their UUID. Use this to hide/show resources from the prompt without unloading them.", maxDepth = 2)
+    @AgiTool(permission = ToolPermission.APPROVE_ALWAYS, value = "Sets the 'providing' flag of various resources by their UUID. Use this to hide/show resources from the prompt without unloading them.", maxDepth = 2)
     public void setProviding(
             @AgiToolParam(value = "The list of resource UUIDs.", rendererId = "resource") List<String> resourceIds, 
             @AgiToolParam("True to enable, false to disable.") boolean providing) {
         ResourceManager manager = getAgi().getResourceManager();
+        List<Resource> modified = manager.setProviding(resourceIds, providing);
+        for (Resource res : modified) {
+            log("Set providing=" + providing + " for resource: " + res.getName());
+        }
         for (String id : resourceIds) {
-            Resource res = manager.get(id);
-            if (res != null) {
-                res.setProviding(providing);
-                log("Set providing=" + providing + " for resource: " + res.getName());
-            } else {
+            if (manager.get(id) == null) {
                 error("Resource not found: " + id);
             }
         }

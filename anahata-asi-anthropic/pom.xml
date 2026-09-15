@@ -4,11 +4,11 @@
     <parent>
         <groupId>uno.anahata</groupId>
         <artifactId>anahata-asi-parent</artifactId>
-        <version>1.2.5-SNAPSHOT</version>
+        <version>1.2.8-SNAPSHOT</version>
     </parent>
     <artifactId>anahata-asi-anthropic</artifactId>
     <packaging>jar</packaging>
-    <name>Anahata ASI Anthropic Compatible Provider</name>
+    <name>Anahata ASI Anthropic Provider</name>
     <description>Universal raw-json-parsing provider implementation using the jdks http client for Anthropic api</description>
 
     <dependencies>

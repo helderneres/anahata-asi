@@ -13,6 +13,8 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import uno.anahata.asi.internal.JacksonUtils;
+import uno.anahata.asi.swing.agi.AgiPanel;
+import uno.anahata.asi.swing.agi.SwingAgiConfig;
 import uno.anahata.asi.swing.internal.SwingUtils;
 
 /**
@@ -23,6 +25,11 @@ import uno.anahata.asi.swing.internal.SwingUtils;
  */
 @Getter @Setter
 public class CodeHyperlink extends JLabel {
+
+    /**
+     * Optional parent AgiPanel to bind code block dialogs to session scope.
+     */
+    private AgiPanel agiPanel;
 
     /** 
      * A supplier for the title of the popup dialog. 
@@ -59,7 +66,19 @@ public class CodeHyperlink extends JLabel {
      * @param contentSupplier The supplier for the content.
      */
     public CodeHyperlink(@NonNull String labelText, @NonNull Supplier<String> titleSupplier, @NonNull Supplier<String> contentSupplier) {
-        this(labelText, titleSupplier, contentSupplier, "text");
+        this(null, labelText, titleSupplier, contentSupplier, "text");
+    }
+
+    /**
+     * Constructs a new CodeHyperlink bound to a specific session AgiPanel with default text language.
+     * 
+     * @param agiPanel The parent AgiPanel.
+     * @param labelText The text to display for the hyperlink.
+     * @param titleSupplier The supplier for the dialog title.
+     * @param contentSupplier The supplier for the content.
+     */
+    public CodeHyperlink(AgiPanel agiPanel, @NonNull String labelText, @NonNull Supplier<String> titleSupplier, @NonNull Supplier<String> contentSupplier) {
+        this(agiPanel, labelText, titleSupplier, contentSupplier, "text");
     }
 
     /**
@@ -71,12 +90,26 @@ public class CodeHyperlink extends JLabel {
      * @param language The language for syntax highlighting (e.g., "json", "java").
      */
     public CodeHyperlink(@NonNull String labelText, @NonNull Supplier<String> titleSupplier, @NonNull Supplier<String> contentSupplier, String language) {
+        this(null, labelText, titleSupplier, contentSupplier, language);
+    }
+
+    /**
+     * Constructs a new CodeHyperlink bound to a specific session AgiPanel.
+     * 
+     * @param agiPanel The parent AgiPanel.
+     * @param labelText The text to display for the hyperlink.
+     * @param titleSupplier The supplier for the dialog title.
+     * @param contentSupplier The supplier for the content.
+     * @param language The language for syntax highlighting.
+     */
+    public CodeHyperlink(AgiPanel agiPanel, @NonNull String labelText, @NonNull Supplier<String> titleSupplier, @NonNull Supplier<String> contentSupplier, String language) {
         super("<html><u>" + labelText + "</u></html>");
+        this.agiPanel = agiPanel;
         this.titleSupplier = titleSupplier;
         this.contentSupplier = contentSupplier;
         this.language = language;
         
-        setForeground(Color.BLUE);
+        setForeground(SwingAgiConfig.theme().getLinkFg());
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         
         addMouseListener(new MouseAdapter() {
@@ -95,7 +128,11 @@ public class CodeHyperlink extends JLabel {
                                 content = pretty;
                             }
                         }
-                        SwingUtils.showCodeBlockDialog(CodeHyperlink.this, title, content, CodeHyperlink.this.language);
+                        if (CodeHyperlink.this.agiPanel != null) {
+                            SwingUtils.showCodeBlockDialog(CodeHyperlink.this.agiPanel, title, content, CodeHyperlink.this.language);
+                        } else {
+                            SwingUtils.showCodeBlockDialog(CodeHyperlink.this, title, content, CodeHyperlink.this.language);
+                        }
                     }
                 }
             }

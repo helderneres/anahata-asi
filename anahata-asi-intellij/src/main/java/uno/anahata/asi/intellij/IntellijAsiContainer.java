@@ -1,24 +1,30 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.intellij;
 
+import com.intellij.ide.ui.LafManagerListener;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.openapi.wm.WindowManager;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
+import java.awt.Component;
 import java.io.IOException;
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
+import uno.anahata.asi.intellij.ui.IntellijJavaCodeParameterRenderer;
 import uno.anahata.asi.intellij.ui.IntellijTextResourceWriteRenderer;
 import uno.anahata.asi.swing.AbstractSwingAsiContainer;
 import uno.anahata.asi.swing.agi.AgiPanel;
+import uno.anahata.asi.swing.agi.SwingAgiConfig;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
-import uno.anahata.asi.toolkit.resources.text.FullTextFileCreate;
 import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
 import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
@@ -26,18 +32,20 @@ import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
 /**
  * Concrete implementation of the ASI Container for IntelliJ IDEA.
  * <p>
- * This container integrates the Anahata framework with the IntelliJ IDEA platform as an
- * application-level singleton service, managing sessions, AI providers, and multi-window
- * tool window tabs.
+ * This container integrates the Anahata framework with the IntelliJ IDEA
+ * platform as an application-level singleton service, managing sessions, AI
+ * providers, and multi-window tool window tabs. Implements {@link Disposable}
+ * to ensure clean dynamic plugin unloading.
  * </p>
- * 
+ *
  * @author anahata
  */
 @Slf4j
-public class IntellijAsiContainer extends AbstractSwingAsiContainer {
+public class IntellijAsiContainer extends AbstractSwingAsiContainer implements Disposable {
 
     /**
-     * Registers the IntelliJ diff visualization for the core text-write tool arguments and the IntelliJ ResourceUI.
+     * Registers the IntelliJ diff visualization for the core text-write tool
+     * arguments and the IntelliJ ResourceUI.
      */
     static {
         initEnvironment();
@@ -48,11 +56,17 @@ public class IntellijAsiContainer extends AbstractSwingAsiContainer {
      * renderers, JSON serialization modules, and the IntelliJ native {@link uno.anahata.asi.swing.agi.resources.ResourceUI} strategy.
      */
     public static void initEnvironment() {
+        // Make the shared Swing UI follow IntelliJ's theme authoritatively. IntelliJ's New UI does
+        // not expose a reliable Panel.background to the swing module's luminance heuristic, so the
+        // chat/dashboard rendered light even under a dark IDE theme; JBColor.isBright() is the IDE's
+        // own light/dark flag. Set before any UITheme is constructed (this runs in the container's
+        // static initializer, ahead of the tool-window dashboard build).
+        SwingAgiConfig.setDarkModeDetector(() -> !JBColor.isBright());
         ParameterRendererFactory.register(FullTextResourceUpdate.class, IntellijTextResourceWriteRenderer.class);
-        ParameterRendererFactory.register(FullTextFileCreate.class, IntellijTextResourceWriteRenderer.class);
         ParameterRendererFactory.register(TextResourceReplacements.class, IntellijTextResourceWriteRenderer.class);
         ParameterRendererFactory.register(TextResourceLineEdits.class, IntellijTextResourceWriteRenderer.class);
         ParameterRendererFactory.register(uno.anahata.asi.intellij.tools.java.coderefiner.CodeRefinementBatch.class, IntellijTextResourceWriteRenderer.class);
+        ParameterRendererFactory.registerById("java", IntellijJavaCodeParameterRenderer.class);
         uno.anahata.asi.swing.agi.resources.ResourceUiRegistry.getInstance().setResourceUI(new uno.anahata.asi.intellij.ui.resources.IntellijResourceUI());
     }
 
@@ -66,6 +80,40 @@ public class IntellijAsiContainer extends AbstractSwingAsiContainer {
         super("intellij");
         int loaded = loadSessions();
         log.info("IntellijAsiContainer initialized as application service; loaded {} active sessions from disk.", loaded);
+
+        // Follow the IDE theme live: when the user switches the IntelliJ theme
+        // (Settings | Appearance & Behavior | Appearance | Theme) refresh the open Anahata UIs so
+        // they re-adopt the new light/dark palette. Disposed with this application service.
+        ApplicationManager.getApplication().getMessageBus().connect(this)
+                .subscribe(LafManagerListener.TOPIC, (LafManagerListener) source -> refreshOpenUiThemes());
+    }
+
+    /**
+     * Refreshes every open Anahata tool-window content after an IDE theme change, re-running the
+     * Swing UI delegates so components pick up the new light/dark palette.
+     * <p>
+     * The authoritative dark-mode flag is read live via the detector registered in
+     * {@link #initEnvironment()}, so newly built panels are already correct; this updates the panels
+     * that are currently on screen.
+     * </p>
+     */
+    private void refreshOpenUiThemes() {
+        SwingUtilities.invokeLater(() -> {
+            for (Project project : ProjectManager.getInstance().getOpenProjects()) {
+                ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow("Anahata ASI");
+                if (tw == null) {
+                    continue;
+                }
+                for (Content c : tw.getContentManager().getContents()) {
+                    Component component = c.getComponent();
+                    if (component != null) {
+                        SwingUtilities.updateComponentTreeUI(component);
+                        component.revalidate();
+                        component.repaint();
+                    }
+                }
+            }
+        });
     }
 
     /**
@@ -92,7 +140,8 @@ public class IntellijAsiContainer extends AbstractSwingAsiContainer {
      * {@inheritDoc}
      * <p>
      * Returns {@code "anahata-asi-intellij"} to allow resolving {@code pom.properties}
-     * in development mode when running directly off {@code target/classes}.
+     * in development mode when running directly off
+     * {@code target/classes}.
      * </p>
      *
      * @return {@code "anahata-asi-intellij"}.
@@ -102,6 +151,39 @@ public class IntellijAsiContainer extends AbstractSwingAsiContainer {
         return "anahata-asi-intellij";
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Automatically approves migration of settings from predecessor versions
+     * without displaying a modal dialog, preventing EDT deadlocks and circular
+     * initialization exceptions during IDE startup.
+     * </p>
+     *
+     * @param previousVersion The predecessor version string.
+     * @param currentVersion The running container version string.
+     * @return Always {@code true} to automatically import settings.
+     */
+    @Override
+    protected boolean promptUpgrade(String previousVersion, String currentVersion) {
+        log.info("Automatically importing settings from predecessor version {} to {}", previousVersion, currentVersion);
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Suppresses the modal confirmation dialog during IDE startup, logging the
+     * result and recording a container notification instead.
+     * </p>
+     *
+     * @param count The number of entities imported.
+     * @param prevVerStr The predecessor version string.
+     */
+    @Override
+    protected void showImportSuccess(int count, String prevVerStr) {
+        log.info("Successfully imported {} settings from version {}.", count, prevVerStr);
+        addNotification("Imported " + count + " settings from version " + prevVerStr);
+    }
     /**
      * {@inheritDoc}
      * <p>
@@ -174,6 +256,18 @@ public class IntellijAsiContainer extends AbstractSwingAsiContainer {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Shuts down background threads, key watcher, and container executors when
+     * the plugin is dynamically unloaded by IntelliJ IDEA.
+     * </p>
+     */
+    @Override
+    public void dispose() {
+        log.info("IntellijAsiContainer disposed by IntelliJ platform - shutting down container");
+        shutdown();
+    }
     /**
      * {@inheritDoc}
      * <p>

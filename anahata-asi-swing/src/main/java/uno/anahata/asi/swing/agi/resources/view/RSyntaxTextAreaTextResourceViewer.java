@@ -1,14 +1,17 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.agi.resources.view;
 
+import java.awt.Dimension;
 import java.awt.Font;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import lombok.extern.slf4j.Slf4j;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.RTextScrollPane;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.internal.SwingUtils;
@@ -49,6 +52,16 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
      */
     public RSyntaxTextAreaTextResourceViewer(AgiPanel agiPanel, Resource resource) {
         super(agiPanel, resource);
+    }
+
+    /**
+     * Constructs a new RSyntaxTextAreaTextResourceViewer bound to a container context.
+     * 
+     * @param container The parent container.
+     * @param resource The resource to render.
+     */
+    public RSyntaxTextAreaTextResourceViewer(AbstractAsiContainer container, Resource resource) {
+        super(container, resource);
     }
 
     /** 
@@ -217,6 +230,26 @@ public class RSyntaxTextAreaTextResourceViewer extends AbstractTextResourceViewe
     public JScrollPane getScrollPane() {
         if (previewAsEditor) return editorScrollPane;
         return editing ? editorScrollPane : previewScrollPane;
+    }
+
+    /** 
+     * {@inheritDoc} 
+     * <p>
+     * When vertical scrolling is disabled, ensures sufficient height so the horizontal
+     * scrollbar does not obscure the bottom line of text.
+     * </p>
+     */
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension ps = super.getPreferredSize();
+        if (!verticalScrollEnabled) {
+            JScrollPane sp = getScrollPane();
+            JScrollBar hsb = (sp != null) ? sp.getHorizontalScrollBar() : null;
+            if (hsb != null) {
+                return new Dimension(ps.width, ps.height + hsb.getPreferredSize().height);
+            }
+        }
+        return ps;
     }
 
     /** 

@@ -1,139 +1,105 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.swing.agi.message.part.tool.param;
 
-import java.awt.BorderLayout;
-import java.awt.Cursor;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import lombok.extern.slf4j.Slf4j;
-import uno.anahata.asi.agi.resource.Resource;
-import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
-import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
-import uno.anahata.asi.swing.components.WrapLayout;
-import uno.anahata.asi.swing.icons.ExternalIcon;
+import java.awt.Color;
 import javax.swing.JOptionPane;
+import javax.swing.UIManager;
+import uno.anahata.asi.agi.resource.Resource;
+import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 
 /**
- * A specialized parameter renderer for Resource UUIDs.
+ * A specialized parameter renderer for an individual Resource UUID.
  * <p>
- * This renderer provides a sleek chip showing the Resource Name. It caches 
- * the name so it remains visible even if the resource is later unloaded 
- * from the context window.
+ * Extends {@link AbstractChipParameterRenderer} to display a compact green pill/chip
+ * showing the Resource Name. It caches the name so it remains visible even if the
+ * resource is later unloaded from the context window.
+ * Supports full in-place editing, opening in IDE, and removal.
+ * When placed inside a collection, it is composed by a list container
+ * such as {@link WrapListParameterRenderer}.
  * </p>
  * 
  * @author anahata
  */
-@Slf4j
-public class ResourceUUIDParameterRenderer implements ParameterRenderer<Object> {
-
-    /** The parent agi panel providing context. */
-    private AgiPanel agiPanel;
-    /** The current object value. */
-    private Object value;
-    /** The main UI container. */
-    private final JPanel container = new JPanel(new WrapLayout(FlowLayout.LEFT, 5, 5));
+public class ResourceUUIDParameterRenderer extends AbstractChipParameterRenderer {
 
     /**
      * Constructs a new ResourceUUIDParameterRenderer.
      */
     public ResourceUUIDParameterRenderer() {
-        container.setOpaque(false);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void init(AgiPanel agiPanel, AbstractToolCall<?, ?> call, String paramName, Object value) {
-        this.agiPanel = agiPanel;
-        updateContent(value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public JComponent getComponent() {
-        return container;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void updateContent(Object value) {
-        this.value = value;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean render() {
-        container.removeAll();
-
-        if (value == null || (value instanceof String s && s.isBlank())) {
-            container.add(new JLabel("null"));
-            return true;
-        }
-
-        if (value instanceof java.util.List<?> list) {
-            for (Object item : list) {
-                if (item != null) {
-                    container.add(createChip(item.toString()));
-                }
-            }
-        } else {
-            container.add(createChip(value.toString()));
-        }
-
-        container.revalidate();
-        container.repaint();
-        return true;
+        super();
     }
 
     /**
-     * Helper to create a visual JPanel chip representing the resource.
-     * @param resourceUuid The unique identifier of the resource.
-     * @return a styled chip component with open action button.
+     * {@inheritDoc}
+     * <p>Resolves the cached or live resource name from ResourceManager.</p>
      */
-    private JPanel createChip(String resourceUuid) {
-        JPanel chip = new JPanel(new BorderLayout(10, 0));
-        chip.setOpaque(true);
-        chip.setBackground(new java.awt.Color(230, 245, 235)); // Slightly greenish for resources
-        chip.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(180, 220, 190), 1, true),
-                BorderFactory.createEmptyBorder(4, 8, 4, 8)
-        ));
-
-        String cachedDisplayName = resourceUuid; // Default
-        if (resourceUuid != null && !resourceUuid.isBlank()) {
+    @Override
+    protected String getDisplayName() {
+        if (value == null || (value instanceof String s && s.isBlank())) {
+            return "null";
+        }
+        String resourceUuid = value.toString();
+        if (agiPanel != null && agiPanel.getAgi() != null && agiPanel.getAgi().getResourceManager() != null) {
             Resource res = agiPanel.getAgi().getResourceManager().get(resourceUuid);
             if (res != null) {
-                cachedDisplayName = res.getName();
+                return res.getName();
             }
         }
+        return resourceUuid;
+    }
 
-        JLabel label = new JLabel(cachedDisplayName);
-        label.setFont(label.getFont().deriveFont(Font.BOLD));
-        label.setToolTipText("UUID: " + resourceUuid);
-        chip.add(label, BorderLayout.CENTER);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected String getTooltipText() {
+        return value != null ? "UUID: " + value.toString() : null;
+    }
 
-        JButton openBtn = new JButton(new ExternalIcon(14));
-        openBtn.setToolTipText("Open Resource");
-        openBtn.setMargin(new java.awt.Insets(0, 2, 0, 2));
-        openBtn.setContentAreaFilled(false);
-        openBtn.setBorderPainted(false);
-        openBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        
-        openBtn.addActionListener(e -> {
+    /**
+     * {@inheritDoc}
+     * <p>Opens the resource in the host IDE via ResourceUI.</p>
+     */
+    @Override
+    protected void onOpen() {
+        if (value != null && agiPanel != null && agiPanel.getAgi() != null) {
+            String resourceUuid = value.toString();
             Resource res = agiPanel.getAgi().getResourceManager().get(resourceUuid);
             if (res != null && ResourceUiRegistry.getInstance().getResourceUI() != null) {
                 ResourceUiRegistry.getInstance().getResourceUI().open(res, agiPanel);
             } else if (res == null) {
                 JOptionPane.showMessageDialog(container, "The resource is no longer loaded in the context window.", "Resource Offline", JOptionPane.WARNING_MESSAGE);
             }
-        });
-        
-        chip.add(openBtn, BorderLayout.EAST);
-        return chip;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected String getEphemeralFileName() {
+        return "uuid.txt";
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>Theme-aware green background: light green in light themes, dark forest green in dark themes.</p>
+     */
+    @Override
+    protected Color getPillBackground() {
+        Color panelBg = UIManager.getColor("Panel.background");
+        boolean isDark = panelBg != null && (panelBg.getRed() < 128 && panelBg.getGreen() < 128 && panelBg.getBlue() < 128);
+        return isDark ? new Color(30, 55, 40) : new Color(230, 245, 235);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>Theme-aware green border: light green border in light themes, subtle dark green border in dark themes.</p>
+     */
+    @Override
+    protected Color getPillBorderColor() {
+        Color panelBg = UIManager.getColor("Panel.background");
+        boolean isDark = panelBg != null && (panelBg.getRed() < 128 && panelBg.getGreen() < 128 && panelBg.getBlue() < 128);
+        return isDark ? new Color(45, 85, 60) : new Color(180, 220, 190);
     }
 }

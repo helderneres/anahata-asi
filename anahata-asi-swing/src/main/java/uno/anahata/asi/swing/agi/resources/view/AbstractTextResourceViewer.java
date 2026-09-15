@@ -22,11 +22,16 @@ import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.icons.RestartIcon;
+import uno.anahata.asi.swing.agi.SwingAgiConfig;
+import java.awt.Cursor;
 import uno.anahata.asi.swing.icons.CancelIcon;
 import uno.anahata.asi.swing.icons.CopyIcon;
+import uno.anahata.asi.swing.icons.EditIcon;
+import uno.anahata.asi.swing.icons.RestartIcon;
+import uno.anahata.asi.swing.icons.SaveIcon;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 import uno.anahata.asi.swing.internal.SwingTask;
 import uno.anahata.asi.swing.internal.SwingUtils;
@@ -61,6 +66,8 @@ public abstract class AbstractTextResourceViewer extends JPanel {
 
     /** The parent AgiPanel providing the session context. */
     protected final AgiPanel agiPanel;
+    /** The parent AbstractAsiContainer providing the container context. */
+    protected final AbstractAsiContainer container;
     /** The resource orchestrator being viewed. */
     protected final Resource resource;
 
@@ -114,13 +121,35 @@ public abstract class AbstractTextResourceViewer extends JPanel {
     private EdtPropertyChangeListener resourceListener;
 
     /**
-     * Constructs a new AbstractTextResourceViewer.
+     * Constructs a new AbstractTextResourceViewer bound to a session context.
      * 
      * @param agiPanel The parent AgiPanel.
      * @param resource The text resource.
      */
     protected AbstractTextResourceViewer(AgiPanel agiPanel, Resource resource) {
         this.agiPanel = agiPanel;
+        this.container = (agiPanel != null && agiPanel.getAgi() != null && agiPanel.getAgi().getConfig() != null)
+                ? agiPanel.getAgi().getConfig().getAsiContainer() : null;
+        this.resource = resource;
+        
+        // Authoritative Default: Virtual snippets use 'Preview-as-Editor' mode
+        this.previewAsEditor = resource.getHandle().isVirtual();
+        
+        setLayout(new BorderLayout());
+        initComponents();
+        
+        this.resourceListener = new EdtPropertyChangeListener(this, resource, null, evt -> syncWithResource());
+    }
+
+    /**
+     * Constructs a new AbstractTextResourceViewer bound to a container context.
+     * 
+     * @param container The parent AbstractAsiContainer.
+     * @param resource The text resource.
+     */
+    protected AbstractTextResourceViewer(AbstractAsiContainer container, Resource resource) {
+        this.agiPanel = null;
+        this.container = container;
         this.resource = resource;
         
         // Authoritative Default: Virtual snippets use 'Preview-as-Editor' mode
@@ -148,23 +177,29 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         // 1. Integrated Control Strip
         controlStrip = new JToolBar();
         controlStrip.setFloatable(false);
-        controlStrip.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
+        controlStrip.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, SwingAgiConfig.theme().getChromeBorder()));
 
         // 1b. Action Nexus (Edit/Save)
         actionNexus = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         actionNexus.setOpaque(false);
 
         copyBtn = new JButton(new CopyIcon(16));
+        copyBtn.putClientProperty("JButton.buttonType", "toolBarButton");
+        copyBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         copyBtn.setToolTipText("Copy content to clipboard");
         copyBtn.addActionListener(e -> SwingUtils.copyToClipboard(getEditorContent()));
         actionNexus.add(copyBtn);
 
         cancelBtn = new JButton("Cancel", new CancelIcon(16));
+        cancelBtn.putClientProperty("JButton.buttonType", "toolBarButton");
+        cancelBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         cancelBtn.addActionListener(e -> setEditing(false));
         cancelBtn.setVisible(false);
         actionNexus.add(cancelBtn);
 
-        editBtn = new JButton("Edit");
+        editBtn = new JButton("Edit", new EditIcon(16));
+        editBtn.putClientProperty("JButton.buttonType", "toolBarButton");
+        editBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         editBtn.addActionListener(e -> toggleEditMode());
         actionNexus.add(editBtn);
         
@@ -230,14 +265,14 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         this.editing = editing;
         if (editing) {
             editBtn.setText("Save");
-            editBtn.setIcon(new RestartIcon(16));
+            editBtn.setIcon(new SaveIcon(16));
             cancelBtn.setVisible(true);
             cardLayout.show(cardPanel, "editor");
             setComponentEditable(true);
             onEditorActivated();
         } else {
             editBtn.setText("Edit");
-            editBtn.setIcon(null);
+            editBtn.setIcon(new EditIcon(16));
             cancelBtn.setVisible(false);
             
             if (previewAsEditor) {
@@ -403,27 +438,56 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         }
         
         this.syncing = true;
-        new SwingTask<>(agiPanel, "Loading Content", () -> {
-            return resource.asText();
-        }, text -> {
-            try {
-                updatePreviewContent(text);
-                if (!verticalScrollEnabled) {
-                    SwingUtilities.invokeLater(this::configureScrollBehavior);
+        if (agiPanel != null) {
+            new SwingTask<>(agiPanel, "Loading Content", () -> {
+                return resource.asText();
+            }, text -> {
+                try {
+                    updatePreviewContent(text);
+                    if (!verticalScrollEnabled) {
+                        SwingUtilities.invokeLater(this::configureScrollBehavior);
+                    }
+                } finally {
+                    this.syncing = false;
                 }
-            } finally {
-                this.syncing = false;
-            }
-        }, error -> {
-            try {
-                log.error("Failed to synchronize content from resource: {}", resource.getName(), error);
-                updatePreviewContent("Error loading content: " + error.getMessage());
-                if (!verticalScrollEnabled) {
-                    SwingUtilities.invokeLater(this::configureScrollBehavior);
+            }, error -> {
+                try {
+                    log.error("Failed to synchronize content from resource: {}", resource.getName(), error);
+                    updatePreviewContent("Error loading content: " + error.getMessage());
+                    if (!verticalScrollEnabled) {
+                        SwingUtilities.invokeLater(this::configureScrollBehavior);
+                    }
+                } finally {
+                    this.syncing = false;
                 }
-            } finally {
-                this.syncing = false;
-            }
-        }, false).start();
+            }, false).start();
+        } else if (container != null) {
+            new SwingTask<>(this, container, "Loading Content", () -> {
+                return resource.asText();
+            }, text -> {
+                try {
+                    updatePreviewContent(text);
+                    if (!verticalScrollEnabled) {
+                        SwingUtilities.invokeLater(this::configureScrollBehavior);
+                    }
+                } finally {
+                    this.syncing = false;
+                }
+            }, error -> {
+                try {
+                    log.error("Failed to synchronize content from resource: {}", resource.getName(), error);
+                    updatePreviewContent("Error loading content: " + error.getMessage());
+                    if (!verticalScrollEnabled) {
+                        SwingUtilities.invokeLater(this::configureScrollBehavior);
+                    }
+                } finally {
+                    this.syncing = false;
+                }
+            }, false).start();
+        } else {
+            this.syncing = false;
+            throw new IllegalStateException("Cannot synchronize text resource viewer for '" + resource.getName()
+                    + "' without either an AgiPanel or an AbstractAsiContainer.");
+        }
     }
 }

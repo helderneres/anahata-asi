@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -110,6 +111,21 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
     public Resource(ResourceHandle handle) {
         this.handle = handle;
         this.handle.setOwner(this);
+        autoBindView();
+    }
+    
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Rebinds property change support and authoritatively marks the resource
+     * dirty upon session deserialization so that background lifecycle reload
+     * automatically populates transient caches without firing premature events.
+     * </p>
+     */
+    @Override
+    public void rebind() {
+        super.rebind();
+        this.dirty = true;
     }
 
     /**
@@ -202,7 +218,9 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
     public void markDirty() {
         if (!dirty) {
             this.dirty = true;
-            propertyChangeSupport.firePropertyChange("dirty", false, true);
+            if (propertyChangeSupport != null) {
+                propertyChangeSupport.firePropertyChange("dirty", false, true);
+            }
         }
     }
 
@@ -234,17 +252,29 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
     }
 
     /**
+     * Sets the providing status and optionally fires an individual property change event.
+     *
+     * @param providing True to enable context contribution.
+     * @param fireEvent Whether to fire the "providing" property change event.
+     */
+    public void setProviding(boolean providing, boolean fireEvent) {
+        boolean old = this.providing;
+        if (old != providing) {
+            this.providing = providing;
+            if (fireEvent) {
+                propertyChangeSupport.firePropertyChange("providing", old, providing);
+            }
+        }
+    }
+
+    /**
      * Sets the providing status and fires a property change event if different.
      *
      * @param providing True to enable context contribution.
      */
     @Override
     public void setProviding(boolean providing) {
-        boolean old = this.providing;
-        if (old != providing) {
-            this.providing = providing;
-            propertyChangeSupport.firePropertyChange("providing", old, providing);
-        }
+        setProviding(providing, true);
     }
 
     /**
@@ -269,9 +299,7 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
     @Override
     public void populateMessage(RagMessage ragMessage) throws Exception {
         if (contextPosition == ContextPosition.PROMPT_AUGMENTATION) {
-            if (view != null) {
-                view.populateRag(ragMessage);
-            }
+            view.populateRag(ragMessage);
         }
     }
 
@@ -285,13 +313,11 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
     @Override
     public List<String> getSystemInstructions() throws Exception {
         if (contextPosition == ContextPosition.SYSTEM_INSTRUCTIONS) {
-            if (view != null) {
-                List<String> instructions = view.getInstructions();
-                if (instructions.isEmpty()) {
-                    return Collections.singletonList("**WARNING**: Managed resource '" + getName() + "' (" + getMimeType() + ") cannot be used as SYSTEM_INSTRUCTIONS because it is a binary resource. Please move it to PROMPT_AUGMENTATION.");
-                }
-                return instructions;
+            List<String> instructions = view.getInstructions();
+            if (instructions.isEmpty()) {
+                return Collections.singletonList("**WARNING**: Managed resource '" + getName() + "' (" + getMimeType() + ") cannot be used as SYSTEM_INSTRUCTIONS because it is a binary resource. Please move it to PROMPT_AUGMENTATION.");
             }
+            return instructions;
         }
         return Collections.emptyList();
     }
@@ -311,15 +337,12 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
             return;
         }
 
-        if (view == null) {
-            autoBindView();
-        }
-
         boolean stale = (refreshPolicy == RefreshPolicy.LIVE && handle.isStale(lastLoadTimestamp));
+        boolean cold = !view.hasContent();
 
-        if (dirty || stale) {
-            log.debug("Reloading resource: {} ({}) [Dirty: {}, Stale: {}]",
-                    getName(), uuid, dirty, stale);
+        if (dirty || stale || cold) {
+            log.debug("Reloading resource: {} ({}) [Dirty: {}, Stale: {}, Cold: {}]",
+                    getName(), uuid, dirty, stale, cold);
 
             long oldTimestamp = this.lastLoadTimestamp;
 
@@ -327,9 +350,7 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
             this.dirty = false;
             this.lastLoadTimestamp = handle.getLastModified();
 
-            if (view != null) {
-                view.reload();
-            }
+            view.reload();
 
             // Standard JavaBeans Property Events
             propertyChangeSupport.firePropertyChange("dirty", true, false);
@@ -388,8 +409,18 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
         sb.append("Refresh Policy: ").append(getRefreshPolicy()).append("\n");
         sb.append("Context Position: ").append(getContextPosition()).append("\n");
 
-        if (view != null) {
+        if (!providing) {
+            sb.append("Status: **DISABLED / NOT PROVIDING** (Content is hidden from context to save tokens. Use Resources.setProviding([\"").append(uuid).append("\"], true) to view content)\n");
+        } else {
             sb.append(view.getHeader()).append("\n");
+            if (view.isTruncated()) {
+                double pct = view.getVisiblePercentage();
+                sb.append("ViewPort Status: **WARNING: PARTIAL VIEW** (")
+                        .append(String.format(Locale.US, "%.1f%%", pct))
+                        .append(" of resource visible). Use Resources.setFullView([\"")
+                        .append(uuid)
+                        .append("\"], true) to view the complete resource.\n");
+            }
         }
 
         if (contextPosition == ContextPosition.SYSTEM_INSTRUCTIONS && view instanceof MediaView) {
@@ -438,15 +469,20 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
      */
     @Override
     public int getInstructionsTokenCount() {
-        if (contextPosition != ContextPosition.SYSTEM_INSTRUCTIONS) {
+        if (!isEffectivelyProviding() || contextPosition != ContextPosition.SYSTEM_INSTRUCTIONS) {
             return 0;
+        }
+        try {
+            reloadIfNeeded();
+        } catch (Exception ex) {
+            log.warn("Failed to reload resource {} during getInstructionsTokenCount: {}", getName(), ex.getMessage());
         }
         AbstractModel model = getSelectedModel();
         if (model == null) {
             return 0;
         }
         int headerTokens = model.countTokens(getHeader());
-        int viewTokens = (view != null) ? view.getTokenCount() : 0;
+        int viewTokens = view.getTokenCount();
         return headerTokens + viewTokens;
     }
 
@@ -460,12 +496,17 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
      */
     @Override
     public int getRagTokenCount() {
+        try {
+            reloadIfNeeded();
+        } catch (Exception ex) {
+            log.warn("Failed to reload resource {} during getRagTokenCount: {}", getName(), ex.getMessage());
+        }
         AbstractModel model = getSelectedModel();
         if (model == null) {
             return 0;
         }
         int headerTokens = model.countTokens(getHeader());
-        int viewTokens = (view != null && contextPosition == ContextPosition.PROMPT_AUGMENTATION) ? view.getTokenCount() : 0;
+        int viewTokens = (isEffectivelyProviding() && contextPosition == ContextPosition.PROMPT_AUGMENTATION) ? view.getTokenCount() : 0;
         return headerTokens + viewTokens;
     }
 
@@ -474,8 +515,6 @@ public class Resource extends BasicPropertyChangeSource implements Rebindable, C
      * recalculation.
      */
     public void resetTokenCount() {
-        if (view != null) {
-            view.resetTokenCount();
-        }
+        view.resetTokenCount();
     }
 }

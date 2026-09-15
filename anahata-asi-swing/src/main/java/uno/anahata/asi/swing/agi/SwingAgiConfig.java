@@ -98,12 +98,41 @@ public class SwingAgiConfig extends AgiConfig {
     }
 
     /**
-     * Look-and-Feel-agnostic relative luminance check to determine if the
-     * active theme is a dark mode variant.
+     * Optional host-supplied detector for dark mode. When a host IDE (e.g. IntelliJ IDEA) knows its
+     * own theme authoritatively, it registers a detector here so the shared Swing UI follows the IDE
+     * theme exactly instead of relying on the built-in luminance heuristic. {@code null} (the
+     * default, e.g. in the NetBeans and standalone Desktop hosts) falls back to the heuristic.
+     */
+    private static java.util.function.BooleanSupplier darkModeDetector;
+
+    /**
+     * Registers a host-specific dark-mode detector, overriding the built-in luminance heuristic.
+     * <p>
+     * Intended for IDE hosts whose Look and Feel does not expose a reliable {@code Panel.background}
+     * to the heuristic (for instance IntelliJ IDEA's New UI): the host passes a supplier backed by
+     * its own theme API so {@link #isDarkLaf()} tracks the IDE theme precisely. Passing {@code null}
+     * restores the heuristic.
      *
-     * @return true if the active Look and Feel is dark, false otherwise.
+     * @param detector the dark-mode detector, or {@code null} to use the built-in heuristic.
+     */
+    public static void setDarkModeDetector(java.util.function.BooleanSupplier detector) {
+        darkModeDetector = detector;
+    }
+
+    /**
+     * Determines whether the active theme is a dark-mode variant.
+     * <p>
+     * Uses the host-supplied {@linkplain #setDarkModeDetector(java.util.function.BooleanSupplier)
+     * dark-mode detector} when one is registered; otherwise falls back to a Look-and-Feel-agnostic
+     * relative-luminance check on {@code Panel.background}.
+     *
+     * @return true if the active theme is dark, false otherwise.
      */
     public static boolean isDarkLaf() {
+        java.util.function.BooleanSupplier detector = darkModeDetector;
+        if (detector != null) {
+            return detector.getAsBoolean();
+        }
         Color bg = UIManager.getColor("Panel.background");
         if (bg == null) {
             return false;
@@ -206,6 +235,19 @@ public class SwingAgiConfig extends AgiConfig {
     }
 
     /**
+     * Convenience factory returning a {@link UITheme} that reflects the currently active Look and
+     * Feel, for leaf UI components (renderers, dialogs, secondary panels) that do not hold a
+     * {@code SwingAgiConfig} instance. A fresh theme is returned on each call so it always tracks the
+     * live LaF (light/dark); callers should capture it once at construction time rather than in a
+     * per-paint path.
+     *
+     * @return a UI theme for the active Look and Feel.
+     */
+    public static UITheme theme() {
+        return new UITheme();
+    }
+
+    /**
      * A collection of color and font definitions that define the visual
      * identity of the Anahata Swing UI, dynamically adjusting between light
      * and dark aesthetics based on the active Look and Feel.
@@ -270,6 +312,31 @@ public class SwingAgiConfig extends AgiConfig {
         private final Color thoughtFg = UIManager.getColor("Label.disabledForeground") != null
                 ? UIManager.getColor("Label.disabledForeground")
                 : (isDarkLaf() ? new Color(120, 120, 120) : new Color(150, 150, 150));
+
+        /**
+         * Generic chrome border color for separators, matte borders and line borders on secondary
+         * panels (control strips, sidebars, code-block frames). Follows the active Look and Feel via
+         * {@code Separator.foreground}, with dark/light fallbacks so it never renders a light-only
+         * hairline on a dark IDE theme.
+         */
+        private final Color chromeBorder = UIManager.getColor("Separator.foreground") != null
+                ? UIManager.getColor("Separator.foreground")
+                : (isDarkLaf() ? new Color(70, 73, 78) : new Color(200, 200, 200));
+        /**
+         * Generic muted/secondary foreground for de-emphasised labels (language tags, class names,
+         * status hints). Follows {@code Label.disabledForeground} with dark/light fallbacks.
+         */
+        private final Color mutedFg = UIManager.getColor("Label.disabledForeground") != null
+                ? UIManager.getColor("Label.disabledForeground")
+                : (isDarkLaf() ? new Color(150, 150, 150) : new Color(110, 110, 110));
+        /**
+         * Foreground for hyperlinks and active/selected tab labels. Follows
+         * {@code Component.linkColor} with dark/light fallbacks, so links stay legible on a dark IDE
+         * theme (plain {@link Color#BLUE} is far too dark on a dark background).
+         */
+        private final Color linkFg = UIManager.getColor("Component.linkColor") != null
+                ? UIManager.getColor("Component.linkColor")
+                : (isDarkLaf() ? new Color(88, 157, 246) : new Color(0, 102, 204));
 
         /** Default background color for message headers if role is undefined. */
         private final Color defaultHeaderBg = isDarkLaf() ? new Color(30, 30, 30) : Color.WHITE;
