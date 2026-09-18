@@ -1,9 +1,11 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.intellij;
 
+import com.intellij.ide.projectView.ProjectView;
 import com.intellij.ide.ui.LafManagerListener;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.wm.ToolWindow;
@@ -13,18 +15,24 @@ import com.intellij.ui.JBColor;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import java.awt.Component;
+import java.beans.PropertyChangeListener;
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
+import uno.anahata.asi.intellij.tools.java.coderefiner.CodeRefinementBatch;
 import uno.anahata.asi.intellij.ui.IntellijJavaCodeParameterRenderer;
 import uno.anahata.asi.intellij.ui.IntellijTextResourceWriteRenderer;
+import uno.anahata.asi.intellij.ui.resources.IntellijResourceUI;
 import uno.anahata.asi.swing.AbstractSwingAsiContainer;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.SwingAgiConfig;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
+import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.toolkit.resources.text.FullTextResourceUpdate;
 import uno.anahata.asi.toolkit.resources.text.TextResourceReplacements;
 import uno.anahata.asi.toolkit.resources.text.lines.TextResourceLineEdits;
@@ -65,9 +73,9 @@ public class IntellijAsiContainer extends AbstractSwingAsiContainer implements D
         ParameterRendererFactory.register(FullTextResourceUpdate.class, IntellijTextResourceWriteRenderer.class);
         ParameterRendererFactory.register(TextResourceReplacements.class, IntellijTextResourceWriteRenderer.class);
         ParameterRendererFactory.register(TextResourceLineEdits.class, IntellijTextResourceWriteRenderer.class);
-        ParameterRendererFactory.register(uno.anahata.asi.intellij.tools.java.coderefiner.CodeRefinementBatch.class, IntellijTextResourceWriteRenderer.class);
+        ParameterRendererFactory.register(CodeRefinementBatch.class, IntellijTextResourceWriteRenderer.class);
         ParameterRendererFactory.registerById("java", IntellijJavaCodeParameterRenderer.class);
-        uno.anahata.asi.swing.agi.resources.ResourceUiRegistry.getInstance().setResourceUI(new uno.anahata.asi.intellij.ui.resources.IntellijResourceUI());
+        ResourceUiRegistry.getInstance().setResourceUI(new IntellijResourceUI());
     }
 
     /**
@@ -311,6 +319,35 @@ public class IntellijAsiContainer extends AbstractSwingAsiContainer implements D
             }
         }
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Implementation details: Triggers a reactive UI refresh of the Project View tree across
+     * all open IntelliJ project windows whenever session resources, nicknames, or visibility changes.
+     * </p>
+     *
+     * @param agi The session whose state changed.
+     * @param propertyName The property that changed.
+     */
+    @Override
+    protected void onSessionContextChanged(Agi agi, String propertyName) {
+        refreshProjectViews();
+    }
+
+    /**
+     * Triggers a reactive UI refresh of the Project View tree across all open IntelliJ project windows.
+     */
+    public static void refreshProjectViews() {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            for (Project project : ProjectManager.getInstance().getOpenProjects()) {
+                ProjectView pv = ProjectView.getInstance(project);
+                if (pv != null) {
+                    pv.refresh();
+                }
+            }
+        }, ModalityState.any());
     }
 
     /**

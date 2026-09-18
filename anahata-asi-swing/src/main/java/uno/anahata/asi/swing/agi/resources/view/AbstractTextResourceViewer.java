@@ -3,7 +3,6 @@ package uno.anahata.asi.swing.agi.resources.view;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.Point;
@@ -27,11 +26,7 @@ import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.SwingAgiConfig;
 import java.awt.Cursor;
-import uno.anahata.asi.swing.icons.CancelIcon;
-import uno.anahata.asi.swing.icons.CopyIcon;
-import uno.anahata.asi.swing.icons.EditIcon;
-import uno.anahata.asi.swing.icons.RestartIcon;
-import uno.anahata.asi.swing.icons.SaveIcon;
+import uno.anahata.asi.swing.icons.ActionIconKey;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 import uno.anahata.asi.swing.internal.SwingTask;
 import uno.anahata.asi.swing.internal.SwingUtils;
@@ -177,32 +172,28 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         // 1. Integrated Control Strip
         controlStrip = new JToolBar();
         controlStrip.setFloatable(false);
+        controlStrip.setOpaque(false);
         controlStrip.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, SwingAgiConfig.theme().getChromeBorder()));
 
         // 1b. Action Nexus (Edit/Save)
         actionNexus = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         actionNexus.setOpaque(false);
 
-        copyBtn = new JButton(new CopyIcon(16));
-        copyBtn.putClientProperty("JButton.buttonType", "toolBarButton");
-        copyBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        copyBtn = new JButton("Copy", agiPanel.getAgiConfig().getActionIcon(ActionIconKey.COPY, 16));
         copyBtn.setToolTipText("Copy content to clipboard");
         copyBtn.addActionListener(e -> SwingUtils.copyToClipboard(getEditorContent()));
         actionNexus.add(copyBtn);
 
-        cancelBtn = new JButton("Cancel", new CancelIcon(16));
-        cancelBtn.putClientProperty("JButton.buttonType", "toolBarButton");
-        cancelBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        cancelBtn = new JButton("Cancel", agiPanel.getAgiConfig().getActionIcon(ActionIconKey.CANCEL, 16));
         cancelBtn.addActionListener(e -> setEditing(false));
         cancelBtn.setVisible(false);
         actionNexus.add(cancelBtn);
 
-        editBtn = new JButton("Edit", new EditIcon(16));
-        editBtn.putClientProperty("JButton.buttonType", "toolBarButton");
+        editBtn = new JButton("Edit", agiPanel.getAgiConfig().getActionIcon(ActionIconKey.EDIT, 16));
         editBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         editBtn.addActionListener(e -> toggleEditMode());
         actionNexus.add(editBtn);
-        
+
         controlStrip.add(actionNexus);
 
         add(controlStrip, BorderLayout.NORTH);
@@ -211,10 +202,10 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         cardPanel.add(createPreviewComponent(), "preview");
         cardPanel.add(createEditorComponent(), "editor");
         add(cardPanel, BorderLayout.CENTER);
-        
+
         // INITIALIZATION SIGNAL: Force the card layout to show the initial state.
         setEditing(false);
-        
+
         // Add global Ctrl+S binding for saving without exiting edit mode
         InputMap im = getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
         ActionMap am = getActionMap();
@@ -231,7 +222,7 @@ public abstract class AbstractTextResourceViewer extends JPanel {
                 }
             }
         });
-        
+
         syncWithResource();
     }
 
@@ -265,14 +256,14 @@ public abstract class AbstractTextResourceViewer extends JPanel {
         this.editing = editing;
         if (editing) {
             editBtn.setText("Save");
-            editBtn.setIcon(new SaveIcon(16));
+            editBtn.setIcon(agiPanel.getAgiConfig().getActionIcon(ActionIconKey.SAVE, 16));
             cancelBtn.setVisible(true);
             cardLayout.show(cardPanel, "editor");
             setComponentEditable(true);
             onEditorActivated();
         } else {
             editBtn.setText("Edit");
-            editBtn.setIcon(new EditIcon(16));
+            editBtn.setIcon(agiPanel.getAgiConfig().getActionIcon(ActionIconKey.EDIT, 16));
             cancelBtn.setVisible(false);
             
             if (previewAsEditor) {

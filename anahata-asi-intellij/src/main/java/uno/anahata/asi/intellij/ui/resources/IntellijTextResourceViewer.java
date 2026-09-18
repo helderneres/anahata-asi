@@ -2,6 +2,8 @@
 package uno.anahata.asi.intellij.ui.resources;
 
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.application.WriteIntentReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
@@ -22,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.AbstractAsiContainer;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.resource.handle.PathHandle;
+import uno.anahata.asi.intellij.resources.handle.IntellijHandle;
 import uno.anahata.asi.intellij.internal.JavaPsi;
 import uno.anahata.asi.swing.agi.AgiPanel;
 import uno.anahata.asi.swing.agi.resources.view.AbstractTextResourceViewer;
@@ -201,18 +204,21 @@ public class IntellijTextResourceViewer extends AbstractTextResourceViewer {
     private void initEditor() {
         Project project = resolveProject();
         String normalizedName = normalizeResourceFileName(resource.getName());
-        FileType fileType = FileTypeManager.getInstance().getFileTypeByFileName(normalizedName);
-        if (fileType == null || fileType.isBinary() || fileType.getName().equalsIgnoreCase("UNKNOWN")) {
-            fileType = PlainTextFileType.INSTANCE;
-        }
+        FileType rawFileType = FileTypeManager.getInstance().getFileTypeByFileName(normalizedName);
+        final FileType fileType = (rawFileType == null || rawFileType.isBinary() || rawFileType.getName().equalsIgnoreCase("UNKNOWN"))
+                ? PlainTextFileType.INSTANCE
+                : rawFileType;
 
         VirtualFile vf = null;
-        if (resource.getHandle() instanceof PathHandle ph) {
+        if (resource.getHandle() instanceof IntellijHandle ih) {
+            vf = ih.getVirtualFile();
+        } else if (resource.getHandle() instanceof PathHandle ph) {
             vf = JavaPsi.findVirtualFile(ph.getPath());
         }
 
         if (vf != null) {
-            document = FileDocumentManager.getInstance().getDocument(vf);
+            final VirtualFile targetVf = vf;
+            document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(targetVf));
         }
         if (document == null) {
             String text = "";
@@ -225,22 +231,24 @@ public class IntellijTextResourceViewer extends AbstractTextResourceViewer {
         }
 
         boolean isViewer = !isEditing();
-        if (vf != null) {
-            editor = EditorFactory.getInstance().createEditor(document, project, vf, isViewer);
-        } else {
-            editor = EditorFactory.getInstance().createEditor(document, project, fileType, isViewer);
-        }
+        final VirtualFile targetVf = vf;
+        editor = WriteIntentReadAction.compute(() -> {
+            if (targetVf != null) {
+                return EditorFactory.getInstance().createEditor(document, project, targetVf, isViewer);
+            } else {
+                return EditorFactory.getInstance().createEditor(document, project, fileType, isViewer);
+            }
+        });
 
         if (editor instanceof EditorEx editorEx) {
-            EditorHighlighter highlighter;
-            if (vf != null) {
-                highlighter = EditorHighlighterFactory.getInstance().createEditorHighlighter(project, vf);
-            } else {
-                highlighter = EditorHighlighterFactory.getInstance().createEditorHighlighter(editorEx.getColorsScheme(), normalizedName, project);
-                if (highlighter == null) {
-                    highlighter = EditorHighlighterFactory.getInstance().createEditorHighlighter(project, fileType);
+            EditorHighlighter highlighter = ReadAction.compute(() -> {
+                if (targetVf != null) {
+                    return EditorHighlighterFactory.getInstance().createEditorHighlighter(project, targetVf);
+                } else {
+                    EditorHighlighter h = EditorHighlighterFactory.getInstance().createEditorHighlighter(editorEx.getColorsScheme(), normalizedName, project);
+                    return h != null ? h : EditorHighlighterFactory.getInstance().createEditorHighlighter(project, fileType);
                 }
-            }
+            });
             if (highlighter != null) {
                 editorEx.setHighlighter(highlighter);
             }
@@ -272,13 +280,16 @@ public class IntellijTextResourceViewer extends AbstractTextResourceViewer {
      * @return the project, or null if none is open.
      */
     private Project resolveProject() {
-        if (resource.getHandle() instanceof PathHandle ph) {
-            VirtualFile vf = JavaPsi.findVirtualFile(ph.getPath());
-            if (vf != null) {
-                Project p = JavaPsi.findHostProject(vf);
-                if (p != null) {
-                    return p;
-                }
+        VirtualFile vf = null;
+        if (resource.getHandle() instanceof IntellijHandle ih) {
+            vf = ih.getVirtualFile();
+        } else if (resource.getHandle() instanceof PathHandle ph) {
+            vf = JavaPsi.findVirtualFile(ph.getPath());
+        }
+        if (vf != null) {
+            Project p = JavaPsi.findHostProject(vf);
+            if (p != null) {
+                return p;
             }
         }
         Project[] open = ProjectManager.getInstance().getOpenProjects();
