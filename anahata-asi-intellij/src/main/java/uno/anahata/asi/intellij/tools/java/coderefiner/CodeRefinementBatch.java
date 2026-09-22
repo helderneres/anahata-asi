@@ -54,7 +54,7 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
     /**
      * The ordered list of structural modifications to apply.
      */
-    @Schema(description = "The ordered list of member-level modifications to apply atomically.", required = true)
+    @Schema(description = "The ordered list of member-level modifications to apply atomically.", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<CodeRefinementIntent> intents = new ArrayList<>();
 
     /**
@@ -104,7 +104,7 @@ public class CodeRefinementBatch extends AbstractTextResourceWrite {
         String name = originalResourceName != null ? originalResourceName : "Temp.java";
         String baseSource = originalContent.replace("\r\n", "\n");
 
-        return ReadAction.compute(() -> {
+        return ReadAction.computeBlocking(() -> {
             PsiFileFactory fileFactory = PsiFileFactory.getInstance(hostProject);
             PsiFile file = fileFactory.createFileFromText(name, JavaLanguage.INSTANCE, baseSource);
             if (!(file instanceof PsiJavaFile dummyFile)) {

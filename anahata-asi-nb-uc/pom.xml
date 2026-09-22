@@ -4,15 +4,20 @@
     <parent>
         <groupId>uno.anahata</groupId>
         <artifactId>anahata-asi-parent</artifactId>
-        <version>1.2.8-SNAPSHOT</version>
+        <version>1.2.13-SNAPSHOT</version>
     </parent>
     
     <artifactId>anahata-asi-nb-uc</artifactId>
-    <version>1.2.8-SNAPSHOT</version>
+    <version>1.2.13-SNAPSHOT</version>
     <packaging>nbm</packaging>
     
     <name>Anahata ASI Update Center - NetBeans</name>
     <description>Standalone Update Center and Installer for Anahata ASI across NetBeans versions.</description>
+    
+    <properties>
+        <!-- Pin to RELEASE300 so the Update Center plugin remains installable on NetBeans 30+ regardless of parent version -->
+        <netbeans.version>RELEASE300</netbeans.version>
+    </properties>
     
     <dependencies>
         <dependency>

@@ -195,7 +195,7 @@ public class IntellijJava extends DesktopJava {
 
         // 3. Check IntelliJ's suggested JDK home paths
         try {
-            for (String suggested : JavaSdk.getInstance().suggestHomePaths()) {
+            for (String suggested : JavaSdk.getInstance().suggestHomePaths((Project) null)) {
                 Path home = Path.of(suggested);
                 Path javac = findJavacInJdkHome(home);
                 if (javac != null && seenJavacPaths.add(javac.toAbsolutePath().normalize())) {
@@ -316,7 +316,7 @@ public class IntellijJava extends DesktopJava {
     public String buildProjectClasspathString(String projectPath, boolean includeProjectDependencies, boolean includeTestContext) throws AgiToolException {
         Project project = resolveProject(projectPath);
         JavaPsi.requireSmart(project);
-        String classpath = ReadAction.compute(() -> {
+        String classpath = ReadAction.computeBlocking(() -> {
             OrderEnumerator enumerator = OrderEnumerator.orderEntries(project).recursively().withoutSdk();
             if (!includeTestContext) {
                 enumerator = enumerator.productionOnly();

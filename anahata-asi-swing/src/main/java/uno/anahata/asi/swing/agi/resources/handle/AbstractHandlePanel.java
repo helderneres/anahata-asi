@@ -16,13 +16,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
-import javax.swing.border.TitledBorder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.internal.TimeUtils;
 import uno.anahata.asi.agi.resource.handle.ResourceHandle;
 import uno.anahata.asi.swing.agi.AgiPanel;
-import uno.anahata.asi.swing.agi.SwingAgiConfig;
 import uno.anahata.asi.swing.internal.SwingTask;
 
 /**
@@ -96,7 +94,7 @@ public class AbstractHandlePanel<H extends ResourceHandle> extends JPanel {
      */
     public AbstractHandlePanel() {
         setLayout(new GridBagLayout());
-        setBorder(BorderFactory.createTitledBorder(null, "Handle (Connectivity)", TitledBorder.LEFT, TitledBorder.TOP, getFont().deriveFont(Font.BOLD)));
+        setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -109,7 +107,7 @@ public class AbstractHandlePanel<H extends ResourceHandle> extends JPanel {
         writableBox.setEnabled(false);
 
         addProperty("Class:", classLabel);
-        classLabel.setForeground(SwingAgiConfig.theme().getMutedFg());
+        classLabel.setEnabled(false);
         addProperty("URI:", uriField);
         addProperty("MIME:", mimeLabel);
         addProperty("Status:", statusLabel);
@@ -184,7 +182,7 @@ public class AbstractHandlePanel<H extends ResourceHandle> extends JPanel {
         virtualBox.setSelected(handle.isVirtual());
 
         statusLabel.setText("Loading...");
-        statusLabel.setForeground(SwingAgiConfig.theme().getMutedFg());
+        statusLabel.setEnabled(false);
         sizeLabel.setText("Loading...");
         modifiedLabel.setText("Loading...");
         mimeLabel.setText("Loading...");

@@ -5,6 +5,7 @@ package uno.anahata.asi.swing.agi.context;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Component;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -24,7 +25,6 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.SwingConstants;
-import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.table.TableColumn;
@@ -50,10 +50,10 @@ import uno.anahata.asi.swing.agi.resources.ResourceUI;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.agi.resources.ResourcesNode;
 import uno.anahata.asi.swing.components.ScrollablePanel;
-import uno.anahata.asi.swing.icons.DeleteIcon;
 import uno.anahata.asi.swing.icons.RestartIcon;
 import uno.anahata.asi.swing.internal.EdtPropertyChangeListener;
 import uno.anahata.asi.agi.tool.ToolManager;
+import uno.anahata.asi.swing.icons.ActionIconKey;
 
 /**
  * A panel dedicated to displaying and managing the available AI context
@@ -344,19 +344,19 @@ public class ContextPanel extends JPanel {
      * Initializes the components and layout of the panel.
      */
     public void initComponents() {
-        // Configure Toolbar
-        JToolBar toolBar = new JToolBar();
-        toolBar.setFloatable(false);
+        // Top action bar
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        topBar.setOpaque(false);
 
-        JButton refreshButton = new JButton("Refresh Tokens", new RestartIcon(16));
-        refreshButton.setToolTipText("Recalculate token counts for all context items (Snapshot)");
+        JButton refreshButton = new JButton("Recalculate Tokens", getAgiPanel().getAgiConfig().getActionIcon(ActionIconKey.REFRESH, 16));
+        refreshButton.setToolTipText("Recalculate token counts for all context items");
         refreshButton.addActionListener(e -> {
             agi.getResourceManager().resetTokenCounts();
             refreshTokens();
         });
-        toolBar.add(refreshButton);
+        topBar.add(refreshButton);
 
-        add(toolBar, BorderLayout.NORTH);
+        add(topBar, BorderLayout.NORTH);
 
         // Configure TreeTable
         treeTable.setTreeTableModel(treeTableModel);
@@ -494,7 +494,7 @@ public class ContextPanel extends JPanel {
             }
         });
 
-        JMenuItem removeItem = new JMenuItem("Remove from Context", new DeleteIcon(16));
+        JMenuItem removeItem = new JMenuItem("Remove from Context", getAgiPanel().getAgiConfig().getActionIcon(ActionIconKey.DELETE, 16));
         removeItem.addActionListener(e -> {
             for (int row : treeTable.getSelectedRows()) {
                 Object node = treeTable.getPathForRow(row).getLastPathComponent();

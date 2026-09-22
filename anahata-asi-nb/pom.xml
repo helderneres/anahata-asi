@@ -4,16 +4,17 @@
     <parent>
         <groupId>uno.anahata</groupId>
         <artifactId>anahata-asi-parent</artifactId>
-        <version>1.2.8-SNAPSHOT</version>
+        <version>1.2.13-SNAPSHOT</version>
     </parent>
     
     <artifactId>anahata-asi-nb</artifactId>
-    <version>1.2.8-SNAPSHOT</version>
+    <version>1.2.13-SNAPSHOT</version>
     <packaging>nbm</packaging>
     
     <name>Anahata ASI Studio - NetBeans</name>
     <description>The Best Java AI Assistant On Earth | Anahata ASI RI and SDK.</description>
     <properties>
+        <netbeans.version>RELEASE310</netbeans.version>
         <!-- <netbeans.installation>/usr/lib/apache-netbeans</netbeans.installation> -->
     </properties>
     <dependencies>
@@ -503,11 +504,18 @@
             <version>${netbeans.version}</version>
         </dependency>
         <!--
-                <dependency>
-                    <groupId>org.netbeans.modules</groupId>
-                    <artifactId>org-netbeans-modules-git</artifactId>
-                    <version>${netbeans.version}</version>
-                </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-libs-git</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        -->
+        <!--
+        <dependency>
+            <groupId>org.netbeans.modules</groupId>
+ve            <artifactId>org-netbeans-modules-localhistory</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
         -->
         
         <dependency>
@@ -780,11 +788,11 @@
                         </dependency>
                         
                         <!--
-<dependency>
-    <type>impl</type>
-    <id>org.netbeans.modules:org-netbeans-modules-git</id>
-</dependency>
-                        -->
+                        <dependency>
+                            <type>impl</type>
+                            <id>org.netbeans.modules:org-netbeans-modules-localhistory</id>
+                        </dependency>
+                                -->
                     </moduleDependencies>
                     <publicPackages>
                         <publicPackage>uno.anahata.asi.nb</publicPackage>
@@ -846,6 +854,31 @@
                     <archive>
                         <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
                     </archive>
+                </configuration>
+            </plugin>
+            <!--
+                NetBeans Studio Javadoc Plugin Configuration:
+                1. Single Source of Truth for Stylesheet: Resolves anahata-barca-theme.css from the parent
+                   root using ${project.parent.basedir}/src/main/javadoc without duplicating CSS files.
+                2. Offline Cross-Linking to Core Platform: Uses offlineLinks to read element-list generated
+                   by the preceding Core aggregate build in target/reports/apidocs. In the browser, all Core
+                   and Swing types (Agi, ToolContext, AgiPanel) render as active, clickable Barça-gold links
+                   pointing directly to the Core Javadoc portal (../apidocs/) without network dependencies.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <javadocDirectory>${project.parent.basedir}/src/main/javadoc</javadocDirectory>
+                    <addStylesheets>
+                        <addStylesheet>anahata-barca-theme.css</addStylesheet>
+                    </addStylesheets>
+                    <offlineLinks>
+                        <offlineLink>
+                            <url>../apidocs/</url>
+                            <location>${maven.multiModuleProjectDirectory}/target/reports/apidocs</location>
+                        </offlineLink>
+                    </offlineLinks>
                 </configuration>
             </plugin>
         </plugins>

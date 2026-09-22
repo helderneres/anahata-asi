@@ -28,3 +28,14 @@ This ensures that even in very long conversations, the UI remains responsive and
 1. **Instance-Based Architecture**: All UI theming, warning colors, and toolbar button styling reside as overridable instance methods on `SwingAgiConfig`.
 2. **`AgiPanel.getConfig()` Standard**: Swing UI components must never check `instanceof SwingAgiConfig` or perform redundant casting. All components obtain the active Swing configuration directly via `agiPanel.getConfig()`.
 3. **Pluggable Host Fidelity**: Host IDE implementations (`IntellijAgiConfig`, `NetBeansAgiConfig`, `AsiDesktopAgiConfig`) override these instance methods to provide native platform colors (e.g. IntelliJ New UI palettes, FlatLaf theme tokens) and platform-specific toolbar button styling without dirty static hacks.
+
+## 4. JDesktop / SwingX Component Suite (`org.jdesktop.*`)
+
+The `org.jdesktop.swingx`, `org.jdesktop.swingx.action`, and `org.jdesktop.swingx.plaf` packages (containing `JXTree`, `JXTable`, `JXLabel`, etc.) are source-imported directly into this module from SwingX / SwingUtils.
+- **Purpose**: They were imported directly into the codebase to surgically remove all legacy references to `java.applet.Applet`, ensuring 100% compilation and runtime compatibility on modern JDKs (JDK 21 through JDK 26+) where the Applet API has been completely deprecated and removed from the Java Platform.
+
+## 5. Error Presentation Standard (`ExceptionDialog`)
+
+Whenever catching exceptions from user-driven UI actions or operations that must be presented to the user, **always** use `ExceptionDialog.show(component, taskName, description, throwable)` instead of standard `JOptionPane.showMessageDialog` or quiet logging.
+- **Full Trace Transparency**: `ExceptionDialog` formats and displays the full stack trace in a scrollable, syntax-friendly viewer with a one-click "Copy to Clipboard" button.
+- **Context Clarity**: It presents both the task name and a clear description of the error so the user and developers immediately understand what action failed.

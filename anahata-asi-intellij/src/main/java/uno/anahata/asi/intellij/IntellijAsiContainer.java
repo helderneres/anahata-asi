@@ -8,6 +8,8 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
+import com.intellij.ui.jcef.JBCefApp;
+import java.net.URI;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.openapi.wm.WindowManager;
@@ -25,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.intellij.tools.java.coderefiner.CodeRefinementBatch;
+import uno.anahata.asi.intellij.ui.media.JcefMediaViewerImpl;
+import uno.anahata.asi.swing.agi.render.MediaViewerComponent;
 import uno.anahata.asi.intellij.ui.IntellijJavaCodeParameterRenderer;
 import uno.anahata.asi.intellij.ui.IntellijTextResourceWriteRenderer;
 import uno.anahata.asi.intellij.ui.resources.IntellijResourceUI;
@@ -64,12 +68,6 @@ public class IntellijAsiContainer extends AbstractSwingAsiContainer implements D
      * renderers, JSON serialization modules, and the IntelliJ native {@link uno.anahata.asi.swing.agi.resources.ResourceUI} strategy.
      */
     public static void initEnvironment() {
-        // Make the shared Swing UI follow IntelliJ's theme authoritatively. IntelliJ's New UI does
-        // not expose a reliable Panel.background to the swing module's luminance heuristic, so the
-        // chat/dashboard rendered light even under a dark IDE theme; JBColor.isBright() is the IDE's
-        // own light/dark flag. Set before any UITheme is constructed (this runs in the container's
-        // static initializer, ahead of the tool-window dashboard build).
-        SwingAgiConfig.setDarkModeDetector(() -> !JBColor.isBright());
         ParameterRendererFactory.register(FullTextResourceUpdate.class, IntellijTextResourceWriteRenderer.class);
         ParameterRendererFactory.register(TextResourceReplacements.class, IntellijTextResourceWriteRenderer.class);
         ParameterRendererFactory.register(TextResourceLineEdits.class, IntellijTextResourceWriteRenderer.class);
@@ -142,6 +140,24 @@ public class IntellijAsiContainer extends AbstractSwingAsiContainer implements D
     @Override
     public AgiConfig createNewAgiConfig() {
         return new IntellijAgiConfig(this);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Provides native HTML5 video playback using IntelliJ's embedded Chromium (JCEF)
+     * when available, returning {@code null} otherwise so {@link uno.anahata.asi.swing.agi.render.MediaRenderer}
+     * can apply standard fallbacks.
+     * </p>
+     */
+    @Override
+    public MediaViewerComponent createHostMediaViewer(byte[] data, String mimeType, String displayName, URI sourceUri, AgiPanel agiPanel) {
+        if (mimeType.startsWith("video/") && JBCefApp.isSupported()) {
+            JcefMediaViewerImpl viewer = new JcefMediaViewerImpl(agiPanel);
+            viewer.load(data, mimeType, displayName, sourceUri);
+            return viewer;
+        }
+        return null;
     }
 
     /**

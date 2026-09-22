@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>uno.anahata</groupId>
     <artifactId>anahata-asi-parent</artifactId>
-    <version>1.2.8-SNAPSHOT</version>
+    <version>1.2.13-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Anahata ASI Parent</name>
     <description>Parent POM for the Anahata ASI multi-module project.</description>
@@ -90,7 +90,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
-        <netbeans.version>RELEASE300</netbeans.version>
         <!-- Dependency Group Versions -->
         <lombok.version>1.18.48</lombok.version>
         <swagger.version>2.2.22</swagger.version><!--2.2.48 seems the latest-->
@@ -364,8 +363,7 @@
                         <detectJavaApiLink>true</detectJavaApiLink>
                         <detectOfflineLinks>true</detectOfflineLinks>
                         <show>private</show>
-                        <outputDirectory>${maven.multiModuleProjectDirectory}/docs/apidocs/${project.version}</outputDirectory>
-                        <javadocDirectory>${maven.multiModuleProjectDirectory}/src/main/javadoc</javadocDirectory>
+                        <javadocDirectory>${project.basedir}/src/main/javadoc</javadocDirectory>
                         <addStylesheets>
                             <addStylesheet>anahata-barca-theme.css</addStylesheet>
                         </addStylesheets>
@@ -407,6 +405,13 @@
                             </goals>
                             <phase>site</phase>
                             <inherited>false</inherited>
+                            <configuration>
+                                <javadocDirectory>${maven.multiModuleProjectDirectory}/src/main/javadoc</javadocDirectory>
+                                <addStylesheets>
+                                    <addStylesheet>anahata-barca-theme.css</addStylesheet>
+                                </addStylesheets>
+                                <outputDirectory>${maven.multiModuleProjectDirectory}/docs/apidocs/${project.version}/apidocs</outputDirectory>
+                            </configuration>
                         </execution>
                     </executions>
                 </plugin>
@@ -426,36 +431,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
+
         </plugins>
     </build>
     
     <profiles>
-        <!--
-                <profile>
-                    <id>sonatype-snapshots</id>
-                    <activation>
-                        <property>
-                            <name>env.GITHUB_ACTIONS</name>
-                        </property>
-                    </activation>
-                    <properties>
-                        <altSnapshotDeploymentRepository>sonatype-central::https://central.sonatype.com/repository/maven-snapshots/</altSnapshotDeploymentRepository>
-                    </properties>
-                    <repositories>
-                        <repository>
-                            <id>sonatype-snapshots</id>
-                            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-                            <releases>
-                                <enabled>false</enabled>
-                            </releases>
-                            <snapshots>
-                                <enabled>true</enabled>
-                            </snapshots>
-                        </repository>
-                    </repositories>
-                </profile>
-        
-        -->
         <profile>
             <id>release</id>
             <properties>
@@ -485,6 +465,10 @@
                                 <goals>
                                     <goal>jar</goal>
                                 </goals>
+                                <configuration>
+                                    <!-- Clean standard Javadocs for Maven Central artifact JARs (zero website CSS) -->
+                                    <addStylesheets/>
+                                </configuration>
                             </execution>
                             <execution>
                                 <id>aggregate</id>

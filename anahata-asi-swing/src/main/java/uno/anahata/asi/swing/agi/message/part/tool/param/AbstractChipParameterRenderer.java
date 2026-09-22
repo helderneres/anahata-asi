@@ -23,14 +23,14 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.agi.resource.handle.StringHandle;
+import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
+import uno.anahata.asi.swing.agi.AgiPanel;
+import uno.anahata.asi.swing.agi.SwingAgiConfig;
 import uno.anahata.asi.swing.agi.resources.ResourceUI;
 import uno.anahata.asi.swing.agi.resources.ResourceUiRegistry;
 import uno.anahata.asi.swing.agi.resources.view.AbstractTextResourceViewer;
+import uno.anahata.asi.swing.icons.ActionIconKey;
 import uno.anahata.asi.swing.icons.CancelIcon;
-import uno.anahata.asi.swing.icons.CopyIcon;
-import uno.anahata.asi.swing.icons.DeleteIcon;
-import uno.anahata.asi.swing.icons.EditIcon;
-import uno.anahata.asi.swing.icons.ExternalIcon;
 import uno.anahata.asi.swing.icons.SaveIcon;
 import uno.anahata.asi.swing.internal.SwingUtils;
 
@@ -73,7 +73,7 @@ public abstract class AbstractChipParameterRenderer extends AbstractParameterRen
                 int w = (parent != null && parent.getWidth() > 0) ? parent.getWidth() - 15 : 600;
                 return new Dimension(w, ps.height);
             }
-            return pillPanel.getPreferredSize();
+            return pillRow.getPreferredSize();
         }
 
         @Override
@@ -111,9 +111,29 @@ public abstract class AbstractChipParameterRenderer extends AbstractParameterRen
     protected AbstractTextResourceViewer editorViewer;
 
     /**
+     * Button to copy content to clipboard.
+     */
+    protected JButton copyBtn;
+
+    /**
+     * Button to toggle in-place editing.
+     */
+    protected JButton editBtn;
+
+    /**
      * Button to open the resource or URI in the host environment.
      */
     protected JButton openBtn;
+
+    /**
+     * Button to remove this chip from its enclosing parent container.
+     */
+    protected JButton deleteBtn;
+
+    /**
+     * Panel wrapping the pill in a flow layout so it does not stretch across the container when standalone.
+     */
+    protected final JPanel pillRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 
     /**
      * Constructs a new AbstractChipParameterRenderer with standard pill wiring.
@@ -131,52 +151,50 @@ public abstract class AbstractChipParameterRenderer extends AbstractParameterRen
             }
         });
 
-        JButton copyBtn = new JButton(new CopyIcon(14));
-        copyBtn.putClientProperty("JButton.buttonType", "toolBarButton");
-        copyBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        copyBtn.setToolTipText("Copy to clipboard");
-        copyBtn.setMargin(new Insets(1, 4, 1, 4));
-        copyBtn.addActionListener(e -> SwingUtils.copyToClipboard(getClipboardContent()));
+        pillRow.setOpaque(false);
+        pillRow.add(pillPanel);
 
+        editorPanel.setOpaque(false);
+
+        container.add(pillRow, "pill");
+        container.add(editorPanel, "editor");
+
+        applyColors();
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>Initializes the renderer and constructs pill action buttons directly via SwingAgiConfig.</p>
+     */
+    @Override
+    public void init(AgiPanel agiPanel, AbstractToolCall<?, ?> call, String paramName, Object value) {
+        super.init(agiPanel, call, paramName, value);
+        SwingAgiConfig config = agiPanel.getAgiConfig();
+
+        pillPanel.removeAll();
+
+        copyBtn = config.createSquareButton(ActionIconKey.COPY, 14, "Copy to clipboard");
+        copyBtn.addActionListener(e -> SwingUtils.copyToClipboard(getClipboardContent()));
         pillPanel.add(copyBtn, BorderLayout.WEST);
 
         JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         centerPanel.setOpaque(false);
         centerPanel.add(nameLabel);
 
-        openBtn = new JButton(new ExternalIcon(14));
-        openBtn.putClientProperty("JButton.buttonType", "toolBarButton");
-        openBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        openBtn.setToolTipText("Open");
-        openBtn.setMargin(new Insets(1, 4, 1, 4));
+        openBtn = config.createSquareButton(ActionIconKey.EXTERNAL, 14, "Open");
         openBtn.addActionListener(e -> onOpen());
         centerPanel.add(openBtn);
 
-        JButton editBtn = new JButton(new EditIcon(14));
-        editBtn.putClientProperty("JButton.buttonType", "toolBarButton");
-        editBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        editBtn.setMargin(new Insets(1, 4, 1, 4));
-        editBtn.setToolTipText("Edit in-place");
+        editBtn = config.createSquareButton(ActionIconKey.EDIT, 14, "Edit in-place");
         editBtn.addActionListener(e -> setEditing(true));
         centerPanel.add(editBtn);
 
         pillPanel.add(centerPanel, BorderLayout.CENTER);
 
-        JButton deleteBtn = new JButton(new DeleteIcon(14));
-        deleteBtn.putClientProperty("JButton.buttonType", "toolBarButton");
-        deleteBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        deleteBtn.setToolTipText("Remove");
-        deleteBtn.setMargin(new Insets(1, 8, 1, 4));
+        deleteBtn = config.createSquareButton(ActionIconKey.DELETE, 14, "Remove");
         deleteBtn.addActionListener(e -> deleteSelf());
-
+        deleteBtn.setVisible(parentRenderer != null);
         pillPanel.add(deleteBtn, BorderLayout.EAST);
-
-        editorPanel.setOpaque(false);
-
-        container.add(pillPanel, "pill");
-        container.add(editorPanel, "editor");
-
-        applyColors();
     }
 
     /**
@@ -321,19 +339,14 @@ public abstract class AbstractChipParameterRenderer extends AbstractParameterRen
         JPanel headerActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         headerActions.setOpaque(false);
 
-        JButton cancelBtn = new JButton("Cancel", new CancelIcon(14));
-        cancelBtn.putClientProperty("JButton.buttonType", "toolBarButton");
-        cancelBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        SwingAgiConfig config = agiPanel.getAgiConfig();
+        JButton cancelBtn = new JButton("Cancel", config.getActionIcon(ActionIconKey.CANCEL, 14));
         cancelBtn.setFont(cancelBtn.getFont().deriveFont(11f));
-        cancelBtn.setMargin(new Insets(1, 4, 1, 4));
         cancelBtn.addActionListener(e -> setEditing(false));
         headerActions.add(cancelBtn);
 
-        JButton saveBtn = new JButton("Save", new SaveIcon(14));
-        saveBtn.putClientProperty("JButton.buttonType", "toolBarButton");
-        saveBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        JButton saveBtn = new JButton("Save", config.getActionIcon(ActionIconKey.SAVE, 14));
         saveBtn.setFont(saveBtn.getFont().deriveFont(Font.BOLD, 11f));
-        saveBtn.setMargin(new Insets(1, 4, 1, 4));
         saveBtn.addActionListener(e -> {
             if (editorViewer != null) {
                 String newContent = editorViewer.getEditorContent();
@@ -406,12 +419,27 @@ public abstract class AbstractChipParameterRenderer extends AbstractParameterRen
 
     /**
      * {@inheritDoc}
+     * <p>Updates delete button visibility when parent renderer is assigned.</p>
+     */
+    @Override
+    public void setParentRenderer(ParameterRenderer<?> parentRenderer) {
+        super.setParentRenderer(parentRenderer);
+        if (deleteBtn != null) {
+            deleteBtn.setVisible(parentRenderer != null);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
      * <p>
      * Renders the single chip for the bound value.</p>
      */
     @Override
     public boolean render() {
         updateContent(value);
+        if (deleteBtn != null) {
+            deleteBtn.setVisible(parentRenderer != null);
+        }
         return true;
     }
 }
