@@ -15,10 +15,10 @@ import uno.anahata.asi.agi.message.RagMessage;
 import uno.anahata.asi.agi.resource.Resource;
 import uno.anahata.asi.nb.tools.project.Projects;
 import uno.anahata.asi.nb.tools.project.ProjectOverview;
-import uno.anahata.asi.nb.tools.maven.DependencyScope;
-import uno.anahata.asi.nb.tools.maven.DependencyGroup;
-import uno.anahata.asi.nb.tools.maven.DeclaredArtifact;
 import uno.anahata.asi.nb.tools.project.alerts.ProjectAlertsContextProvider;
+import uno.anahata.asi.toolkit.maven.DeclaredArtifact;
+import uno.anahata.asi.toolkit.maven.DependencyGroup;
+import uno.anahata.asi.toolkit.maven.DependencyScope;
 
 /**
  * A hierarchical context provider for a specific NetBeans project.
@@ -170,6 +170,11 @@ public class ProjectContextProvider extends AbstractProjectContextProvider {
                 sb.append(formatDependencyScope(scope, "    "));
             }
         }
+
+        if (overview.getVcsOverview() != null && !overview.getVcsOverview().isBlank()) {
+            sb.append("\n  ").append(overview.getVcsOverview()).append("\n");
+        }
+
         return sb.toString();
     }
 

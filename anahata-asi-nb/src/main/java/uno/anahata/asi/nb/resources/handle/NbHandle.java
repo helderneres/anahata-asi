@@ -9,12 +9,22 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
+import javax.swing.text.StyledDocument;
+import org.openide.filesystems.FileAlreadyLockedException;
+import org.openide.filesystems.FileLock;
+import uno.anahata.asi.nb.tools.ide.Editor;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.netbeans.api.queries.FileEncodingQuery;
+import org.netbeans.modules.localhistory.LocalHistory;
+import org.netbeans.modules.localhistory.store.LocalHistoryStore;
+import org.netbeans.modules.versioning.core.api.VCSFileProxy;
 import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileAttributeEvent;
 import org.openide.filesystems.FileChangeListener;
@@ -29,6 +39,9 @@ import org.openide.loaders.OperationAdapter;
 import org.openide.loaders.OperationEvent;
 import org.openide.loaders.OperationListener;
 import uno.anahata.asi.internal.TikaUtils;
+import uno.anahata.asi.nb.tools.vcs.VCS;
+import uno.anahata.asi.agi.resource.vcs.HistoryEntry;
+import uno.anahata.asi.agi.resource.vcs.VcsDiff;
 import uno.anahata.asi.persistence.Rebindable;
 import uno.anahata.asi.agi.resource.handle.AbstractResourceHandle;
 
@@ -361,6 +374,53 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
     /**
      * {@inheritDoc}
      * <p>
+     * Implementation details: Queries the session's active {@link VCS} toolkit to generate
+     * a unified diff against the repository pristine base. Returns null if clean, untracked,
+     * newly added, or unsupported.
+     * </p>
+     */
+    @Override
+    public VcsDiff getDiffToHead() {
+        if (owner == null || owner.getAgi() == null || path == null) {
+            return null;
+        }
+        Optional<VCS> vcsOpt = owner.getAgi().getToolkit(VCS.class);
+        if (vcsOpt.isPresent()) {
+            try {
+                return vcsOpt.get().getDiff(path, null);
+            } catch (Exception e) {
+                log.debug("Failed to get diff to head for {}: {}", path, e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Implementation details: Queries the session's active {@link VCS} toolkit to retrieve
+     * recent VCS and Local History revisions.
+     * </p>
+     */
+    @Override
+    public List<HistoryEntry> getHistory(int maxEntries) {
+        if (owner == null || owner.getAgi() == null || path == null) {
+            return Collections.emptyList();
+        }
+        Optional<VCS> vcsOpt = owner.getAgi().getToolkit(VCS.class);
+        if (vcsOpt.isPresent()) {
+            try {
+                return vcsOpt.get().getHistory(path, maxEntries);
+            } catch (Exception e) {
+                log.debug("Failed to get history for {}: {}", path, e.getMessage());
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
      * Implementation details: Checks the validity of the NetBeans
      * FileObject.</p>
      */
@@ -414,19 +474,78 @@ public class NbHandle extends AbstractResourceHandle implements FileChangeListen
     /**
      * {@inheritDoc}
      * <p>
-     * Implementation details: Writes content via the NetBeans FileObject output
-     * stream, using the handle's detected charset.</p>
+     * Implementation details: If the file is open in an active NetBeans editor tab,
+     * updates the live {@link StyledDocument} and saves it through the editor infrastructure
+     * to eliminate reload dialogs and lock contention. If not open in an editor, writes
+     * via NetBeans FileObject output stream with a retry-guarded lock against background
+     * filesystem events, and labels the NetBeans Local History snapshot with the provided reason.
+     * </p>
      */
     @Override
-    public void write(String content) throws IOException {
+    public void write(String content, String reason) throws IOException {
         if (!isWritable()) {
             throw new IOException("Resource is read-only: " + uri);
         }
 
         FileObject fo = getFileObject();
-        Charset charset = getCharset();
-        try (OutputStream os = fo.getOutputStream()) {
-            os.write(content.getBytes(charset));
+        EditorCookie ec = Editor.getEditorCookie(fo);
+
+        // 1. If open in an active editor tab, update the live document buffer to prevent lock conflicts
+        if (Editor.isFileOpenInEditorTab(ec)) {
+            try {
+                StyledDocument doc = ec.openDocument();
+                if (!doc.getText(0, doc.getLength()).equals(content)) {
+                    doc.remove(0, doc.getLength());
+                    doc.insertString(0, content, null);
+                }
+                ec.saveDocument();
+            } catch (BadLocationException e) {
+                throw new IOException("Failed to update open editor document for " + getName(), e);
+            }
+        } else {
+            // 2. If not open in editor, acquire file lock with retry guard against background events
+            Charset charset = getCharset();
+            FileLock lock = null;
+            for (int i = 0; i < 5; i++) {
+                try {
+                    lock = fo.lock();
+                    break;
+                } catch (FileAlreadyLockedException ex) {
+                    if (i == 4) {
+                        throw ex;
+                    }
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new IOException("Interrupted while waiting for file lock on " + getName(), ie);
+                    }
+                }
+            }
+
+            try (OutputStream os = fo.getOutputStream(lock)) {
+                os.write(content.getBytes(charset));
+            } finally {
+                if (lock != null) {
+                    lock.releaseLock();
+                }
+            }
+        }
+
+        if (reason != null && !reason.isBlank()) {
+            try {
+                File file = FileUtil.toFile(fo);
+                if (file != null) {
+                    LocalHistoryStore store = LocalHistory.getInstance().getLocalHistoryStore();
+                    if (store != null) {
+                        VCSFileProxy proxy = VCSFileProxy.createFileProxy(file);
+                        long ts = fo.lastModified().getTime();
+                        store.setLabel(proxy, ts, reason.trim());
+                    }
+                }
+            } catch (Throwable t) {
+                log.error("Could not label Local History for " + getName(), t);
+            }
         }
     }
 
