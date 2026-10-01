@@ -40,6 +40,11 @@ import uno.anahata.asi.openrouter.OpenRouterAiProvider;
 import uno.anahata.asi.openai.OpenAiResponsesProvider;
 import uno.anahata.asi.openai.compatible.OpenAiChatCompletionsProvider;
 import uno.anahata.asi.swing.agi.AgiPanel;
+import uno.anahata.asi.swing.agi.context.ContextProviderUiRegistry;
+import uno.anahata.asi.swing.agi.project.ProjectContextProviderPanel;
+import uno.anahata.asi.swing.agi.project.ProjectsPanel;
+import uno.anahata.asi.toolkit.project.AbstractProjectContextProvider;
+import uno.anahata.asi.toolkit.project.AbstractProjects;
 import uno.anahata.asi.swing.agi.message.part.tool.param.AgiClassSourceParameterRenderer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.FullTextFileCreateRenderer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.ParameterRendererFactory;
@@ -50,8 +55,8 @@ import uno.anahata.asi.swing.agi.message.part.tool.param.UriParameterRenderer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.VBoxListParameterRenderer;
 import uno.anahata.asi.swing.agi.message.part.tool.param.WrapListParameterRenderer;
 import uno.anahata.asi.swing.agi.render.MediaViewerComponent;
-import uno.anahata.asi.swing.components.ExceptionDialog;
 import uno.anahata.asi.swing.internal.JavaFxBridge;
+import uno.anahata.asi.swing.internal.SwingTask;
 import uno.anahata.asi.swing.internal.SwingUtils;
 import uno.anahata.asi.swing.provider.AiProviderUiRegistry;
 import uno.anahata.asi.swing.provider.AnthropicProviderPanel;
@@ -85,6 +90,8 @@ public abstract class AbstractSwingAsiContainer extends AbstractAsiContainer {
     static {
         //Legengary Radio toolkit
         ToolkitUiRegistry.getInstance().register(Radio.class, RadioRenderer.class);
+        ToolkitUiRegistry.getInstance().register(AbstractProjects.class, ProjectsPanel.class);
+        ContextProviderUiRegistry.getInstance().register(AbstractProjectContextProvider.class, ProjectContextProviderPanel.class);
         
         //Default parameter renderers
         ParameterRendererFactory.register(FullTextFileCreate.class, FullTextFileCreateRenderer.class);
@@ -431,13 +438,13 @@ public abstract class AbstractSwingAsiContainer extends AbstractAsiContainer {
         if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
             File selectedFile = chooser.getSelectedFile();
             log.info("User selected file for import: {}", selectedFile);
-            try {
-                Agi imported = importSession(selectedFile.toPath());
+            new SwingTask<Agi>(parent, this, "Importing Session", () -> {
+                return importSession(selectedFile.toPath());
+            }, imported -> {
                 open(imported);
-            } catch (IOException ex) {
+            }, ex -> {
                 log.error("Could not import session with UI for " + selectedFile, ex);
-                ExceptionDialog.show(null, "Import AGI", "Import AGI failed", ex);
-            }
+            }, true).start();
         }
     }
 
