@@ -1,5 +1,5 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
-package uno.anahata.asi.nb.tools.maven;
+package uno.anahata.asi.toolkit.maven;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
@@ -12,7 +12,7 @@ import lombok.ToString;
  * Represents the detailed result of a Maven build execution, including status, 
  * exit code, captured output, and a breakdown of build phases.
  * <p>
- * This DTO is the primary outcome of {@link Maven#runGoals} and provides the 
+ * This DTO is the primary outcome of {@code runGoals} and provides the 
  * necessary data for the ASI to reason about build successes, failures, 
  * and performance bottlenecks across different Maven phases.
  * </p>
@@ -23,7 +23,6 @@ import lombok.ToString;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-@Deprecated(since = "1.3.0", forRemoval = true)
 @Schema(description = "Represents the detailed result of a Maven build execution, including status, exit code, and captured output.")
 public class MavenBuildResult {
 

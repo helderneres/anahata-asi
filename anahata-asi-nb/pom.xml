@@ -4,11 +4,11 @@
     <parent>
         <groupId>uno.anahata</groupId>
         <artifactId>anahata-asi-parent</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.2-SNAPSHOT</version>
     </parent>
     
     <artifactId>anahata-asi-nb</artifactId>
-    <version>1.3.0-SNAPSHOT</version>
+    <version>1.3.2-SNAPSHOT</version>
     <packaging>nbm</packaging>
     
     <name>Anahata ASI Studio - NetBeans</name>
@@ -468,6 +468,11 @@
             <version>${netbeans.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-xml-xam</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.netbeans.modules</groupId>
             <artifactId>org-netbeans-modules-maven-indexer</artifactId>
             <version>${netbeans.version}</version>
@@ -747,6 +752,10 @@
                         <dependency>
                             <type>impl</type>
                             <id>org.netbeans.modules:org-netbeans-modules-maven-model</id>
+                        </dependency>
+                        <dependency>
+                            <type>impl</type>
+                            <id>org.netbeans.api:org-netbeans-modules-xml-xam</id>
                         </dependency>
                         <dependency>
                             <type>impl</type>
