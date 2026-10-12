@@ -106,10 +106,9 @@ public class IntellijHandle extends IdeHandle implements Rebindable {
     }
 
     /**
-     * {@inheritDoc}
-     * <p>
-     * Attaches the VFS listener once the owner Resource has been assigned.
-     * </p>
+     * Sets the managing {@link Resource} instance for this handle and attaches the VFS listener.
+     *
+     * @param owner The managing Resource instance.
      */
     @Override
     public void setOwner(Resource owner) {
