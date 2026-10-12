@@ -13,6 +13,7 @@ import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.agi.message.AbstractPart;
 import uno.anahata.asi.agi.message.ModelTextPart;
 import uno.anahata.asi.agi.provider.FinishReason;
+import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.internal.JacksonUtils;
 
 /**
@@ -71,7 +72,10 @@ public class AnthropicMessage extends AbstractModelMessage<AnthropicResponse> {
                 }
                 JsonNode input = block.get("input");
                 Map<String, Object> args = input != null ? JacksonUtils.parse(input.toString(), Map.class) : new HashMap<>();
-                getAgi().getToolManager().createToolCall(this, id, name, args);
+                AbstractToolCall call = getAgi().getToolManager().createToolCall(this, id, name, args);
+                if (call != null) {
+                    call.setRawCallJson(block.toString());
+                }
             }
         }
     }
@@ -148,7 +152,10 @@ public class AnthropicMessage extends AbstractModelMessage<AnthropicResponse> {
         if (id != null && name != null && argsBuilder != null) {
             try {
                 Map<String, Object> args = JacksonUtils.parse(argsBuilder.toString(), Map.class);
-                getAgi().getToolManager().createToolCall(this, id, name, args);
+                AbstractToolCall call = getAgi().getToolManager().createToolCall(this, id, name, args);
+                if (call != null) {
+                    call.setRawCallJson(argsBuilder.toString());
+                }
             } catch (Exception e) {
                 log.error("Failed to parse buffered tool call arguments", e);
             }

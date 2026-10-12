@@ -28,6 +28,7 @@ import uno.anahata.asi.agi.provider.RequestConfig;
 import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.provider.ResponseModality;
 import uno.anahata.asi.agi.provider.RetryableApiException;
+import uno.anahata.asi.agi.status.RawApiJson;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.provider.StreamObserver;
 import uno.anahata.asi.agi.provider.ThinkingLevel;
@@ -352,8 +353,10 @@ public class OpenAiModel extends AbstractModel {
             throw new RuntimeException("OpenAI API error: " + httpResponse.statusCode() + " - " + httpResponse.body());
         }
 
-        return new OpenAiResponse(prepared.configJson(), prepared.historyJson(),
-                request.config().getAgi(), modelId, httpResponse.body());
+        Agi agi = request.config().getAgi();
+        agi.setLastRawApiJson(new RawApiJson(prepared.configJson(), prepared.historyJson(), httpResponse.body()));
+
+        return new OpenAiResponse(agi, modelId, httpResponse.body());
     }
 
     /**
@@ -366,6 +369,8 @@ public class OpenAiModel extends AbstractModel {
     public void generateContentStream(GenerationRequest request, StreamObserver<Response<? extends AbstractModelMessage>> observer) {
         Agi agi = request.config().getAgi();
         PreparedPayload prepared = preparePayload(request, true);
+        RawApiJson rawApiJson = new RawApiJson(prepared.configJson(), prepared.historyJson(), "");
+        agi.setLastRawApiJson(rawApiJson);
         
         log.info("Executing OpenAI streaming request to Responses API");
         try {
@@ -418,9 +423,9 @@ public class OpenAiModel extends AbstractModel {
                             try {
                                 JsonNode chunk = JacksonUtils.parse(data, JsonNode.class);
                                 targetMessage.handleStreamEvent(chunk);
-                                targetMessage.appendRawJson(data);
-                                
-                                OpenAiResponse chunkResponse = new OpenAiResponse(prepared.configJson(), prepared.historyJson(), data);
+                                rawApiJson = rawApiJson.appendResponseChunk(data);
+                                agi.setLastRawApiJson(rawApiJson);
+                                OpenAiResponse chunkResponse = new OpenAiResponse();
                                 observer.onNext(chunkResponse);
                                 
                             } catch (Exception e) {

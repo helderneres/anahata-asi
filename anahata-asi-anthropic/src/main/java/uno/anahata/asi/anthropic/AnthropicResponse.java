@@ -31,32 +31,14 @@ public class AnthropicResponse extends Response<AnthropicMessage> {
      * Token usage metadata.
      */
     private final ResponseUsageMetadata usageMetadata;
-    /**
-     * The raw JSON response from the API.
-     */
-    private final String rawJson;
-    /**
-     * The raw JSON configuration used for the request.
-     */
-    private final String rawRequestConfigJson;
-    /**
-     * The raw JSON history sent with the request.
-     */
-    private final String rawHistoryJson;
 
     /**
      * Constructs a full response from the Anthropic API.
-     * @param rawRequestConfigJson The configuration JSON.
-     * @param rawHistoryJson The history JSON.
      * @param agi The session.
      * @param modelId The model ID.
      * @param responseBody The raw response body.
      */
-    public AnthropicResponse(String rawRequestConfigJson, String rawHistoryJson, Agi agi, String modelId, String responseBody) {
-        this.rawRequestConfigJson = rawRequestConfigJson;
-        this.rawHistoryJson = rawHistoryJson;
-        this.rawJson = responseBody;
-
+    public AnthropicResponse(Agi agi, String modelId, String responseBody) {
         JsonNode root = JacksonUtils.parse(responseBody, JsonNode.class);
         this.id = root.path("id").asText("anthropic-response");
         
@@ -76,7 +58,6 @@ public class AnthropicResponse extends Response<AnthropicMessage> {
 
         AnthropicMessage msg = new AnthropicMessage(agi, modelId);
         msg.setResponse(this);
-        msg.setRawJson(responseBody);
         
         JsonNode content = root.get("content");
         if (content != null && content.isArray()) {
@@ -90,15 +71,9 @@ public class AnthropicResponse extends Response<AnthropicMessage> {
     
     /**
      * Constructs a stream chunk response.
-     * @param rawRequestConfigJson The configuration JSON.
-     * @param rawHistoryJson The history JSON.
-     * @param chunkJson The raw chunk JSON.
      */
-    public AnthropicResponse(String rawRequestConfigJson, String rawHistoryJson, String chunkJson) {
+    public AnthropicResponse() {
         this.id = "stream";
-        this.rawRequestConfigJson = rawRequestConfigJson;
-        this.rawHistoryJson = rawHistoryJson;
-        this.rawJson = chunkJson;
         this.usageMetadata = ResponseUsageMetadata.builder().build();
     }
 

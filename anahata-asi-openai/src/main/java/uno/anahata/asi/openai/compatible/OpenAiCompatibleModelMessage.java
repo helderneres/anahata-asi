@@ -73,7 +73,6 @@ public class OpenAiCompatibleModelMessage extends AbstractModelMessage<OpenAiCom
         this(agi, modelId);
         setResponse(response);
         if (choiceNode != null) {
-            setRawJson(choiceNode.toString());
             updateFromNode(choiceNode, reasoningStyle, reasoningFieldName, reasoningTags);
         }
     }
@@ -236,7 +235,10 @@ public class OpenAiCompatibleModelMessage extends AbstractModelMessage<OpenAiCom
             if (id != null && name != null && !fullJson.isEmpty()) {
                 try {
                     Map<String, Object> args = JacksonUtils.parse(fullJson, Map.class);
-                    getAgi().getToolManager().createToolCall(this, id, name, args);
+                    AbstractToolCall call = getAgi().getToolManager().createToolCall(this, id, name, args);
+                    if (call != null) {
+                        call.setRawCallJson(fullJson);
+                    }
                 } catch (Exception e) {
                     log.error("Failed to parse buffered tool call arguments for tool '{}' (index {}): {}", name, index, fullJson, e);
                     if (getFinishReason() == null || getFinishReason() == FinishReason.STOP) {
@@ -246,8 +248,11 @@ public class OpenAiCompatibleModelMessage extends AbstractModelMessage<OpenAiCom
                     Map<String, Object> fallbackArgs = new HashMap<>();
                     fallbackArgs.put("raw_arguments", fullJson);
                     AbstractToolCall<?, ?> failedCall = getAgi().getToolManager().createToolCall(this, id, name, fallbackArgs);
-                    failedCall.getResponse().fail("Tool call arguments truncated or unparseable: " + e.getMessage(), fullJson);
-                    failedCall.getResponse().addError(e);
+                    if (failedCall != null) {
+                        failedCall.setRawCallJson(fullJson);
+                        failedCall.getResponse().fail("Tool call arguments truncated or unparseable: " + e.getMessage(), fullJson);
+                        failedCall.getResponse().addError(e);
+                    }
                 }
             }
         }

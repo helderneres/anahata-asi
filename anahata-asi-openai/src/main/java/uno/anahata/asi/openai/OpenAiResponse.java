@@ -40,33 +40,15 @@ public class OpenAiResponse extends Response<OpenAiModelMessage> {
      */
     private final ResponseUsageMetadata usageMetadata;
     /**
-     * The original, unparsed JSON body of the API response.
-     */
-    private final String rawJson;
-    /**
-     * The raw JSON string of the request configuration partition.
-     */
-    private final String rawRequestConfigJson;
-    /**
-     * The raw JSON string of the history/memory partition.
-     */
-    private final String rawHistoryJson;
-    /**
      * The specific version identifier returned by the model.
      */
     private final String modelVersion;
 
     /**
      * Constructs a new response object for a streaming chunk.
-     * @param requestConfigJson The raw JSON of the request configuration.
-     * @param historyJson The raw JSON of the conversation history.
-     * @param chunkJson The raw JSON of the stream chunk.
      */
-    public OpenAiResponse(String requestConfigJson, String historyJson, String chunkJson) {
+    public OpenAiResponse() {
         this.id = "stream";
-        this.rawRequestConfigJson = requestConfigJson;
-        this.rawHistoryJson = historyJson;
-        this.rawJson = chunkJson;
         this.usageMetadata = ResponseUsageMetadata.builder().build();
         this.modelVersion = "unknown";
         this.candidates = List.of();
@@ -74,18 +56,12 @@ public class OpenAiResponse extends Response<OpenAiModelMessage> {
 
     /**
      * Constructs a new full response by parsing the OpenAI response body.
-     * @param requestConfigJson The configuration partition.
-     * @param historyJson The history partition.
      * @param agi The parent AGI session.
      * @param modelId The expected model ID.
      * @param responseBody The raw API response body.
      * @throws Exception on parsing failures.
      */
-    public OpenAiResponse(String requestConfigJson, String historyJson, Agi agi, String modelId, String responseBody) throws Exception {
-        this.rawRequestConfigJson = requestConfigJson;
-        this.rawHistoryJson = historyJson;
-        this.rawJson = responseBody;
-
+    public OpenAiResponse(Agi agi, String modelId, String responseBody) throws Exception {
         JsonNode root = API_MAPPER.readTree(responseBody);
         this.id = root.path("id").asText("openai-response");
         this.modelVersion = root.path("model").asText(modelId);
@@ -106,7 +82,6 @@ public class OpenAiResponse extends Response<OpenAiModelMessage> {
         // 2. Aggregate all output items into ONE turn message
         OpenAiModelMessage turnMessage = new OpenAiModelMessage(agi, modelVersion);
         turnMessage.setResponse(this);
-        turnMessage.setRawJson(responseBody);
 
         JsonNode output = root.get("output");
         if (output != null && output.isArray()) {

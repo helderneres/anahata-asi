@@ -4,13 +4,13 @@ package uno.anahata.asi.openai.compatible;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.Getter;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.message.ResponseUsageMetadata;
 import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.internal.JacksonUtils;
 
-import java.util.Optional;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
@@ -37,21 +37,6 @@ public class OpenAiCompatibleResponse extends Response<OpenAiCompatibleModelMess
      * Usage statistics from the API, including prompt and completion tokens.
      */
     private final ResponseUsageMetadata usageMetadata;
-    
-    /**
-     * The raw request configuration JSON sent to the API.
-     */
-    private final String rawRequestConfigJson;
-    
-    /**
-     * The raw conversation history JSON sent as part of the payload.
-     */
-    private final String rawHistoryJson;
-    
-    /**
-     * The complete raw response JSON received from the API.
-     */
-    private final String rawJson;
 
     /**
      * Constructs a new response object with pre-calculated usage metadata.
@@ -60,18 +45,13 @@ public class OpenAiCompatibleResponse extends Response<OpenAiCompatibleModelMess
      * @param agi The parent session.
      * @param modelId The ID of the model.
      * @param jsonResponse The raw JSON response.
-     * @param requestPayload The raw payload sent.
-     * @param historyJson The history segment of the payload.
      * @param model The model instance.
      * @param estimatedUsage The pre-calculated usage metadata.
      */
-    public OpenAiCompatibleResponse(Agi agi, String modelId, String jsonResponse, String requestPayload, String historyJson, OpenAiCompatibleModel model, ResponseUsageMetadata estimatedUsage) {
+    public OpenAiCompatibleResponse(Agi agi, String modelId, String jsonResponse, OpenAiCompatibleModel model, ResponseUsageMetadata estimatedUsage) {
         JsonNode root = JacksonUtils.parse(jsonResponse, JsonNode.class);
         JsonNode responseNode = root.has("response") ? root.get("response") : root;
         this.id = responseNode.path("id").asText("estimated-id");
-        this.rawJson = jsonResponse;
-        this.rawRequestConfigJson = requestPayload;
-        this.rawHistoryJson = historyJson;
         this.usageMetadata = estimatedUsage;
         parseCandidates(agi, modelId, model, responseNode);
     }
@@ -83,13 +63,9 @@ public class OpenAiCompatibleResponse extends Response<OpenAiCompatibleModelMess
      * @param agi The parent session.
      * @param modelId The ID of the model.
      * @param jsonResponse The raw JSON response string.
-     * @param requestPayload The raw payload sent to the API.
-     * @param historyJson The raw history segment of the payload.
      * @param model The model instance to retrieve reasoning configuration from.
      */
-    public OpenAiCompatibleResponse(Agi agi, String modelId, String jsonResponse, String requestPayload, String historyJson, OpenAiCompatibleModel model) {
-        this.rawRequestConfigJson = requestPayload;
-        this.rawHistoryJson = historyJson;
+    public OpenAiCompatibleResponse(Agi agi, String modelId, String jsonResponse, OpenAiCompatibleModel model) {
         JsonNode root = JacksonUtils.parse(jsonResponse, JsonNode.class);
         JsonNode responseNode = root.has("response") ? root.get("response") : root;
         
@@ -123,20 +99,7 @@ public class OpenAiCompatibleResponse extends Response<OpenAiCompatibleModelMess
         } else {
             this.usageMetadata = ResponseUsageMetadata.builder().build();
         }
-        // 2. Display JSON Clean-up (remove echoed input/tools from display rawJson)
-        JsonNode displayNode = responseNode.deepCopy();
-        if (displayNode.isObject()) {
-            ObjectNode objNode = (ObjectNode) displayNode;
-            objNode.remove("tools");
-            objNode.remove("instructions");
-            objNode.remove("input");
-            objNode.remove("messages");
-            objNode.remove("prompt");
-            this.rawJson = objNode.toPrettyString();
-        } else {
-            this.rawJson = displayNode.toPrettyString();
-        }
-        // 3. Candidates
+        // 2. Candidates
         parseCandidates(agi, modelId, model, responseNode);
     }
 
@@ -163,8 +126,6 @@ public class OpenAiCompatibleResponse extends Response<OpenAiCompatibleModelMess
             if (output != null && output.isArray()) {
                 OpenAiCompatibleModelMessage message = model.createModelMessage(agi);
                 message.setResponse(this);
-                // Set candidate-specific rawJson to the output items array JSON
-                message.setRawJson(output.toPrettyString());
                 for (JsonNode item : output) {
                     message.updateFromNode(item, model.getReasoningStyle(), model.getReasoningFieldName(), model.getReasoningTags());
                 }
