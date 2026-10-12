@@ -3,9 +3,9 @@
 ## 📈 Distribution Funnel
 | Channel | Version | Status | Downloads (Est) | Strategy |
 | :--- | :--- | :--- | :--- | :--- |
-| **NB Plugin Portal (V1)** | 30.0.1 | Stable | 5,045 | Brand Awareness / Discovery (id=125) |
-| **NB Plugin Portal (V2)** | 1.0.0 | Stable | 1,183 | The Singularity / ASI Container (id=135) |
-| **NB Plugin Portal (Update Center)** | 1.0.0 | Active | 305 | Autonomous Update Channel (id=141) |
+| **NB Plugin Portal (V1)** | 30.0.1 | Stable | 5,064 | Brand Awareness / Discovery (id=125) |
+| **NB Plugin Portal (V2)** | 1.0.0 | Stable | 1,191 | The Singularity / ASI Container (id=135) |
+| **NB Plugin Portal (Update Center)** | 1.0.0 | Active | 376 | Autonomous Update Channel (id=141) |
 
  > [!TIP]
  > **One-Shot Portal Scraper & Velocity Guide:**
@@ -61,6 +61,7 @@
 "5. **Update `ledger.md`**: Record the new counts in `## 📈 Distribution Funnel` and append a fresh log row in `## 🛠️ Milestone Log
 | Date | V1 (125) | V2 (135) | UC (141) | Total | Δ Total | Velocity (DL/h) | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 2026-10-12 15:44 | 5,064 | 1,191 | 376 | 6,631 | +98 | 0.79 | V1: +19 (0.15 DLs/hr), V2: +8 (0.06 DLs/hr), UC: +71 (0.57 DLs/hr) in 124.3 hours (Total Velocity: 0.79 DLs/hr) |
 | 2026-10-07 11:26 | 5,045 | 1,183 | 305 | 6,533 | +26 | 0.99 | V1: +4 (0.15 DLs/hr), V2: +3 (0.11 DLs/hr), UC: +19 (0.72 DLs/hr) in 26.3 hours (Total Velocity: 0.99 DLs/hr) - UC crossed 300! |
 | 2026-10-06 09:06 | 5,041 | 1,180 | 286 | 6,507 | +66 | 1.36 | V1: +38 (0.78 DLs/hr), V2: +5 (0.10 DLs/hr), UC: +23 (0.47 DLs/hr) in 48.5 hours (Total Velocity: 1.36 DLs/hr) |
 | 2026-10-04 08:38 | 5,003 | 1,175 | 263 | 6,441 | +14 | 1.27 | V1: +6 (0.54 DLs/hr), V2: +2 (0.18 DLs/hr), UC: +6 (0.54 DLs/hr) in 11.1 hours (Total Velocity: 1.27 DLs/hr) - V1 crossed 5,000! |
