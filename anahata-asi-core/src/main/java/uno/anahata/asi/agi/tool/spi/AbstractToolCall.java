@@ -85,6 +85,12 @@ public abstract class AbstractToolCall<T extends AbstractTool<?, ?>, R extends A
     private byte[] thoughtSignature;
 
     /**
+     * The exact raw JSON string of this tool call invocation as received over the wire
+     * from the AI model (e.g. the raw function_call / tool_use block).
+     */
+    private String rawCallJson;
+
+    /**
      * Constructs a new AbstractToolCall.
      *
      * @param message The model message that initiated the call.

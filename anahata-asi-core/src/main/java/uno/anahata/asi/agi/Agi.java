@@ -37,6 +37,7 @@ import uno.anahata.asi.agi.provider.ApiCallInterruptedException;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.resource.ResourceManager;
 import uno.anahata.asi.agi.status.ApiErrorRecord;
+import uno.anahata.asi.agi.status.RawApiJson;
 import uno.anahata.asi.agi.status.AgiStatus;
 import uno.anahata.asi.agi.status.StatusManager;
 import uno.anahata.asi.agi.provider.RetryableApiException;
@@ -143,6 +144,12 @@ public class Agi extends BasicPropertyChangeSource {
      * status panel initialization on deserialization.
      */
     private Response<? extends AbstractModelMessage> lastResponse;
+
+    /**
+     * Ephemeral wire-level debug payload of the most recent API exchange.
+     * Marked transient so it is never serialized into session Kryo files.
+     */
+    private transient RawApiJson lastRawApiJson;
 
     /**
      * The list of candidate messages currently being generated or waiting for
@@ -821,6 +828,7 @@ public class Agi extends BasicPropertyChangeSource {
         conversationSummary = "Conversation history cleared.";
         setActiveCandidates(Collections.emptyList());
         this.activeTurnMessage = null;
+        this.lastRawApiJson = null;
         setStagedUserMessage(null);
         log.info("Agi history cleared. Managed resources still in context");
     }
@@ -854,6 +862,27 @@ public class Agi extends BasicPropertyChangeSource {
      */
     public Optional<Response<? extends AbstractModelMessage>> getLastResponse() {
         return Optional.ofNullable(lastResponse);
+    }
+
+    /**
+     * Gets the ephemeral wire-level debug snapshot of the most recent API turn.
+     *
+     * @return An Optional containing the last RawApiJson, or empty if none exists.
+     */
+    public Optional<RawApiJson> getLastRawApiJson() {
+        return Optional.ofNullable(lastRawApiJson);
+    }
+
+    /**
+     * Sets the ephemeral wire-level debug snapshot of the most recent API turn
+     * and broadcasts a property change event.
+     *
+     * @param lastRawApiJson The new wire-level debug snapshot.
+     */
+    public void setLastRawApiJson(RawApiJson lastRawApiJson) {
+        RawApiJson old = this.lastRawApiJson;
+        this.lastRawApiJson = lastRawApiJson;
+        propertyChangeSupport.firePropertyChange("lastRawApiJson", old, lastRawApiJson);
     }
 
     /**

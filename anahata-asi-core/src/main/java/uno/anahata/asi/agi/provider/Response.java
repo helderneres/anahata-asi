@@ -41,22 +41,4 @@ public abstract class Response<T extends AbstractModelMessage> {
      * @return The total token count.
      */
     public abstract int getTotalTokenCount();
-    
-    /**
-     * Gets the raw JSON representation of the entire response object.
-     * @return The raw JSON string.
-     */
-    public abstract String getRawJson();
-    
-    /**
-     * Gets the raw JSON representation of the request configuration used for this response.
-     * @return The raw JSON string.
-     */
-    public abstract String getRawRequestConfigJson();
-
-    /**
-     * Gets the raw JSON representation of the conversation history sent in the request.
-     * @return The raw JSON string.
-     */
-    public abstract String getRawHistoryJson();
 }
