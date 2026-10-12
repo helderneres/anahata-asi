@@ -11,6 +11,7 @@ import uno.anahata.asi.agi.message.UserMessage;
 import uno.anahata.asi.agi.provider.AbstractModel;
 import uno.anahata.asi.agi.provider.GenerationRequest;
 import uno.anahata.asi.agi.provider.Response;
+import uno.anahata.asi.agi.status.RawApiJson;
 import uno.anahata.asi.agi.provider.StreamObserver;
 import uno.anahata.asi.desktop.swing.AsiDesktopAsiContainer;
 import uno.anahata.asi.openai.OpenAiResponsesProvider;
@@ -75,11 +76,11 @@ public class OpenAiManualTest {
 
         System.out.println("\n[RAW JSON - BLOCKING]");
         System.out.println("--- Entire Response JSON ---");
-        System.out.println(blockingResponse.getRawJson());
+        System.out.println(agi.getLastRawApiJson().map(RawApiJson::responseJson).orElse(""));
         System.out.println("--- Request Config JSON (SI & Tools) ---");
-        System.out.println(blockingResponse.getRawRequestConfigJson());
+        System.out.println(agi.getLastRawApiJson().map(RawApiJson::requestConfigJson).orElse(""));
         System.out.println("--- History JSON (User & Model) ---");
-        System.out.println(blockingResponse.getRawHistoryJson());
+        System.out.println(agi.getLastRawApiJson().map(RawApiJson::historyJson).orElse(""));
 
         // --- TEST 2: Streaming generateContentStream ---
         System.out.println("\n[Test 2] Streaming generateContentStream...");
@@ -124,11 +125,11 @@ public class OpenAiManualTest {
                         if (finalRes != null) {
                             System.out.println("\n[RAW JSON - STREAMING]");
                             System.out.println("--- Entire Response JSON ---");
-                            System.out.println(finalRes.getRawJson());
+                            System.out.println(agi.getLastRawApiJson().map(RawApiJson::responseJson).orElse(""));
                             System.out.println("--- Request Config JSON (SI & Tools) ---");
-                            System.out.println(finalRes.getRawRequestConfigJson());
+                            System.out.println(agi.getLastRawApiJson().map(RawApiJson::requestConfigJson).orElse(""));
                             System.out.println("--- History JSON (User & Model) ---");
-                            System.out.println(finalRes.getRawHistoryJson());
+                            System.out.println(agi.getLastRawApiJson().map(RawApiJson::historyJson).orElse(""));
                         }
                     }
                     
