@@ -38,10 +38,6 @@ public class ModelMessagePanel extends AbstractMessagePanel<AbstractModelMessage
      * Label for the finish reason.
      */
     private final JLabel finishLabel;
-    /**
-     * Hyperlink for the raw JSON.
-     */
-    private final CodeHyperlink jsonLink;
 
     /**
      * Container for the batch tool execution controls.
@@ -101,20 +97,11 @@ public class ModelMessagePanel extends AbstractMessagePanel<AbstractModelMessage
         this.finishLabel.setForeground(agiConfig.getTheme().getMutedFg());
         this.footerActionsPanel.add(this.finishLabel, BorderLayout.WEST);
 
-        // Use a lazy supplier for the JSON content and title.
-        // CodeHyperlink handles pretty-printing internally for "json" language.
-        this.jsonLink = new CodeHyperlink("Json",
-                () -> "Model Message #" + message.getSequentialId(),
-                () -> message.getRawJson(),
-                "json");
-        this.footerActionsPanel.add(this.jsonLink, BorderLayout.EAST);
-
         // Add the batch tools panel and actions panel to the footer container immediately.
         footerContainer.add(batchToolsPanel);
         footerContainer.add(footerActionsPanel);
 
         // 2. Setup reactive listeners for specific property updates
-        new EdtPropertyChangeListener(this, message, "rawJson", evt -> updateRawJsonVisibility());
         new EdtPropertyChangeListener(this, message, "billedPromptTokens", evt -> updateHeaderInfoText());
         new EdtPropertyChangeListener(this, message, "billedCompletionTokens", evt -> updateHeaderInfoText());
         new EdtPropertyChangeListener(this, message, "finishReason", evt -> updateFinishReason());
@@ -129,20 +116,8 @@ public class ModelMessagePanel extends AbstractMessagePanel<AbstractModelMessage
         bindToolCallListeners();
 
         // Initial sync
-        updateRawJsonVisibility();
         updateFinishReason();
         updateBatchToolsUI();
-    }
-
-    /**
-     * Updates the JSON link visibility.
-     */
-    private void updateRawJsonVisibility() {
-        String rawJson = message.getRawJson();
-        boolean shouldBeVisible = rawJson != null && !rawJson.isEmpty();
-        if (jsonLink.isVisible() != shouldBeVisible) {
-            jsonLink.setVisible(shouldBeVisible);
-        }
     }
 
     /**
@@ -225,7 +200,8 @@ public class ModelMessagePanel extends AbstractMessagePanel<AbstractModelMessage
      */
     @Override
     protected String getHeaderSuffix() {
-        return String.format(" <font color='#888888' size='3'><i>(Billed: In:%d, Out:%d, Depth: %d)</i></font>", message.getBilledPromptTokens(), message.getBilledCompletionTokens(), message.getDepth());
+        return String.format(" <font color='#888888' size='3'><i>(Billed: In:%d, Out:%d, Depth: %d)</i></font> <font color='#888888'><b>[%,d]</b></font>",
+                message.getBilledPromptTokens(), message.getBilledCompletionTokens(), message.getDepth(), message.getTokenCount(agiConfig.isShowPruned()));
     }
 
     /** 

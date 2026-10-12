@@ -319,7 +319,8 @@ public abstract class AbstractMessagePanel<T extends AbstractMessage> extends Co
      * @return The header suffix HTML.
      */
     protected String getHeaderSuffix() {
-        return String.format(" <font color='#aaaaaa' size='3'><i>(Depth: %d)</i></font>", message.getDepth());
+        return String.format(" <font color='#aaaaaa' size='3'><i>(Depth: %d)</i></font> <font color='#888888'><b>[%,d]</b></font>",
+                message.getDepth(), message.getTokenCount(agiConfig.isShowPruned()));
     }
 
     /**

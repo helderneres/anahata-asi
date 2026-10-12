@@ -35,6 +35,7 @@ import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.message.ResponseUsageMetadata;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.status.ApiErrorRecord;
+import uno.anahata.asi.agi.status.RawApiJson;
 import uno.anahata.asi.agi.status.AgiStatus;
 import uno.anahata.asi.agi.status.StatusManager;
 import uno.anahata.asi.swing.agi.AgiPanel;
@@ -129,6 +130,7 @@ public class StatusPanel extends JPanel {
         
         this.refreshTimer = new Timer(1000, e -> refresh());
         this.executingCallsListener = new EdtPropertyChangeListener(this, agi.getToolManager(), "executingCalls", evt -> refresh());
+        new EdtPropertyChangeListener(this, agi, "lastRawApiJson", evt -> refresh());
     }
 
     /** 
@@ -207,19 +209,19 @@ public class StatusPanel extends JPanel {
         
         rawJsonRequestConfigLink = new CodeHyperlink(agiPanel, "Request", 
                 () -> "Raw JSON Request", 
-                () -> agi.getLastResponse().map(Response::getRawRequestConfigJson).orElse(""), 
+                () -> agi.getLastRawApiJson().map(RawApiJson::requestConfigJson).orElse(""), 
                 "json");
         linksPanel.add(rawJsonRequestConfigLink);
 
         historyJsonLink = new CodeHyperlink(agiPanel, "History",
                 () -> "Conversation History JSON",
-                () -> agi.getLastResponse().map(Response::getRawHistoryJson).orElse(""),
+                () -> agi.getLastRawApiJson().map(RawApiJson::historyJson).orElse(""),
                 "json");
         linksPanel.add(historyJsonLink);
 
         rawJsonResponseLink = new CodeHyperlink(agiPanel, "Response", 
                 () -> "Raw JSON Response", 
-                () -> agi.getLastResponse().map(r -> r.getRawJson()).orElse(""), 
+                () -> agi.getLastRawApiJson().map(RawApiJson::responseJson).orElse(""), 
                 "json");
         linksPanel.add(rawJsonResponseLink);
 
@@ -344,6 +346,7 @@ public class StatusPanel extends JPanel {
 
         List<ApiErrorRecord> errors = statusManager.getApiErrors();
         Response<?> lastResponse = agi.getLastResponse().orElse(null);
+        RawApiJson lastRawApi = agi.getLastRawApiJson().orElse(null);
         boolean isRetrying = !errors.isEmpty() && (currentStatus == AgiStatus.WAITING_WITH_BACKOFF || currentStatus == AgiStatus.API_CALL_IN_PROGRESS);
 
         rawJsonResponseLink.setVisible(false);
@@ -381,16 +384,18 @@ public class StatusPanel extends JPanel {
                 apiErrorsPanel.add(errorLink);
             }
 
-        } else if (lastResponse != null) {
+        } else if (lastResponse != null || lastRawApi != null) {
             apiErrorsScrollPane.setVisible(false);
             apiErrorsPanel.removeAll();
             apiErrorsPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 0, 0));
 
-            rawJsonResponseLink.setVisible(true);
-            rawJsonRequestConfigLink.setVisible(true);
-            historyJsonLink.setVisible(true);
+            if (lastRawApi != null) {
+                rawJsonResponseLink.setVisible(lastRawApi.responseJson() != null && !lastRawApi.responseJson().isEmpty());
+                rawJsonRequestConfigLink.setVisible(lastRawApi.requestConfigJson() != null && !lastRawApi.requestConfigJson().isEmpty());
+                historyJsonLink.setVisible(lastRawApi.historyJson() != null && !lastRawApi.historyJson().isEmpty());
+            }
 
-            tokenDetailsLabel.setVisible(true);
+            tokenDetailsLabel.setVisible(lastResponse != null);
 
             lastResponse.getPromptFeedback().ifPresent(blockReason -> {
                 blockReasonLabel.setText("Prompt Blocked: " + blockReason);

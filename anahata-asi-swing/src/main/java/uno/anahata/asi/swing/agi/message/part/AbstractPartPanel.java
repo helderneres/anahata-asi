@@ -350,6 +350,7 @@ public abstract class AbstractPartPanel<T extends AbstractPart> extends Collapsi
         
         // The message reference is now guaranteed to be present by the architectural fix in AbstractMessage.addPart.
         sb.append(" <font color='#999999' size='2'>- ").append(TimeUtils.formatSmartTimestamp(Instant.ofEpochMilli(part.getMessage().getTimestamp()))).append("</font>");
+        sb.append(String.format(" <font color='#888888'><b>[%,d]</b></font>", part.getTokenCount()));
         sb.append("</html>");
         
         String newTitle = sb.toString();
