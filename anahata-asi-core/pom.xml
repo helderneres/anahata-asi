@@ -31,6 +31,12 @@
             <artifactId>lombok</artifactId>
         </dependency>
         
+        <!-- Embedded GraphQL toolkit engine -->
+        <dependency>
+            <groupId>com.graphql-java</groupId>
+            <artifactId>graphql-java</artifactId>
+        </dependency>
+
         <!-- Schema & JSON Serialization -->
         <dependency>
             <groupId>io.swagger.core.v3</groupId>

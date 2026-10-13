@@ -23,6 +23,7 @@ import uno.anahata.asi.nb.tools.vcs.NbVCS;
 import uno.anahata.asi.swing.agi.SwingAgiConfig;
 import uno.anahata.asi.toolkit.Host;
 import uno.anahata.asi.swing.toolkit.DesktopJava;
+import uno.anahata.asi.nb.tools.services.database.Database;
 
 /**
  * NetBeans-specific agi configuration.
@@ -54,6 +55,7 @@ public class NetBeansAgiConfig extends SwingAgiConfig {
         getToolClasses().add(Refactor.class);
         getToolClasses().add(NbTerminal.class);
         getToolClasses().add(NbVCS.class);
+        getToolClasses().add(Database.class);
         
         setIconProvider(new NetBeansIconProvider());
         
