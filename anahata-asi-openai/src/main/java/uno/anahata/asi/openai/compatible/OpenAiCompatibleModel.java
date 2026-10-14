@@ -38,6 +38,7 @@ import uno.anahata.asi.agi.provider.RequestConfig;
 import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.provider.ResponseModality;
 import uno.anahata.asi.agi.provider.RetryableApiException;
+import uno.anahata.asi.agi.status.RawApiJson;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.provider.StreamObserver;
 import uno.anahata.asi.agi.provider.ThinkingLevel;
@@ -435,7 +436,8 @@ public class OpenAiCompatibleModel extends AbstractModel {
                     }
                     throw new RuntimeException("API error (" + httpResponse.statusCode() + "): " + errorBody);
                 }
-                return new OpenAiCompatibleResponse(agi, modelId, httpResponse.body(), configJson, historyJson, this);
+                agi.setLastRawApiJson(new RawApiJson(configJson, historyJson, httpResponse.body()));
+                return new OpenAiCompatibleResponse(agi, modelId, httpResponse.body(), this);
             }
         } catch (IOException | InterruptedException e) {
             log.error("Failed to execute OpenAI request", e);
@@ -468,11 +470,14 @@ public class OpenAiCompatibleModel extends AbstractModel {
         configNode.remove("input");
         configNode.remove("prompt");
         String configJson = configNode.toString();
+        RawApiJson rawApiJson = new RawApiJson(configJson, historyJson, "");
+        agi.setLastRawApiJson(rawApiJson);
         log.info("Executing OpenAI streaming request to endpoint: {}", getEndpoint());
         try {
             HttpRequest httpRequest = getProvider().createRequestBuilder(getEndpoint()).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(jsonPayload)).build();
             try (HttpClient client = getProvider().createHttpClient()) {
                 List<OpenAiCompatibleModelMessage> targets = new ArrayList<>();
+                OpenAiCompatibleResponse lastUsageResponse = null;
                 AtomicBoolean started = new AtomicBoolean(false);
                 HttpResponse<Stream<String>> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofLines());
                 if (response.statusCode() != 200) {
@@ -543,11 +548,11 @@ public class OpenAiCompatibleModel extends AbstractModel {
                                     }
                                 }
                             }
-                            for (OpenAiCompatibleModelMessage target : targets) {
-                                target.appendRawJson(data);
-                            }
-                            OpenAiCompatibleResponse chunkResponse = new OpenAiCompatibleResponse(agi, modelId, data, configJson, historyJson, this);
+                            rawApiJson = rawApiJson.appendResponseChunk(data);
+                            agi.setLastRawApiJson(rawApiJson);
+                            OpenAiCompatibleResponse chunkResponse = new OpenAiCompatibleResponse(agi, modelId, data, this);
                             if (chunkResponse.getUsageMetadata() != null && chunkResponse.getUsageMetadata().getTotalTokenCount() > 0) {
+                                lastUsageResponse = chunkResponse;
                                 for (OpenAiCompatibleModelMessage target : targets) {
                                     target.setBilledPromptTokens(chunkResponse.getUsageMetadata().getPromptTokenCount());
                                     target.setBilledCompletionTokens(chunkResponse.getUsageMetadata().getCandidatesTokenCount());
@@ -560,8 +565,7 @@ public class OpenAiCompatibleModel extends AbstractModel {
                     }
                 }
                 if (!targets.isEmpty()) {
-                    boolean usageProvided = targets.stream()
-                            .anyMatch(t -> t.getBilledCompletionTokens() > 0 || t.getBilledPromptTokens() > 0);
+                    boolean usageProvided = lastUsageResponse != null;
                     OpenAiCompatibleResponse finalResponse;
                     if (!usageProvided) {
                         log.info("No usage metadata provided by API, estimating tokens using {} tokenizer", getTokenizerType());
@@ -579,12 +583,10 @@ public class OpenAiCompatibleModel extends AbstractModel {
                             target.setBilledPromptTokens(estimatedPromptTokens);
                             target.setBilledCompletionTokens(estimatedCompletionTokens);
                         }
-                        finalResponse = createResponseWithEstimatedUsage(agi, modelId, configJson, historyJson,
+                        finalResponse = createResponseWithEstimatedUsage(agi, modelId,
                                 estimatedPromptTokens, totalCompletionTokens, getTokenizerType());
                     } else {
-                        finalResponse = new OpenAiCompatibleResponse(agi, modelId,
-                                targets.get(0).getRawJson() != null ? targets.get(0).getRawJson() : "{}",
-                                configJson, historyJson, this);
+                        finalResponse = lastUsageResponse;
                     }
                     for (OpenAiCompatibleModelMessage target : targets) {
                         target.setResponse(finalResponse);
@@ -755,15 +757,13 @@ public class OpenAiCompatibleModel extends AbstractModel {
      *
      * @param agi The parent session.
      * @param modelId The model ID.
-     * @param jsonPayload The request payload JSON.
-     * @param historyJson The history JSON.
      * @param estimatedPromptTokens Estimated prompt tokens.
      * @param estimatedCompletionTokens Estimated completion tokens.
      * @param tokenizerType The tokenizer used for estimation.
      * @return A new OpenAiResponse with estimated usage metadata.
      */
     protected OpenAiCompatibleResponse createResponseWithEstimatedUsage(
-            Agi agi, String modelId, String jsonPayload, String historyJson,
+            Agi agi, String modelId,
             int estimatedPromptTokens, int estimatedCompletionTokens,
             TokenizerType tokenizerType) {
 
@@ -788,7 +788,7 @@ public class OpenAiCompatibleModel extends AbstractModel {
                 modelId,
                 estimatedRawJson);
 
-        return new OpenAiCompatibleResponse(agi, modelId, estimatedResponseJson, jsonPayload, historyJson, this, estimatedUsage);
+        return new OpenAiCompatibleResponse(agi, modelId, estimatedResponseJson, this, estimatedUsage);
     }
 
     /**

@@ -1,6 +1,10 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.agi.tool.graphql;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import uno.anahata.asi.agi.tool.schema.SchemaProvider;
 import graphql.ErrorType;
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;
@@ -10,6 +14,15 @@ import graphql.GraphqlErrorBuilder;
 import graphql.analysis.FieldComplexityEnvironment;
 import graphql.analysis.MaxQueryComplexityInstrumentation;
 import graphql.analysis.MaxQueryDepthInstrumentation;
+import graphql.analysis.QueryTraverser;
+import graphql.analysis.QueryVisitorStub;
+import graphql.analysis.QueryVisitorFieldEnvironment;
+import graphql.execution.AbortExecutionException;
+import graphql.execution.ExecutionContext;
+import graphql.execution.instrumentation.SimplePerformantInstrumentation;
+import graphql.execution.instrumentation.InstrumentationContext;
+import graphql.execution.instrumentation.InstrumentationState;
+import graphql.execution.instrumentation.parameters.InstrumentationExecuteOperationParameters;
 import graphql.execution.DataFetcherExceptionHandlerParameters;
 import graphql.execution.DataFetcherExceptionHandlerResult;
 import graphql.execution.instrumentation.ChainedInstrumentation;
@@ -34,11 +47,14 @@ import lombok.extern.slf4j.Slf4j;
 import uno.anahata.asi.agi.tool.AgiTool;
 import uno.anahata.asi.agi.tool.AgiToolParam;
 import uno.anahata.asi.agi.tool.AnahataToolkit;
+import uno.anahata.asi.agi.tool.ToolPermission;
+import uno.anahata.asi.agi.tool.ToolExecutionStatus;
 
 /**
  * Embedded GraphQL infrastructure using the existing Java toolkit protocol.
  * Native resolvers perform work only for selected fields; this class provides
- * engine lifecycle, query-only validation and shared request resource limits.
+ * engine lifecycle, separate query/command validation and shared resource
+ * limits.
  * <p>
  * No HTTP server, generic selection planner or field authorization layer is
  * created. Existing Anahata toolkit permissions govern the inherited tools.
@@ -48,6 +64,23 @@ import uno.anahata.asi.agi.tool.AnahataToolkit;
  */
 @Slf4j
 public abstract class GraphQLToolkit extends AnahataToolkit {
+
+    /**
+     * This local conversion policy preserves explicit null variables; the
+     * shared mapper is unchanged.
+     */
+    private static final ObjectMapper VARIABLES_MAPPER = SchemaProvider.OBJECT_MAPPER.copy()
+            .setSerializationInclusion(JsonInclude.Include.ALWAYS);
+
+    /**
+     * Copies JSON variable values without turning explicit null into an
+     * omitted/default value.
+     */
+    public final Map<String, Object> copyVariables(Object variables) {
+        Map<String, Object> copied = VARIABLES_MAPPER.convertValue(variables, new TypeReference<Map<String, Object>>() {
+        });
+        return new GraphQLVariables(copied);
+    }
 
     /**
      * Default page size used by the reference Database toolkit.
@@ -109,7 +142,7 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
      *
      * @return The exact SDL used by the embedded engine.
      */
-    @AgiTool(value = "Returns this toolkit's GraphQL schema. Use it to choose fields and arguments for query().")
+    @AgiTool(value = "Returns this toolkit's GraphQL schema. Discover Query fields and any explicitly supported Mutation commands.")
     public String schema() {
         return schemaSdl;
     }
@@ -130,7 +163,49 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     public GraphQLExecutionInfo query(
             @AgiToolParam("One GraphQL query operation; abbreviated { ... } queries are supported.") String query,
             @AgiToolParam(value = "GraphQL variable values, or an empty map when none are needed.", required = false) Map<String, Object> variables) {
-        String validationError = validateDocument(query);
+        return executeDocument(query, variables, false);
+    }
+
+    /**
+     * Executes a command document only when a concrete toolkit deliberately
+     * supports mutations and exposes this method through its own @AgiTool.
+     * Existing read-only subclasses acquire no additional advertised tool.
+     */
+    public GraphQLExecutionInfo mutate(String document, Map<String, Object> variables) {
+        if (!supportsMutations()) {
+            return failure("This toolkit does not support GraphQL commands.", "MutationUnsupported");
+        }
+        return executeDocument(document, variables, true);
+    }
+
+    /**
+     * Opt-in for concrete command toolkits; the default remains query-only.
+     */
+    protected boolean supportsMutations() {
+        return false;
+    }
+
+    /**
+     * Explicit opt-in used by the Java protocol; ordinary toolkits are
+     * unchanged.
+     */
+    public final boolean isCommandToolkit() {
+        return supportsMutations();
+    }
+
+    /**
+     * Validates all selected fields before any resolver, after native schema,
+     * variable and directive processing. Domain overrides must not perform
+     * effects.
+     */
+    protected void validateSelection(List<GraphQLFieldInfo> fields, GraphQLRequestContext request, boolean mutation) {
+    }
+
+    /**
+     * Executes a single operation on its explicit channel.
+     */
+    private GraphQLExecutionInfo executeDocument(String query, Map<String, Object> variables, boolean mutation) {
+        String validationError = validateDocument(query, mutation);
         if (validationError != null) {
             return failure(validationError, "InvalidQuery");
         }
@@ -231,10 +306,61 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
                 .instrumentation(new ChainedInstrumentation(List.of(
                         new MaxQueryDepthInstrumentation(getMaxQueryDepth()),
                         new MaxQueryComplexityInstrumentation(maxComplexity,
-                                (environment, children) -> fieldComplexity(environment, children, maxComplexity)))))
+                                (environment, children) -> fieldComplexity(environment, children, maxComplexity)),
+                        new SimplePerformantInstrumentation() {
+                    @Override
+                    public InstrumentationContext<ExecutionResult> beginExecuteOperation(
+                            InstrumentationExecuteOperationParameters parameters, InstrumentationState state) {
+                        preflight(parameters.getExecutionContext());
+                        return null;
+                    }
+                })))
                 .build();
         schemaSdl = sdl;
         graphQL = engine;
+    }
+
+    /**
+     * Native traversal resolves fragments, aliases, directives and coerced
+     * arguments before any field executes. All commands are gated together.
+     */
+    private void preflight(ExecutionContext execution) {
+        boolean mutation = execution.isMutationOperation();
+        try {
+            if (mutation) {
+                var response = peekResponse();
+                if (response == null || response.getStatus() != ToolExecutionStatus.EXECUTING
+                        || !response.getCall().getToolName().endsWith(".mutate")
+                        || response.getCall().getTool().getToolkitInstance() != this
+                        || !response.getCall().getTool().getToolkit().isEnabled()
+                        || response.getCall().getTool().getPermission() == null
+                        || response.getCall().getTool().getPermission() == ToolPermission.DENY) {
+                    throw new SafeGraphQLException("PermissionDenied", "Commands require an authorized invocation of this toolkit's mutate tool.");
+                }
+            }
+            List<GraphQLFieldInfo> fields = new ArrayList<>();
+            QueryTraverser.newQueryTraverser().schema(execution.getGraphQLSchema())
+                    .document(execution.getDocument())
+                    .operationName(execution.getOperationDefinition().getName())
+                    .coercedVariables(execution.getCoercedVariables()).build()
+                    .visitPreOrder(new QueryVisitorStub() {
+                        @Override
+                        public void visitField(QueryVisitorFieldEnvironment field) {
+                            if (field.isTypeNameIntrospectionField()) {
+                                return; // Native __typename has no fields container and performs no domain work.
+                            }
+                            fields.add(new GraphQLFieldInfo(field.getFieldsContainer() == null ? "" : field.getFieldsContainer().getName(),
+                                    field.getFieldDefinition().getName(), field.getField().getResultKey(), field.getArguments()));
+                        }
+                    });
+            GraphQLRequestContext request = execution.getGraphQLContext().get(GraphQLRequestContext.class);
+            request.checkBudget();
+            validateSelection(List.copyOf(fields), request, mutation);
+        } catch (SafeGraphQLException failure) {
+            throw new AbortExecutionException(List.of(GraphqlErrorBuilder.newError()
+                    .message(failure.getMessage()).errorType(ErrorType.DataFetchingException)
+                    .extensions(Map.of(SAFE_ERROR_EXTENSION, true, SAFE_CATEGORY_EXTENSION, failure.getCategory())).build()));
+        }
     }
 
     /**
@@ -244,7 +370,7 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
      * @param query Untrusted query text.
      * @return A safe validation error or null when one query operation exists.
      */
-    private String validateDocument(String query) {
+    private String validateDocument(String query, boolean mutation) {
         if (query == null || query.isBlank() || query.length() > getMaxQueryCharacters()) {
             return "Provide a non-empty GraphQL query within the document size limit.";
         }
@@ -253,8 +379,10 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
             int operations = 0;
             for (Definition<?> definition : document.getDefinitions()) {
                 if (definition instanceof OperationDefinition operation) {
-                    if (operation.getOperation() != OperationDefinition.Operation.QUERY) {
-                        return "Only query operations are allowed; mutation and subscription are unavailable.";
+                    OperationDefinition.Operation expected = mutation ? OperationDefinition.Operation.MUTATION : OperationDefinition.Operation.QUERY;
+                    if (operation.getOperation() != expected) {
+                        return mutation ? "mutate() accepts only Mutation operations; Query and Subscription are unavailable on this channel."
+                                : "query() accepts only Query operations; use the explicit command channel for Mutation.";
                     }
                     operations++;
                 } else if (!(definition instanceof FragmentDefinition)) {
@@ -262,7 +390,7 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
                 }
             }
             if (operations != 1) {
-                return "Provide exactly one GraphQL query operation; operationName selection is unavailable.";
+                return "Provide exactly one GraphQL operation; operationName selection is unavailable.";
             }
             return null;
         } catch (InvalidSyntaxException failure) {
@@ -286,7 +414,7 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
      * @return Field cost capped just above the threshold, avoiding subtree
      * overflow.
      */
-    private static int fieldComplexity(FieldComplexityEnvironment environment, int childComplexity, int maxComplexity) {
+    protected int fieldComplexity(FieldComplexityEnvironment environment, int childComplexity, int maxComplexity) {
         long multiplier = 1;
         Object limit = environment.getArguments().get("limit");
         if (limit instanceof Number requested) {

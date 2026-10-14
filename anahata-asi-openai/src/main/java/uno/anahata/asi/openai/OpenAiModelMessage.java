@@ -198,6 +198,7 @@ public class OpenAiModelMessage extends AbstractModelMessage<OpenAiResponse> {
             Map<String, Object> args = API_MAPPER.readValue(argsJson, Map.class);
             AbstractToolCall<?, ?> tc = getAgi().getToolManager().createToolCall(this, callId, fullToolName, args);
             if (tc != null) {
+                tc.setRawCallJson(item.toString());
                 tc.setProviderId(id);
                 if (lastParsedThought != null) {
                     toolThoughts.put(tc, lastParsedThought);

@@ -27,6 +27,7 @@ import uno.anahata.asi.agi.provider.RequestConfig;
 import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.provider.ResponseModality;
 import uno.anahata.asi.agi.provider.RetryableApiException;
+import uno.anahata.asi.agi.status.RawApiJson;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.provider.StreamObserver;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
@@ -254,7 +255,8 @@ public class AnthropicModel extends AbstractModel {
                     }
                     throw new RuntimeException("API error (" + httpResponse.statusCode() + "): " + errorBody);
                 }
-                return new AnthropicResponse(configJson, historyJson, agi, modelId, httpResponse.body());
+                agi.setLastRawApiJson(new RawApiJson(configJson, historyJson, httpResponse.body()));
+                return new AnthropicResponse(agi, modelId, httpResponse.body());
             }
         } catch (IOException | InterruptedException e) {
             log.error("Failed to execute Anthropic request", e);
@@ -273,6 +275,9 @@ public class AnthropicModel extends AbstractModel {
         
         JsonNode messagesNode = payload.get("messages");
         String historyJson = messagesNode != null ? messagesNode.toPrettyString() : "[]";
+
+        RawApiJson rawApiJson = new RawApiJson(configJson, historyJson, "");
+        agi.setLastRawApiJson(rawApiJson);
 
         log.info("Executing Anthropic streaming request");
         try {
@@ -324,9 +329,10 @@ public class AnthropicModel extends AbstractModel {
                                 if (currentEvent != null) {
                                     target.handleEvent(currentEvent, chunk);
                                 }
-                                target.appendRawJson(data);
+                                rawApiJson = rawApiJson.appendResponseChunk(data);
+                                agi.setLastRawApiJson(rawApiJson);
                                 
-                                AnthropicResponse chunkResponse = new AnthropicResponse(configJson, historyJson, data);
+                                AnthropicResponse chunkResponse = new AnthropicResponse();
                                 observer.onNext(chunkResponse);
                                 
                             } catch (Exception e) {

@@ -85,11 +85,6 @@ public abstract class AbstractModelMessage<R extends Response> extends AbstractM
      * reported by the API.
      */
     private int billedCompletionTokens;
-    /**
-     * The raw JSON response from the model.
-     */
-    @Setter(AccessLevel.NONE)
-    private String rawJson;
 
     /**
      * The citation metadata for the response, summarized as a string.
@@ -153,49 +148,6 @@ public abstract class AbstractModelMessage<R extends Response> extends AbstractM
     @Override
     public String getDevice() {
         return "Cloud";
-    }
-
-    /**
-     * Sets the raw JSON representation of the model's response and fires a
-     * property change event. This method replaces any existing content.
-     *
-     * @param rawJson The raw JSON string.
-     */
-    public void setRawJson(String rawJson) {
-        String oldJson = this.rawJson;
-        this.rawJson = rawJson;
-        propertyChangeSupport.firePropertyChange("rawJson", oldJson, rawJson);
-    }
-
-    /**
-     * Appends a raw JSON chunk to the existing content. If multiple chunks are
-     * appended, they are automatically wrapped in a JSON array to maintain
-     * validity for pretty-printing.
-     *
-     * @param chunk The JSON chunk to append.
-     */
-    public void appendRawJson(String chunk) {
-        if (chunk == null || chunk.isEmpty()) {
-            return;
-        }
-        String oldJson = this.rawJson;
-        if (this.rawJson == null || this.rawJson.isEmpty()) {
-            this.rawJson = chunk;
-        } else {
-            // If it's the second chunk, start an array.
-            if (!this.rawJson.startsWith("[")) {
-                this.rawJson = "[\n" + this.rawJson + ",\n" + chunk + "\n]";
-            } else {
-                // It's already an array, append before the last ']'.
-                this.rawJson = this.rawJson.substring(0, this.rawJson.lastIndexOf("]")).trim();
-                if (this.rawJson.endsWith(",")) {
-                    this.rawJson += "\n" + chunk + "\n]";
-                } else {
-                    this.rawJson += ",\n" + chunk + "\n]";
-                }
-            }
-        }
-        propertyChangeSupport.firePropertyChange("rawJson", oldJson, this.rawJson);
     }
 
     /**

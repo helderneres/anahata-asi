@@ -42,6 +42,7 @@ import uno.anahata.asi.agi.provider.ResponseModality;
 import uno.anahata.asi.agi.provider.ServerTool;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
 import uno.anahata.asi.agi.provider.RetryableApiException;
+import uno.anahata.asi.agi.status.RawApiJson;
 import uno.anahata.asi.agi.tool.ToolResponseAttachment;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.gemini.adapter.GeminiPartAdapter;
@@ -453,7 +454,8 @@ public class GeminiModel extends AbstractModel {
 
             // 3. Convert the Gemini response to the Anahata response using the new OO response class.
             Agi agi = request.config().getAgi();
-            return new GeminiResponse(prepared.config().toJson(), prepared.historyJson(), agi, getModelId(), response);
+            agi.setLastRawApiJson(new RawApiJson(prepared.config().toJson(), prepared.historyJson(), response.toJson()));
+            return new GeminiResponse(agi, getModelId(), response);
         } catch (Exception e) {
             log.error("Exception in generateContent", e);
             if (isInterruption(e)) {
@@ -493,6 +495,9 @@ public class GeminiModel extends AbstractModel {
             log.debug("  Message {}: role={}, parts={}", i, c.role().orElse("N/A"), c.parts().map(List::size).orElse(0));
         }
 
+        RawApiJson rawApiJson = new RawApiJson(prepared.config().toJson(), prepared.historyJson(), "");
+        agi.setLastRawApiJson(rawApiJson);
+
         try {
             ResponseStream<GenerateContentResponse> stream = client.models.generateContentStream(
                     getModelId(), prepared.history(), prepared.config());
@@ -516,10 +521,6 @@ public class GeminiModel extends AbstractModel {
                     started = true;
                 }
 
-                for (GeminiModelMessage target : targets) {
-                    target.appendRawJson(chunkJson);
-                }
-
                 handleChunk(chunk, targets);
 
                 Optional<GenerateContentResponseUsageMetadata> usage = chunk.usageMetadata();
@@ -532,7 +533,9 @@ public class GeminiModel extends AbstractModel {
                     }
                 }
 
-                lastGeminiResponse = new GeminiResponse(prepared.config().toJson(), prepared.historyJson(), agi, getModelId(), chunk);
+                rawApiJson = rawApiJson.appendResponseChunk(chunkJson);
+                agi.setLastRawApiJson(rawApiJson);
+                lastGeminiResponse = new GeminiResponse(agi, getModelId(), chunk);
                 observer.onNext(lastGeminiResponse);
             }
 

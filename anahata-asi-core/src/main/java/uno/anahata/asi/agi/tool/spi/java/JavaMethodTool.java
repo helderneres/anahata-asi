@@ -18,6 +18,7 @@ import uno.anahata.asi.agi.message.AbstractModelMessage;
 import uno.anahata.asi.agi.tool.spi.AbstractTool;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
 import uno.anahata.asi.agi.tool.AgiTool;
+import uno.anahata.asi.agi.tool.graphql.GraphQLToolkit;
 
 /**
  * A model-agnostic, stateful representation of a single Java method tool. This
@@ -79,15 +80,15 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
         this.javaMethodSignature = buildMethodSignature(method);
 
         initAttributes(toolAnnotation);
-        
+
         // A tool creates its own parameters.
         initParameters();
-        
+
     }
-    
+
     /**
      * Initializes the maxDepth and description attributes.
-     * 
+     *
      * @param toolAnnotation The source @AgiTool annotation containing metadata.
      */
     private final void initAttributes(AgiTool toolAnnotation) {
@@ -103,7 +104,7 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
         descriptionBuilder.append("\n\nToolkit: ").append(this.toolkit.getName());
         descriptionBuilder.append("\nMethod:\n").append(this.javaMethodSignature);
         this.description = descriptionBuilder.toString();
-        
+
     }
 
     /**
@@ -119,7 +120,7 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
     /**
      * Dynamically returns either the wrapped or raw schema based on the
      * {@code wrapResponseSchemas} flag in the {@code ToolManager}.
-     * 
+     *
      * @return The JSON schema string.
      */
     @Override
@@ -145,7 +146,7 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
      * Performs post-restoration logic, warming up the reflection method and parameters.
      * This is called during the session binding phase to ensure the tool is ready 
      * before the UI or AI processing begins.
-     * 
+     *
      * @throws Exception if method restoration or parameter initialization fails.
      */
     public void postActivate() throws Exception {
@@ -158,7 +159,7 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
             Class<?> currentClass = instance.getClass();
             while (currentClass != null && currentClass != Object.class) {
                 for (Method m : currentClass.getDeclaredMethods()) {
-                    if (javaMethodSignature.equals(buildMethodSignature(m))) {                        
+                    if (javaMethodSignature.equals(buildMethodSignature(m))) {
                         AgiTool toolAnnotation = m.getDeclaredAnnotation(AgiTool.class);
                         if (toolAnnotation != null) {
                             this.method = m;
@@ -179,22 +180,22 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
             }
         }
     }
-    
+
     /**
      * Initializes and populates the parameter list for this tool.
-     * 
+     *
      * @throws Exception if parameter mapping or schema generation fails.
      */
     private void initParameters() throws Exception{
         // A tool creates its own parameters.
-        
+
         getParameters().clear();
         Parameter[] params = method.getParameters();
         for (int i = 0; i < params.length; i++) {
             getParameters().add(JavaMethodToolParameter.of(this, params[i], i));
         }
     }
-    
+
     /**
      * Returns a rich, formatted description string containing the base description,
      * current permission status, and effective max depth details.
@@ -261,26 +262,35 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
 
         // 2. Convert arguments from JSON types to Java types using our rich parameter models
         Map<String, Object> convertedArgs = new HashMap<>();
+        GraphQLToolkit graphQL = getToolkitInstance() instanceof GraphQLToolkit gql && gql.isCommandToolkit() ? gql : null;
         try {
             for (JavaMethodToolParameter javaParam : getParameters()) {
                 String paramName = javaParam.getName();
                 Object rawValue = jsonArgs.get(paramName);
                 if (rawValue != null) {
                     // Use the stored generic Type for accurate deserialization
-                    Object convertedValue = SchemaProvider.OBJECT_MAPPER.convertValue(rawValue, SchemaProvider.OBJECT_MAPPER.constructType(javaParam.getJavaType()));
+                    Object convertedValue = graphQL != null && "variables".equals(paramName)
+                            ? graphQL.copyVariables(rawValue)
+                            : SchemaProvider.OBJECT_MAPPER.convertValue(rawValue, SchemaProvider.OBJECT_MAPPER.constructType(javaParam.getJavaType()));
                     convertedArgs.put(paramName, convertedValue);
                 }
             }
         } catch (IllegalArgumentException e) {
             log.error("Failed to convert arguments", e);
-            String reason = "Tool call rejected: Failed to convert arguments. Error: " + e.getMessage();
+            String reason = graphQL == null ? "Tool call rejected: Failed to convert arguments. Error: " + e.getMessage()
+                    : "Tool call rejected: Invalid GraphQL arguments. Provide the document and a JSON object of variables; discover the current schema.";
             JavaMethodToolCall call = new JavaMethodToolCall(modelMessage, id, this, jsonArgs, convertedArgs);
             call.getResponse().fail(reason);
             return call;
         }
 
         // 3. Create the final call object
-        return new JavaMethodToolCall(modelMessage, id, this, jsonArgs, convertedArgs);
+        Map<String, Object> retainedRawArgs = jsonArgs;
+        if (graphQL != null && convertedArgs.containsKey("variables")) {
+            retainedRawArgs = new java.util.LinkedHashMap<>(jsonArgs);
+            retainedRawArgs.put("variables", convertedArgs.get("variables"));
+        }
+        return new JavaMethodToolCall(modelMessage, id, this, retainedRawArgs, convertedArgs);
     }
 
     @Override

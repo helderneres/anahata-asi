@@ -75,7 +75,7 @@ public class DatabaseGraphQLTest {
         connection = mock(Connection.class);
         metadata = mock(DatabaseMetaData.class);
         when(connection.getMetaData()).thenReturn(metadata);
-        registered = registeredConnection("MKA", connection);
+        registered = registeredConnection("ANAHATA", connection);
         when(manager.getConnections()).thenReturn(new DatabaseConnection[]{registered});
         database = new Database();
         database.initialize();
@@ -100,8 +100,8 @@ public class DatabaseGraphQLTest {
         List<String> names = toolkit.getAllTools().stream().map(tool -> tool.getName()).toList();
         assertTrue(names.contains("Database.schema"), names.toString());
         assertTrue(names.contains("Database.query"), names.toString());
-        assertTrue(names.contains("Database.executeQuery"), names.toString());
-        assertTrue(names.contains("Database.executeStatement"), names.toString());
+        assertTrue(names.contains("Database.mutate"), names.toString());
+        assertEquals(3, names.size(), names.toString());
     }
 
     /**
@@ -117,7 +117,7 @@ public class DatabaseGraphQLTest {
         GraphQLExecutionInfo result = database.query("{ connections { items { displayName } } }", Map.of());
         assertTrue(result.getErrors().isEmpty(), result.getErrors().stream()
                 .map(error -> error.getCategory() + ": " + error.getMessage()).toList().toString());
-        assertEquals("MKA", firstItem(result, "connections").get("displayName"));
+        assertEquals("ANAHATA", firstItem(result, "connections").get("displayName"));
     }
 
     /**
@@ -125,7 +125,7 @@ public class DatabaseGraphQLTest {
      */
     @Test
     void connectionNamesAndFiltersUseVariablesWithoutExposingCredentials() throws Exception {
-        DatabaseConnection inactive = registeredConnection("mka archive", null);
+        DatabaseConnection inactive = registeredConnection("anahata archive", null);
         DatabaseConnection other = registeredConnection("Other", mock(Connection.class));
         when(manager.getConnections()).thenReturn(new DatabaseConnection[]{registered, inactive, other});
         GraphQLExecutionInfo result = successful("""
@@ -135,9 +135,9 @@ public class DatabaseGraphQLTest {
                     offset limit hasNextPage totalCount
                   }
                 }
-                """, Map.of("name", "MkA", "connected", false));
+                """, Map.of("name", "AnAhAtA", "connected", false));
         Map<String, Object> page = object(result.getData().get("connections"));
-        assertEquals("mka archive", firstItem(result, "connections").get("displayName"));
+        assertEquals("anahata archive", firstItem(result, "connections").get("displayName"));
         assertEquals(false, page.get("hasNextPage"));
         assertEquals(1, page.get("limit"));
         verify(metadata, never()).getTables(any(), any(), any(), any());
@@ -158,7 +158,7 @@ public class DatabaseGraphQLTest {
         ResultSet tables = tables(table("catalog", "public", "users"));
         when(metadata.getTables(any(), any(), any(), any())).thenReturn(tables);
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { tables(limit: 10) { items { tableName } } } }
+                { connection(name: "ANAHATA") { tables(limit: 10) { items { tableName } } } }
                 """);
         assertEquals("users", firstTable(result).get("tableName"));
         verify(metadata, never()).getColumns(any(), any(), any(), any());
@@ -180,7 +180,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getTables(any(), any(), any(), any())).thenReturn(tables);
         when(metadata.getColumns("catalog", "public", "users", "%")).thenReturn(columns);
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") {
+                { connection(name: "ANAHATA") {
                   tables(limit: 10) { items { tableName columns { columnName } } }
                 } }
                 """);
@@ -207,7 +207,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getColumns("catalog", "public", "users", "%")).thenReturn(columns);
         when(metadata.getPrimaryKeys("catalog", "public", "users")).thenReturn(keys);
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { tables(limit: 1) { items {
+                { connection(name: "ANAHATA") { tables(limit: 1) { items {
                   columns { columnName primaryKey }
                   primaryKeys { catalog schema tableName columnName keySequence keyName }
                 } } } }
@@ -231,7 +231,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getColumns("", "", "users", "%")).thenAnswer(invocation -> rows(column("id")));
         successful("""
                 query Columns($includePk: Boolean!) {
-                  connection(name: "MKA") { tables(limit: 1) { items {
+                  connection(name: "ANAHATA") { tables(limit: 1) { items {
                     columns { columnName primaryKey @include(if: $includePk) }
                   } } }
                 }
@@ -248,7 +248,7 @@ public class DatabaseGraphQLTest {
                 .thenAnswer(invocation -> tables(table(null, null, "users")));
         when(metadata.getPrimaryKeys("", "", "users"))
                 .thenAnswer(invocation -> rows(primaryKey(null, null, "users", "id")));
-        String query = "{ connection(name: \"MKA\") { tables(limit: 1) { items { primaryKeys { columnName } } } } }";
+        String query = "{ connection(name: \"ANAHATA\") { tables(limit: 1) { items { primaryKeys { columnName } } } } }";
         successful(query);
         successful(query);
         verify(metadata, times(2)).getPrimaryKeys("", "", "users");
@@ -265,7 +265,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getTables(any(), any(), any(), any())).thenAnswer(invocation -> tables(table("catalog", "public", "users")));
         when(metadata.getImportedKeys("catalog", "public", "users")).thenReturn(keys);
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { tables(limit: 1) { items {
+                { connection(name: "ANAHATA") { tables(limit: 1) { items {
                   importedRelationships { primaryKeyCatalog primaryKeySchema primaryKeyTable
                     primaryKeyColumn foreignKeyCatalog foreignKeySchema foreignKeyTable
                     foreignKeyColumn keySequence updateRule deleteRule foreignKeyName
@@ -293,7 +293,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getTables(any(), any(), any(), any())).thenAnswer(invocation -> tables(table(null, null, "users")));
         when(metadata.getExportedKeys("", "", "users")).thenReturn(keys);
         successful("""
-                { connection(name: "MKA") { tables(limit: 1) { items {
+                { connection(name: "ANAHATA") { tables(limit: 1) { items {
                   exportedRelationships { primaryKeyTable foreignKeyTable }
                 } } } }
                 """);
@@ -316,7 +316,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getTables(any(), any(), any(), any())).thenReturn(tables);
         when(metadata.getColumns("catalog", "public", "returned", "%")).thenReturn(columns);
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { tables(offset: 1, limit: 1) {
+                { connection(name: "ANAHATA") { tables(offset: 1, limit: 1) {
                   items { tableName columns { columnName } }
                   offset limit hasNextPage totalCount
                 } } }
@@ -344,7 +344,7 @@ public class DatabaseGraphQLTest {
         ResultSet tables = tables(table(null, null, "users"));
         when(metadata.getTables(any(), any(), any(), any())).thenReturn(tables);
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { tables(limit: 1) {
+                { connection(name: "ANAHATA") { tables(limit: 1) {
                   items { tableName } hasNextPage totalCount
                 } } }
                 """);
@@ -362,7 +362,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getTables(any(), any(), any(), any())).thenAnswer(invocation -> tables());
         successful("""
                 query Tables($catalog: String!, $schema: String!, $pattern: String!) {
-                  connection(name: "MKA") { tables(catalog: $catalog, schema: $schema,
+                  connection(name: "ANAHATA") { tables(catalog: $catalog, schema: $schema,
                     tableNamePattern: $pattern, types: ["VIEW"], limit: 10) {
                     items { catalog schema tableName }
                   } }
@@ -387,7 +387,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getPrimaryKeys("catalog-b", "beta", "users"))
                 .thenAnswer(invocation -> rows(primaryKey("catalog-b", "beta", "users", "beta_id")));
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { tables(limit: 2) { items {
+                { connection(name: "ANAHATA") { tables(limit: 2) { items {
                   catalog schema tableName columns { columnName primaryKey }
                   primaryKeys { catalog schema columnName }
                 } } } }
@@ -407,7 +407,7 @@ public class DatabaseGraphQLTest {
     @Test
     void invalidPaginationFailsBeforeOpeningJdbcResults() throws Exception {
         for (String args : List.of("limit: 0", "limit: 101", "offset: -1")) {
-            GraphQLExecutionInfo result = database.query("{ connection(name: \"MKA\") { tables(" + args
+            GraphQLExecutionInfo result = database.query("{ connection(name: \"ANAHATA\") { tables(" + args
                     + ") { items { tableName } } } }", Map.of());
             assertFalse(result.getErrors().isEmpty(), args);
         }
@@ -421,11 +421,11 @@ public class DatabaseGraphQLTest {
     void inactiveConnectionReturnsPartialDataAndActionableErrorWithoutShowingDialog() throws Exception {
         when(registered.getJDBCConnection()).thenReturn(null);
         GraphQLExecutionInfo result = database.query("""
-                { connection(name: "MKA") { displayName connected metadata { databaseProductName } } }
+                { connection(name: "ANAHATA") { displayName connected metadata { databaseProductName } } }
                 """, Map.of());
         assertFalse(result.getErrors().isEmpty());
         Map<String, Object> returned = object(result.getData().get("connection"));
-        assertEquals("MKA", returned.get("displayName"));
+        assertEquals("ANAHATA", returned.get("displayName"));
         assertEquals(false, returned.get("connected"));
         assertNull(returned.get("metadata"));
         verify(manager, never()).showConnectionDialog(any());
@@ -443,7 +443,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getTables(any(), any(), any(), any())).thenAnswer(invocation -> tables(table(null, null, "users")));
         when(metadata.getColumns("", "", "users", "%")).thenThrow(new SQLException(sensitive));
         GraphQLExecutionInfo result = database.query("""
-                { connection(name: "MKA") { displayName tables(limit: 1) { items { tableName columns { columnName } } } } }
+                { connection(name: "ANAHATA") { displayName tables(limit: 1) { items { tableName columns { columnName } } } } }
                 """, Map.of());
         assertFalse(result.getErrors().isEmpty());
         assertEquals("users", firstTable(result).get("tableName"));
@@ -465,7 +465,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getTables(any(), any(), any(), any())).thenAnswer(invocation -> tables(table(null, null, "users")));
         when(metadata.getColumns("", "", "users", "%")).thenAnswer(invocation -> rows(unknown));
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { tables(limit: 1) { items {
+                { connection(name: "ANAHATA") { tables(limit: 1) { items {
                   catalog schema columns { columnName dataType columnSize nullable autoIncrement }
                 } } } }
                 """);
@@ -488,7 +488,7 @@ public class DatabaseGraphQLTest {
         ResultSet tables = tables(table(null, null, "users"));
         when(metadata.getTables(any(), any(), any(), any())).thenReturn(tables);
         doThrow(new SQLException("private database details")).when(tables).getString("TABLE_NAME");
-        GraphQLExecutionInfo result = database.query("{ connection(name: \"MKA\") { tables(limit: 1) { items { tableName } } } }", Map.of());
+        GraphQLExecutionInfo result = database.query("{ connection(name: \"ANAHATA\") { tables(limit: 1) { items { tableName } } } }", Map.of());
         assertFalse(result.getErrors().isEmpty());
         verify(tables).close();
         verify(connection, never()).close();
@@ -501,9 +501,9 @@ public class DatabaseGraphQLTest {
     @Test
     void unknownConnectionAndCredentialFieldsCannotEscapeTheSchema() throws Exception {
         GraphQLExecutionInfo unknown = database.query("{ connection(name: \"missing\") { displayName } }", Map.of());
-        assertTrue(unknown.getErrors().isEmpty());
+        assertEquals("ConnectionNotFound", unknown.getErrors().getFirst().getCategory());
         assertNull(unknown.getData().get("connection"));
-        GraphQLExecutionInfo credentials = database.query("{ connection(name: \"MKA\") { user password url } }", Map.of());
+        GraphQLExecutionInfo credentials = database.query("{ connection(name: \"ANAHATA\") { user password url } }", Map.of());
         assertFalse(credentials.getErrors().isEmpty());
         verify(registered, never()).getPassword();
         verify(registered, never()).getUser();
@@ -518,7 +518,7 @@ public class DatabaseGraphQLTest {
     void metadataSelectionLoadsOnlyTheChosenScalarDespiteItsAlias() throws Exception {
         when(metadata.getDatabaseProductName()).thenReturn("MockDB");
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { metadata { product: databaseProductName } } }
+                { connection(name: "ANAHATA") { metadata { product: databaseProductName } } }
                 """);
         Map<String, Object> returned = object(object(result.getData().get("connection")).get("metadata"));
         assertEquals("MockDB", returned.get("product"));
@@ -540,7 +540,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getPrimaryKeys("", "", "users")).thenAnswer(invocation -> rows(primaryKey(null, null, "users", "id")));
         GraphQLExecutionInfo result = successful("""
                 query ColumnFlags {
-                  connection(name: "MKA") { tables(limit: 1) { items { columns { ...Flags } } } }
+                  connection(name: "ANAHATA") { tables(limit: 1) { items { columns { ...Flags } } } }
                 }
                 fragment Flags on ColumnInfo { label: columnName belongs: primaryKey }
                 """);
@@ -563,7 +563,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getPrimaryKeys("catalog", "tenant_1", "order_items"))
                 .thenAnswer(invocation -> rows(primaryKey("catalog", "tenant_1", "order_items", "id")));
         successful("""
-                { connection(name: "MKA") { tables(limit: 1) { items {
+                { connection(name: "ANAHATA") { tables(limit: 1) { items {
                   columns(columnNamePattern: "id%") { columnName primaryKey }
                 } } } }
                 """);
@@ -582,7 +582,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getPrimaryKeys("", "", "users"))
                 .thenThrow(new SQLException("jdbc:private://host?password=secret"));
         GraphQLExecutionInfo result = database.query("""
-                { connection(name: "MKA") { tables(limit: 1) { items {
+                { connection(name: "ANAHATA") { tables(limit: 1) { items {
                   columns { columnName primaryKey } primaryKeys { columnName }
                 } } } }
                 """, Map.of());
@@ -606,7 +606,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getColumns("", "", "users", "%")).thenAnswer(invocation -> rows(column("id")));
         when(metadata.getPrimaryKeys("", "", "users")).thenReturn(keys);
         GraphQLExecutionInfo result = database.query("""
-                { connection(name: "MKA") { tables(limit: 1) { items {
+                { connection(name: "ANAHATA") { tables(limit: 1) { items {
                   columns { columnName } primaryKeys { columnName }
                 } } } }
                 """, Map.of());
@@ -629,7 +629,7 @@ public class DatabaseGraphQLTest {
         verify(message, atLeastOnce()).addTextPart(texts.capture());
         String context = String.join("\n", texts.getAllValues());
         assertTrue(context.contains("1"), context);
-        assertFalse(context.contains("MKA"), context);
+        assertFalse(context.contains("ANAHATA"), context);
         assertFalse(context.contains("jdbc:"), context);
         verify(registered, never()).getPassword();
         verify(registered, never()).getUser();
@@ -643,7 +643,7 @@ public class DatabaseGraphQLTest {
     @Test
     void metadataTypeNameNeedsNoJdbcMetadataOperation() throws Exception {
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { metadata { __typename } } }
+                { connection(name: "ANAHATA") { metadata { __typename } } }
                 """);
         Map<String, Object> returned = object(object(result.getData().get("connection")).get("metadata"));
         assertEquals("DatabaseMetadataInfo", returned.get("__typename"));
@@ -657,10 +657,10 @@ public class DatabaseGraphQLTest {
     @Test
     void tablePageArgumentsAndNullableCountNeedNoJdbcMetadata() throws Exception {
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { tables(offset: 3, limit: 7) { offset limit totalCount } } }
+                { connection(name: "ANAHATA") { tables(offset: 3, limit: 7) { offset limit totalCount } } }
                 """);
         GraphQLExecutionInfo defaults = successful("""
-                { connection(name: "MKA") { tables { offset limit totalCount } } }
+                { connection(name: "ANAHATA") { tables { offset limit totalCount } } }
                 """);
         assertEquals(0, tablePage(defaults).get("offset"));
         assertEquals(25, tablePage(defaults).get("limit"));
@@ -680,7 +680,7 @@ public class DatabaseGraphQLTest {
         ResultSet tables = tables(table(null, null, "users"), table(null, null, "accounts"));
         when(metadata.getTables(any(), any(), any(), any())).thenReturn(tables);
         GraphQLExecutionInfo result = successful("""
-                { connection(name: "MKA") { tables(limit: 1) { hasNextPage } } }
+                { connection(name: "ANAHATA") { tables(limit: 1) { hasNextPage } } }
                 """);
         assertEquals(true, tablePage(result).get("hasNextPage"));
         verify(tables, times(2)).next();
@@ -701,7 +701,7 @@ public class DatabaseGraphQLTest {
         when(metadata.getTables(any(), any(), any(), any())).thenAnswer(invocation -> tables(table(null, null, "users")));
         when(metadata.getColumns("", "", "users", "%")).thenReturn(columns);
         GraphQLExecutionInfo result = database.query("""
-                { connection(name: "MKA") { tables(limit: 1) { items { tableName columns { columnName } } } } }
+                { connection(name: "ANAHATA") { tables(limit: 1) { items { tableName columns { columnName } } } } }
                 """, Map.of());
         assertFalse(result.getErrors().isEmpty());
         assertEquals("users", firstTable(result).get("tableName"));
@@ -721,7 +721,7 @@ public class DatabaseGraphQLTest {
         ResultSet tables = tables(table(null, null, null));
         when(metadata.getTables(any(), any(), any(), any())).thenReturn(tables);
         GraphQLExecutionInfo result = database.query("""
-                { connection(name: "MKA") { tables(limit: 1) { items {
+                { connection(name: "ANAHATA") { tables(limit: 1) { items {
                   tableName columns { columnName } primaryKeys { columnName }
                   importedRelationships { primaryKeyTable }
                   exportedRelationships { foreignKeyTable }

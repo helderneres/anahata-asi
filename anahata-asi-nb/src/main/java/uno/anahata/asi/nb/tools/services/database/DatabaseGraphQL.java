@@ -49,7 +49,7 @@ final class DatabaseGraphQL {
     static final String SCHEMA = """
             type Query {
               connections(nameContains: String, connected: Boolean, offset: Int = 0, limit: Int = 25): DatabaseConnectionPage!
-              connection(name: String!): DatabaseConnectionInfo
+              connection(name: String, id: ID): DatabaseConnectionInfo
             }
             type DatabaseConnectionPage {
               items: [DatabaseConnectionInfo!]!
@@ -59,6 +59,7 @@ final class DatabaseGraphQL {
               totalCount: Int
             }
             type DatabaseConnectionInfo {
+              id: ID!
               displayName: String
               driverClass: String
               schema: String
@@ -122,7 +123,7 @@ final class DatabaseGraphQL {
               primaryKeyName: String
               deferrability: Int
             }
-            """;
+            """ + DatabaseCommands.SCHEMA;
 
     /**
      * Maximum skipped rows, preventing an unbounded JDBC offset scan.
@@ -163,7 +164,7 @@ final class DatabaseGraphQL {
      * @return the immutable schema wiring for a newly initialized engine
      */
     static RuntimeWiring buildRuntimeWiring() {
-        return RuntimeWiring.newRuntimeWiring()
+        return DatabaseCommands.wire(RuntimeWiring.newRuntimeWiring()
                 .type(TypeRuntimeWiring.newTypeWiring("Query")
                         .dataFetcher("connections", DatabaseGraphQL::connections)
                         .dataFetcher("connection", DatabaseGraphQL::connection))
@@ -178,9 +179,9 @@ final class DatabaseGraphQL {
                         .dataFetcher("importedRelationships", environment -> relationships(environment, true))
                         .dataFetcher("exportedRelationships", environment -> relationships(environment, false)))
                 .type(TypeRuntimeWiring.newTypeWiring("ColumnInfo")
-                        .defaultDataFetcher(DatabaseGraphQL::columnField)
+                        .defaultDataFetcher(DatabaseGraphQL::infoField)
                         .dataFetcher("primaryKey", DatabaseGraphQL::columnPrimaryKey))
-                .build();
+        ).build();
     }
 
     /**
@@ -198,28 +199,6 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Preserves JDBC unknown values while retaining legacy ColumnInfo
-     * accessors.
-     *
-     * @param environment the selected column attribute
-     * @return a nullable JDBC value or an existing Info property
-     * @throws Exception if the native property fetcher fails
-     */
-    private static Object columnField(DataFetchingEnvironment environment) throws Exception {
-        ColumnSource source = environment.getSource();
-        return switch (environment.getFieldDefinition().getName()) {
-            case "nullable" ->
-                source.getNullable();
-            case "autoIncrement" ->
-                source.getAutoIncrement();
-            case "columnSize" ->
-                source.getColumnSize();
-            default ->
-                infoField(environment);
-        };
-    }
-
-    /**
      * Filters the small registered-connection snapshot before paginating it.
      *
      * @param environment connection filters and bounded page arguments
@@ -229,7 +208,7 @@ final class DatabaseGraphQL {
         PageArguments page = pageArguments(environment);
         String nameContains = filter(environment.getArgument("nameContains"));
         Boolean connected = environment.getArgument("connected");
-        Predicate<DatabaseConnection> nameMatches = new ToolFilter<>(DatabaseConnection::getDisplayName,
+        Predicate<DatabaseConnection> nameMatches = new ToolFilter<>(DatabaseConnections::displayName,
                 FilterMatcher.containsIgnoreCase()).predicate(nameContains);
         GraphQLRequestContext.from(environment).checkBudget();
         DatabaseConnection[] registered = ConnectionManager.getDefault().getConnections();
@@ -263,21 +242,13 @@ final class DatabaseGraphQL {
      * @return a safe source, or null when no registered connection matches
      */
     private static ConnectionSource connection(DataFetchingEnvironment environment) {
-        String name = filter(environment.getArgument("name"));
-        GraphQLRequestContext.from(environment).checkBudget();
-        DatabaseConnection[] registered = ConnectionManager.getDefault().getConnections();
-        ConnectionSource found = null;
-        if (registered != null) {
-            for (DatabaseConnection connection : registered) {
-                if (Objects.equals(connection.getDisplayName(), name)) {
-                    if (found != null) {
-                        throw new SafeGraphQLException("Several registered connections share that display name. Rename them in the IDE before querying.");
-                    }
-                    found = connectionSource(connection);
-                }
-            }
+        String name = environment.getArgument("name");
+        String id = environment.getArgument("id");
+        if ((name == null) == (id == null)) {
+            throw new SafeGraphQLException("InvalidArgument", "Specify exactly one connection id or name.");
         }
-        return found;
+        GraphQLRequestContext.from(environment).checkBudget();
+        return connectionSource(DatabaseConnections.find(id == null ? name : id));
     }
 
     /**
@@ -287,7 +258,7 @@ final class DatabaseGraphQL {
      * fetchers
      * @return safe Info attributes and their private handle
      */
-    private static ConnectionSource connectionSource(DatabaseConnection connection) {
+    static ConnectionSource connectionSource(DatabaseConnection connection) {
         return new ConnectionSource(CONNECTION_PROJECTOR.apply(connection), connection);
     }
 
@@ -300,7 +271,7 @@ final class DatabaseGraphQL {
     private static DatabaseConnectionInfo connectionInfo(DatabaseConnection connection) {
         JDBCDriver driver = connection.getJDBCDriver();
         return DatabaseConnectionInfo.builder()
-                .displayName(connection.getDisplayName())
+                .id(DatabaseConnections.id(connection)).displayName(DatabaseConnections.displayName(connection))
                 .driverClass(driver == null ? null : driver.getClassName())
                 .schema(connection.getSchema()).connected(connection.getJDBCConnection() != null).build();
     }
@@ -421,9 +392,9 @@ final class DatabaseGraphQL {
                     Boolean nullable = jdbcBoolean(rows.getString("IS_NULLABLE"));
                     Boolean autoIncrement = jdbcBoolean(rows.getString("IS_AUTOINCREMENT"));
                     ColumnInfo info = ColumnInfo.builder().columnName(rows.getString("COLUMN_NAME"))
-                            .dataType(rows.getString("TYPE_NAME")).columnSize(size == null ? 0 : size)
-                            .isNullable(Boolean.TRUE.equals(nullable)).isAutoIncrement(Boolean.TRUE.equals(autoIncrement)).build();
-                    columns.add(new ColumnSource(info, table, size, nullable, autoIncrement));
+                            .dataType(rows.getString("TYPE_NAME")).columnSize(size)
+                            .nullable(nullable).autoIncrement(autoIncrement).build();
+                    columns.add(new ColumnSource(info, table));
                 }
             }
             return columns;
@@ -516,7 +487,7 @@ final class DatabaseGraphQL {
         return GraphQLRequestContext.from(environment).getOrCompute(key, () -> {
             Connection connection = source.getDatabaseConnection().getJDBCConnection();
             if (connection == null) {
-                throw new SafeGraphQLException("ConnectionInactive", "Connection is inactive. Connect explicitly in the IDE Services tab or with connect() before querying metadata.");
+                throw new SafeGraphQLException("ConnectionInactive", "Connection is inactive. Connect explicitly in the IDE Services tab or with mutate() connect before querying metadata.");
             }
             return metadataOperation(environment, connection::getMetaData);
         });
@@ -713,7 +684,7 @@ final class DatabaseGraphQL {
      * A registered IDE handle that is never a GraphQL output field.
      */
     @Getter
-    private static final class ConnectionSource extends InfoSource<DatabaseConnectionInfo> {
+    static final class ConnectionSource extends InfoSource<DatabaseConnectionInfo> {
 
         /**
          * IDE-owned connection identity for lazy metadata access.
@@ -756,44 +727,14 @@ final class DatabaseGraphQL {
         }
     }
 
-    /**
-     * JDBC-accurate nullable values supplement the legacy primitive column DTO.
-     */
+    /** Column attributes and the private identity needed only for selected PK lookup. */
     @Getter
     private static final class ColumnSource extends InfoSource<ColumnInfo> {
-
-        /**
-         * Parent identity used only when primaryKey is explicitly selected.
-         */
         private final TableSource table;
-        /**
-         * SQL NULL-aware size supplied to the GraphQL nullable scalar.
-         */
-        private final Integer columnSize;
-        /**
-         * JDBC YES/NO/unknown nullability.
-         */
-        private final Boolean nullable;
-        /**
-         * JDBC YES/NO/unknown auto-increment support.
-         */
-        private final Boolean autoIncrement;
 
-        /**
-         * Carries column attributes and the identity for conditional PK lookup.
-         *
-         * @param info existing column attributes
-         * @param table exact parent identity
-         * @param columnSize nullable JDBC size
-         * @param nullable nullable JDBC flag
-         * @param autoIncrement nullable JDBC flag
-         */
-        private ColumnSource(ColumnInfo info, TableSource table, Integer columnSize, Boolean nullable, Boolean autoIncrement) {
+        private ColumnSource(ColumnInfo info, TableSource table) {
             super(info);
             this.table = table;
-            this.columnSize = columnSize;
-            this.nullable = nullable;
-            this.autoIncrement = autoIncrement;
         }
     }
 

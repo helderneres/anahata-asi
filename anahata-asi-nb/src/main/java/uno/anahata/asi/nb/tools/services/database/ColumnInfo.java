@@ -8,7 +8,7 @@ import lombok.Data;
  * Represents a column in a database table.
  * <p>
  * Encapsulates the physical structure of a column, including its SQL type,
- * nullability, and primary key status, which are essential for schema
+ * and nullability, which are essential for schema
  * understanding.
  * </p>
  *
@@ -20,9 +20,8 @@ public class ColumnInfo {
 
     private String columnName;
     private String dataType;
-    private int columnSize;
-    private boolean isNullable;
-    private boolean isPrimaryKey;
-    private boolean isAutoIncrement;
+    private Integer columnSize;
+    private Boolean nullable;
+    private Boolean autoIncrement;
 
 }

@@ -35,6 +35,7 @@ import uno.anahata.asi.agi.provider.Response;
 import uno.anahata.asi.agi.message.ResponseUsageMetadata;
 import uno.anahata.asi.agi.tool.spi.AbstractToolCall;
 import uno.anahata.asi.agi.status.ApiErrorRecord;
+import uno.anahata.asi.agi.status.RawApiJson;
 import uno.anahata.asi.agi.status.AgiStatus;
 import uno.anahata.asi.agi.status.StatusManager;
 import uno.anahata.asi.swing.agi.AgiPanel;
@@ -50,10 +51,10 @@ import uno.anahata.asi.swing.icons.ActionIconKey;
 /**
  * The primary dashboard for real-time monitoring of an AGI session's health and state.
  * <p>
- * This panel aggregates status indicators, context usage metrics, token 
- * consumption details, and API error logs into a unified observability 
- * interface. It uses a push-and-pull refresh strategy via property change 
- * listeners and a periodic timer to ensure the user always sees the most 
+ * This panel aggregates status indicators, context usage metrics, token
+ * consumption details, and API error logs into a unified observability
+ * interface. It uses a push-and-pull refresh strategy via property change
+ * listeners and a periodic timer to ensure the user always sees the most
  * accurate representation of the ASI's digital consciousness.
  * </p>
  *
@@ -86,24 +87,24 @@ public class StatusPanel extends JPanel {
     /** Progress bar showing context window usage. */
     private ContextUsageBar contextUsageBar;
     /** Panel for displaying API error and retry details. */
-    private JPanel apiErrorsPanel; 
+    private JPanel apiErrorsPanel;
     /** ScrollPane wrapping the API errors panel. */
-    private JScrollPane apiErrorsScrollPane; 
+    private JScrollPane apiErrorsScrollPane;
     /** Label for detailed token usage information. */
-    private JLabel tokenDetailsLabel; 
+    private JLabel tokenDetailsLabel;
     /** Hyperlink to view the raw JSON request configuration. */
-    private CodeHyperlink rawJsonRequestConfigLink; 
+    private CodeHyperlink rawJsonRequestConfigLink;
     /** Hyperlink to view the conversation history as JSON. */
     private CodeHyperlink historyJsonLink;
     /** Hyperlink to view the raw JSON response. */
-    private CodeHyperlink rawJsonResponseLink; 
+    private CodeHyperlink rawJsonResponseLink;
     /** Toggle button for sound notifications. */
     private JToggleButton soundToggle;
     /** Panel for managing audio playback feedback. */
-    private final AudioPlaybackPanel audioPlaybackPanel; 
+    private final AudioPlaybackPanel audioPlaybackPanel;
     /** Label for displaying prompt blocking reasons. */
-    private JLabel blockReasonLabel; 
-    
+    private JLabel blockReasonLabel;
+
     /** High-density background task monitor. */
     private TaskStatusComponent taskStatusComponent;
 
@@ -112,7 +113,7 @@ public class StatusPanel extends JPanel {
 
     /**
      * Constructs a new StatusPanel.
-     * 
+     *
      * @param agiPanel The parent agi panel.
      */
     public StatusPanel(AgiPanel agiPanel) {
@@ -121,20 +122,21 @@ public class StatusPanel extends JPanel {
         this.agi = agiPanel.getAgi();
         this.agiConfig = agiPanel.getAgiConfig();
         this.audioPlaybackPanel = new AudioPlaybackPanel(agiPanel);
-        
+
         // Enable File Drop
         setTransferHandler(new AgiTransferHandler(agiPanel));
-        
+
         initComponents();
-        
+
         this.refreshTimer = new Timer(1000, e -> refresh());
         this.executingCallsListener = new EdtPropertyChangeListener(this, agi.getToolManager(), "executingCalls", evt -> refresh());
+        new EdtPropertyChangeListener(this, agi, "lastRawApiJson", evt -> refresh());
     }
 
-    /** 
-     * {@inheritDoc} 
+    /**
+     * {@inheritDoc}
      * <p>
-     * Initiates the real-time refresh timer to synchronize UI state with the 
+     * Initiates the real-time refresh timer to synchronize UI state with the
      * background AGI orchestrator.
      * </p>
      */
@@ -144,10 +146,10 @@ public class StatusPanel extends JPanel {
         refreshTimer.start();
     }
 
-    /** 
-     * {@inheritDoc} 
+    /**
+     * {@inheritDoc}
      * <p>
-     * Terminates the refresh timer to prevent memory leaks and unnecessary 
+     * Terminates the refresh timer to prevent memory leaks and unnecessary
      * background processing when the panel is no longer visible.
      * </p>
      */
@@ -169,7 +171,7 @@ public class StatusPanel extends JPanel {
         JPanel row1Panel = new JPanel(new MigLayout("ins 0, fillx", "[grow, fill]push[pref!]", "[]"));
         row1Panel.setAlignmentX(LEFT_ALIGNMENT);
         row1Panel.setOpaque(false);
-        
+
         JPanel agiStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         agiStatusPanel.setOpaque(false);
         statusIndicator = new StatusIndicator();
@@ -183,17 +185,17 @@ public class StatusPanel extends JPanel {
         agiStatusPanel.add(soundToggle);
         agiStatusPanel.add(statusIndicator);
         agiStatusPanel.add(statusLabel);
-        
+
         executingToolsLabel = new JLabel();
         executingToolsLabel.setForeground(new Color(128, 0, 128)); // Purple
         executingToolsLabel.setFont(executingToolsLabel.getFont().deriveFont(Font.BOLD));
         agiStatusPanel.add(executingToolsLabel);
-        
+
         row1Panel.add(agiStatusPanel);
- 
-        contextUsageBar = new ContextUsageBar(agiPanel); 
+
+        contextUsageBar = new ContextUsageBar(agiPanel);
         row1Panel.add(contextUsageBar, "right");
-        
+
         add(row1Panel);
 
         // --- Row 2 (Links & Task Monitor) --- 
@@ -204,32 +206,32 @@ public class StatusPanel extends JPanel {
 
         JPanel linksPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         linksPanel.setOpaque(false);
-        
-        rawJsonRequestConfigLink = new CodeHyperlink(agiPanel, "Request", 
-                () -> "Raw JSON Request", 
-                () -> agi.getLastResponse().map(Response::getRawRequestConfigJson).orElse(""), 
+
+        rawJsonRequestConfigLink = new CodeHyperlink(agiPanel, "Request",
+                () -> "Raw JSON Request",
+                () -> agi.getLastRawApiJson().map(RawApiJson::requestConfigJson).orElse(""),
                 "json");
         linksPanel.add(rawJsonRequestConfigLink);
 
         historyJsonLink = new CodeHyperlink(agiPanel, "History",
                 () -> "Conversation History JSON",
-                () -> agi.getLastResponse().map(Response::getRawHistoryJson).orElse(""),
+                () -> agi.getLastRawApiJson().map(RawApiJson::historyJson).orElse(""),
                 "json");
         linksPanel.add(historyJsonLink);
 
-        rawJsonResponseLink = new CodeHyperlink(agiPanel, "Response", 
-                () -> "Raw JSON Response", 
-                () -> agi.getLastResponse().map(r -> r.getRawJson()).orElse(""), 
+        rawJsonResponseLink = new CodeHyperlink(agiPanel, "Response",
+                () -> "Raw JSON Response",
+                () -> agi.getLastRawApiJson().map(RawApiJson::responseJson).orElse(""),
                 "json");
         linksPanel.add(rawJsonResponseLink);
 
         row2Panel.add(linksPanel, "left");
-        
+
         taskStatusComponent = new TaskStatusComponent(agi);
         row2Panel.add(taskStatusComponent, "center");
-        
+
         row2Panel.add(audioPlaybackPanel, "right");
-        
+
         add(row2Panel);
 
         // --- Row 3 (Token Details) ---
@@ -254,7 +256,7 @@ public class StatusPanel extends JPanel {
 
         apiErrorsPanel = new JPanel();
         apiErrorsPanel.setAlignmentX(LEFT_ALIGNMENT);
-        
+
         apiErrorsScrollPane = new JScrollPane(apiErrorsPanel);
         apiErrorsScrollPane.setAlignmentX(LEFT_ALIGNMENT);
         apiErrorsScrollPane.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
@@ -262,7 +264,7 @@ public class StatusPanel extends JPanel {
         // Capping height to approximately 3 rows (header + errors)
         apiErrorsScrollPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, 85));
         apiErrorsScrollPane.setPreferredSize(new Dimension(200, 85));
-        
+
         add(apiErrorsScrollPane);
     }
 
@@ -273,12 +275,12 @@ public class StatusPanel extends JPanel {
         this.agi = agiPanel.getAgi();
         this.agiConfig = agiPanel.getAgiConfig();
         this.lastStatus = null;
-        
+
         if (executingCallsListener != null) {
             executingCallsListener.unbind();
         }
         this.executingCallsListener = new EdtPropertyChangeListener(this, agi.getToolManager(), "executingCalls", evt -> refresh());
-        
+
         contextUsageBar.reload();
         refresh();
     }
@@ -286,7 +288,7 @@ public class StatusPanel extends JPanel {
     /**
      * Refreshes the UI components with the latest data from the agi session.
      */
-        public void refresh() {
+    public void refresh() {
         if (agi.isShutdown()) {
             if (refreshTimer.isRunning()) refreshTimer.stop();
             return;
@@ -344,6 +346,7 @@ public class StatusPanel extends JPanel {
 
         List<ApiErrorRecord> errors = statusManager.getApiErrors();
         Response<?> lastResponse = agi.getLastResponse().orElse(null);
+        RawApiJson lastRawApi = agi.getLastRawApiJson().orElse(null);
         boolean isRetrying = !errors.isEmpty() && (currentStatus == AgiStatus.WAITING_WITH_BACKOFF || currentStatus == AgiStatus.API_CALL_IN_PROGRESS);
 
         rawJsonResponseLink.setVisible(false);
@@ -360,18 +363,18 @@ public class StatusPanel extends JPanel {
             ApiErrorRecord lastError = errors.get(errors.size() - 1);
             long totalErrorTime = now - lastError.getTimestamp().toEpochMilli();
             String headerText = String.format("Retrying... Total Time: %s | Attempt: %d | Backoff: %s",
-                                             TimeUtils.formatMillisConcise(totalErrorTime),
-                                             lastError.getRetryAttempt() + 1,
-                                              TimeUtils.formatMillisConcise(lastError.getBackoffAmount()));
+                    TimeUtils.formatMillisConcise(totalErrorTime),
+                    lastError.getRetryAttempt() + 1,
+                    TimeUtils.formatMillisConcise(lastError.getBackoffAmount()));
             apiErrorsPanel.add(new JLabel(headerText));
 
             for (ApiErrorRecord error : errors) {
                 String displayString = StringUtils.abbreviateMiddle(error.getStackTrace(), " ... ", 108) ;
                 String apiKeySuffix = StringUtils.right(error.getApiKey(), 4);
                 String errorText = String.format("[%s] [..%s] %s",
-                                                 TIME_FORMAT.format(error.getTimestamp().toEpochMilli()),
-                                                 apiKeySuffix,
-                                                 displayString);
+                        TIME_FORMAT.format(error.getTimestamp().toEpochMilli()),
+                        apiKeySuffix,
+                        displayString);
 
                 JXHyperlink errorLink = new JXHyperlink();
                 errorLink.setText(errorText);
@@ -381,23 +384,27 @@ public class StatusPanel extends JPanel {
                 apiErrorsPanel.add(errorLink);
             }
 
-        } else if (lastResponse != null) {
+        } else if (lastResponse != null || lastRawApi != null) {
             apiErrorsScrollPane.setVisible(false);
             apiErrorsPanel.removeAll();
             apiErrorsPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 0, 0));
 
-            rawJsonResponseLink.setVisible(true);
-            rawJsonRequestConfigLink.setVisible(true);
-            historyJsonLink.setVisible(true);
+            if (lastRawApi != null) {
+                rawJsonResponseLink.setVisible(lastRawApi.responseJson() != null && !lastRawApi.responseJson().isEmpty());
+                rawJsonRequestConfigLink.setVisible(lastRawApi.requestConfigJson() != null && !lastRawApi.requestConfigJson().isEmpty());
+                historyJsonLink.setVisible(lastRawApi.historyJson() != null && !lastRawApi.historyJson().isEmpty());
+            }
 
-            tokenDetailsLabel.setVisible(true);
+            tokenDetailsLabel.setVisible(lastResponse != null);
 
-            lastResponse.getPromptFeedback().ifPresent(blockReason -> {
-                blockReasonLabel.setText("Prompt Blocked: " + blockReason);
-                blockReasonLabel.setVisible(true);
-            });
+            if (lastResponse != null) {
+                lastResponse.getPromptFeedback().ifPresent(blockReason -> {
+                    blockReasonLabel.setText("Prompt Blocked: " + blockReason);
+                    blockReasonLabel.setVisible(true);
+                });
+            }
 
-            ResponseUsageMetadata usage = lastResponse.getUsageMetadata();
+            ResponseUsageMetadata usage = lastResponse == null ? null : lastResponse.getUsageMetadata();
             if (usage != null) {
                 String prompt = "Prompt: " + NUMBER_FORMAT.format(usage.getPromptTokenCount());
 
@@ -434,17 +441,17 @@ public class StatusPanel extends JPanel {
         revalidate();
         repaint();
     }
-    
+
     /**
      * Plays a sound notification based on the new status.
-     * 
+     *
      * @param newStatus The new status.
      */
     private void handleStatusSound(AgiStatus newStatus) {
         String soundFileName = newStatus.name().toLowerCase() + ".wav";
         audioPlaybackPanel.playSound(soundFileName);
     }
-    
+
     /**
      * A simple component that paints a colored circle to indicate status.
      */
@@ -468,8 +475,8 @@ public class StatusPanel extends JPanel {
             repaint();
         }
 
-        /** 
-         * {@inheritDoc} 
+        /**
+         * {@inheritDoc}
          * <p>
          * Renders a circular status pip with anti-aliasing to provide a 
          * smooth, high-salience visual cue of the current session state.

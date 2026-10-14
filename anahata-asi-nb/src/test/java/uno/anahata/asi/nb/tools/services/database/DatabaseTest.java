@@ -1,285 +1,603 @@
-/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
+/* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. ForÃƒÂ§a BarÃƒÂ§a! */
 package uno.anahata.asi.nb.tools.services.database;
 
+import java.beans.PropertyChangeSupport;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.sql.SQLTimeoutException;
 import java.sql.Statement;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.netbeans.api.db.explorer.ConnectionManager;
 import org.netbeans.api.db.explorer.DatabaseConnection;
-import org.netbeans.api.db.explorer.JDBCDriver;
-import uno.anahata.asi.agi.tool.AgiToolException;
-
+import uno.anahata.asi.agi.Agi;
+import uno.anahata.asi.agi.AgiConfig;
+import uno.anahata.asi.agi.ExpandToolsPreference;
+import uno.anahata.asi.agi.message.AbstractModelMessage;
+import uno.anahata.asi.agi.tool.AgiTool;
+import uno.anahata.asi.agi.tool.ToolManager;
+import uno.anahata.asi.agi.tool.ToolPermission;
+import uno.anahata.asi.agi.tool.ToolExecutionStatus;
+import uno.anahata.asi.agi.tool.graphql.GraphQLExecutionInfo;
+import uno.anahata.asi.agi.tool.schema.SchemaProvider;
+import uno.anahata.asi.agi.tool.spi.java.JavaMethodTool;
+import uno.anahata.asi.agi.tool.spi.java.JavaMethodToolCall;
+import uno.anahata.asi.agi.tool.spi.java.JavaObjectToolkit;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import uno.anahata.asi.nb.test.AsiToolTestBase;
 
 /**
- * Unit tests for the {@link Database} toolkit.
- * <p>
- * This class uses Mockito to simulate NetBeans Database Explorer APIs and JDBC
- * interfaces, ensuring the toolkit correctly transforms IDE objects and SQL
- * results into Anahata DTOs.
- * </p>
+ * Executes GraphQL commands through the actual Java tool response protocol.
+ * Only the IDE registry, message/session boundary and JDBC driver are mocked;
+ * no database, provider, session restoration or IDE installation is used.
  */
-public class DatabaseTest extends AsiToolTestBase {
+public class DatabaseTest {
 
-    private Database databaseToolkit;
-    private MockedStatic<ConnectionManager> mockedConnectionManager;
-    private ConnectionManager mockManager;
+    private MockedStatic<ConnectionManager> managerStatic;
+    private ConnectionManager manager;
+    private DatabaseConnection registered;
+    private Connection jdbc;
+    private Statement statement;
+    private ResultSet cursor;
+    private ResultSetMetaData metadata;
+    private JavaObjectToolkit wrapper;
+    private Database database;
+    private AbstractModelMessage message;
 
-    @Override
-    protected void doSetUp() {
-        databaseToolkit = new Database();
-        mockedConnectionManager = mockStatic(ConnectionManager.class);
-        mockManager = mock(ConnectionManager.class);
-        mockedConnectionManager.when(ConnectionManager::getDefault).thenReturn(mockManager);
+    @BeforeEach
+    void setUp() throws Exception {
+        managerStatic = mockStatic(ConnectionManager.class);
+        manager = mock(ConnectionManager.class);
+        managerStatic.when(ConnectionManager::getDefault).thenReturn(manager);
+        registered = mock(DatabaseConnection.class);
+        jdbc = mock(Connection.class);
+        statement = mock(Statement.class);
+        cursor = mock(ResultSet.class);
+        metadata = mock(ResultSetMetaData.class);
+        when(registered.getName()).thenReturn("anahata-test-registration");
+        when(registered.getDisplayName()).thenReturn("ANAHATA");
+        when(registered.getJDBCConnection()).thenReturn(jdbc);
+        when(manager.getConnections()).thenReturn(new DatabaseConnection[]{registered});
+        when(jdbc.createStatement()).thenReturn(statement);
+        when(statement.executeQuery(anyString())).thenReturn(cursor);
+        when(cursor.getMetaData()).thenReturn(metadata);
+        when(metadata.getColumnCount()).thenReturn(2);
+        when(metadata.getColumnLabel(anyInt())).thenReturn("duplicate_alias");
+        when(metadata.getColumnName(1)).thenReturn("first_column");
+        when(metadata.getColumnName(2)).thenReturn("second_column");
+        when(cursor.next()).thenReturn(true, false);
+        when(cursor.getObject(1)).thenReturn(21);
+        when(cursor.getObject(2)).thenReturn(null);
+        ToolManager toolManager = mock(ToolManager.class);
+        Agi agi = mock(Agi.class);
+        AgiConfig config = mock(AgiConfig.class);
+        when(agi.getConfig()).thenReturn(config);
+        when(agi.getToolManager()).thenReturn(toolManager);
+        when(config.getExpandTools()).thenReturn(ExpandToolsPreference.PROMPT);
+        when(toolManager.getAgi()).thenReturn(agi);
+        message = mock(AbstractModelMessage.class);
+        when(message.getAgi()).thenReturn(agi);
+        when(message.getPropertyChangeSupport()).thenReturn(new PropertyChangeSupport(message));
+        wrapper = new JavaObjectToolkit(toolManager, Database.class);
+        wrapper.initialize();
+        database = (Database) wrapper.getToolkitInstance();
     }
 
-    @Override
-    protected void doTearDown() {
-        mockedConnectionManager.close();
+    @AfterEach
+    void tearDown() {
+        managerStatic.close();
     }
 
-    private DatabaseConnection createMockConnection(String name, boolean connected) {
-        DatabaseConnection mockConn = mock(DatabaseConnection.class);
-        when(mockConn.getDisplayName()).thenReturn(name);
-        when(mockConn.getDatabaseURL()).thenReturn("jdbc:mock://localhost/" + name);
+    private JavaMethodTool tool(String method) {
+        return wrapper.getAllTools().stream().filter(tool -> tool.getName().equals("Database." + method)).findFirst().orElseThrow();
+    }
 
-        if (connected) {
-            Connection jdbcConn = mock(Connection.class);
-            when(mockConn.getJDBCConnection()).thenReturn(jdbcConn);
-        } else {
-            when(mockConn.getJDBCConnection()).thenReturn(null);
+    private JavaMethodToolCall call(String document, Map<String, Object> variables) {
+        return tool("mutate").createCall(message, UUID.randomUUID().toString(), Map.of("document", document, "variables", variables));
+    }
+
+    private GraphQLExecutionInfo execute(String document) {
+        return execute(document, Map.of());
+    }
+
+    private GraphQLExecutionInfo execute(String document, Map<String, Object> variables) {
+        JavaMethodToolCall call = call(document, variables);
+        call.getResponse().execute();
+        assertEquals(ToolExecutionStatus.EXECUTED, call.getResponse().getStatus(), call.getResponse().getErrors());
+        return (GraphQLExecutionInfo) call.getResponse().getResult();
+    }
+
+    private GraphQLExecutionInfo success(String document) {
+        GraphQLExecutionInfo result = execute(document);
+        assertTrue(result.getErrors().isEmpty(), result.getErrors().toString());
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> object(Object value) {
+        return (Map<String, Object>) value;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> items(Object value) {
+        return (List<Map<String, Object>>) value;
+    }
+
+    @Test
+    void exactlyThreeToolsExposeTheDatabaseSchemaAndCommands() {
+        assertEquals(List.of("Database.mutate", "Database.query", "Database.schema"), wrapper.getAllTools().stream().map(JavaMethodTool::getName).sorted().toList());
+        for (String method : List.of("connections", "metadata", "tables", "columns", "connect", "disconnect", "executeQuery", "executeStatement")) {
+            assertTrue(database.schema().contains(method));
         }
-        return mockConn;
+        wrapper.getAllTools().forEach(tool -> assertEquals(ToolPermission.PROMPT, tool.getPermission()));
     }
 
     @Test
-    void test_givenConnectionsExist_whenListConnections_thenReturnsConnections() {
-        // Arrange
-        DatabaseConnection mockConn = mock(DatabaseConnection.class);
-        JDBCDriver mockDriver = mock(JDBCDriver.class);
-        when(mockConn.getDisplayName()).thenReturn("MockDB");
-        when(mockConn.getDatabaseURL()).thenReturn("jdbc:mock://localhost");
-        when(mockConn.getJDBCDriver()).thenReturn(mockDriver);
-        when(mockDriver.getClassName()).thenReturn("org.mock.Driver");
-        when(mockConn.getJDBCConnection()).thenReturn(null);
-
-        when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
-
-        // Act
-        List<DatabaseConnectionInfo> result = wrapException(() -> databaseToolkit.listConnections());
-
-        // Assert
-        assertEquals(1, result.size());
-        assertEquals("MockDB", result.get(0).getDisplayName());
-        assertFalse(result.get(0).isConnected());
+    void queryCannotExecuteSqlOrMutations() throws Exception {
+        assertFalse(database.query("mutation { executeStatement(connection:\"ANAHATA\",sql:\"UPDATE anahata SET enabled=1\") { success } }", Map.of()).getErrors().isEmpty());
+        assertFalse(database.query("{ executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\") { success } }", Map.of()).getErrors().isEmpty());
+        verify(jdbc, never()).createStatement();
     }
 
     @Test
-    void test_givenConnectionExists_whenConnect_thenReturnsSuccess() {
-        // Arrange
-        DatabaseConnection mockConn = createMockConnection("TestDB", false);
-        when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
+    void directMutationRequiresTheToolProtocol() throws Exception {
+        GraphQLExecutionInfo result = database.mutate("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\") { success } }", Map.of());
+        assertEquals("PermissionDenied", result.getErrors().getFirst().getCategory());
+        verify(jdbc, never()).createStatement();
+    }
 
-        // Simulate connection being established after showConnectionDialog
+    @Test
+    void approvedConnectRunsEvenForSuccessOnlyAndHasNoMetadataChildren() {
+        when(registered.getJDBCConnection()).thenReturn(null);
         doAnswer(invocation -> {
-            when(mockConn.getJDBCConnection()).thenReturn(mock(Connection.class));
+            when(registered.getJDBCConnection()).thenReturn(jdbc);
             return null;
-        }).when(mockManager).showConnectionDialog(mockConn);
-
-        // Act
-        String result = wrapException(() -> databaseToolkit.connect("TestDB"));
-
-        // Assert
-        assertTrue(result.contains("Successfully connected"));
-        verify(mockManager).showConnectionDialog(mockConn);
+        }).when(manager).showConnectionDialog(registered);
+        GraphQLExecutionInfo result = success("mutation { connect(connection:\"ANAHATA\") { success } }");
+        assertEquals(true, object(result.getData().get("connect")).get("success"));
+        verify(manager).showConnectionDialog(registered);
+        verifyNoInteractions(jdbc);
     }
 
     @Test
-    void test_givenConnectionConnected_whenDisconnect_thenReturnsSuccess() {
-        // Arrange
-        DatabaseConnection mockConn = createMockConnection("TestDB", true);
-        when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
-
-        // Act
-        String result = wrapException(() -> databaseToolkit.disconnect("TestDB"));
-
-        // Assert
-        assertTrue(result.contains("Successfully disconnected"));
-        verify(mockManager).disconnect(mockConn);
+    void explicitDisconnectAndIdempotenceUseTheManagerOnly() throws Exception {
+        doAnswer(invocation -> {
+            when(registered.getJDBCConnection()).thenReturn(null);
+            return null;
+        }).when(manager).disconnect(registered);
+        success("mutation { disconnect(connection:\"ANAHATA\") { success connected } }");
+        success("mutation { disconnect(connection:\"ANAHATA\") { success } }");
+        verify(manager, times(1)).disconnect(registered);
+        verify(jdbc, never()).close();
     }
 
     @Test
-    void test_givenActiveConnection_whenGetMetadata_thenReturnsMetadata() {
-        // Arrange
-        DatabaseConnection mockConn = createMockConnection("TestDB", true);
-        Connection jdbcConn = mockConn.getJDBCConnection();
-        DatabaseMetaData mockMeta = mock(DatabaseMetaData.class);
+    void sqlSuccessOnlyExecutesButAvoidsMetadataIterationAndValues() throws Exception {
+        success("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",limit:2) { success } }");
+        verify(statement).executeQuery("SELECT 1");
+        verify(statement).setQueryTimeout(10);
+        verify(statement).setMaxRows(3);
+        verify(cursor, never()).getMetaData();
+        verify(cursor, never()).next();
+        verify(cursor, never()).getObject(anyInt());
+        verify(cursor).close();
+        verify(statement).close();
+        verify(jdbc, never()).close();
+    }
 
-        wrapException(() -> {
-            when(jdbcConn.getMetaData()).thenReturn(mockMeta);
-            when(mockMeta.getDatabaseProductName()).thenReturn("MockDB");
-            when(mockMeta.getDatabaseProductVersion()).thenReturn("1.0");
-            when(mockMeta.getDriverName()).thenReturn("MockDriver");
-            when(mockMeta.getDriverVersion()).thenReturn("2.0");
+    @Test
+    void rowsPreserveDuplicateAliasesNullsAndColumnPositions() throws Exception {
+        GraphQLExecutionInfo result = success("""
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT first_column AS duplicate_alias, second_column AS duplicate_alias FROM anahata",limit:2) {
+                  columns { index label name } rows { index cells { columnIndex value truncated } } returnedRowCount hasNextPage totalCount
+                } }
+                """);
+        Map<String, Object> sql = object(result.getData().get("executeQuery"));
+        List<Map<String, Object>> columns = items(sql.get("columns"));
+        assertEquals("duplicate_alias", columns.get(0).get("label"));
+        assertEquals("duplicate_alias", columns.get(1).get("label"));
+        List<Map<String, Object>> cells = items(items(sql.get("rows")).getFirst().get("cells"));
+        assertEquals(1, cells.get(0).get("columnIndex"));
+        assertEquals(2, cells.get(1).get("columnIndex"));
+        assertEquals(21, cells.get(0).get("value"));
+        assertTrue(cells.get(1).containsKey("value"));
+        assertNull(cells.get(1).get("value"));
+        assertEquals(1, sql.get("returnedRowCount"));
+        assertEquals(false, sql.get("hasNextPage"));
+        assertNull(sql.get("totalCount"));
+        String serialized = SchemaProvider.OBJECT_MAPPER.writeValueAsString(result);
+        assertTrue(serialized.contains("\"value\":null"), serialized);
+        assertTrue(serialized.contains("\"totalCount\":null"), serialized);
+        verify(metadata, never()).getColumnType(anyInt());
+        verify(jdbc, never()).close();
+    }
+
+    @Test
+    void rowCountAndLookaheadDoNotReadCellValuesOrMetadata() throws Exception {
+        when(cursor.next()).thenReturn(true, true, true, true);
+        GraphQLExecutionInfo result = success("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",limit:2) { returnedRowCount hasNextPage } }");
+        Map<String, Object> sql = object(result.getData().get("executeQuery"));
+        assertEquals(2, sql.get("returnedRowCount"));
+        assertEquals(true, sql.get("hasNextPage"));
+        verify(cursor, times(3)).next();
+        verify(cursor, never()).getMetaData();
+        verify(cursor, never()).getObject(anyInt());
+    }
+
+    @Test
+    void exactlyLimitRowsHaveNoNextPage() throws Exception {
+        when(cursor.next()).thenReturn(true, true, false);
+        GraphQLExecutionInfo result = success("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",limit:2) { returnedRowCount hasNextPage } }");
+        assertEquals(false, object(result.getData().get("executeQuery")).get("hasNextPage"));
+        verify(cursor, times(3)).next();
+    }
+
+    @Test
+    void columnLabelsOnlyAvoidRowsValuesAndOtherMetadataGetters() throws Exception {
+        success("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",limit:2) { columns { label } } }");
+        verify(metadata).getColumnLabel(1);
+        verify(metadata, never()).getColumnName(anyInt());
+        verify(metadata, never()).getColumnType(anyInt());
+        verify(cursor, never()).next();
+        verify(cursor, never()).getObject(anyInt());
+    }
+
+    @Test
+    void rowPositionsOnlyAvoidReadingCellValues() throws Exception {
+        success("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",limit:2) { rows { cells { columnIndex } } } }");
+        verify(metadata).getColumnCount();
+        verify(metadata, never()).getColumnLabel(anyInt());
+        verify(cursor, never()).getObject(anyInt());
+    }
+
+    @Test
+    void variablesAliasesFragmentsAndDirectivesDriveTheSelectedWork() throws Exception {
+        GraphQLExecutionInfo result = execute("""
+                mutation($target:ID!,$sql:String!,$include:Boolean!) {
+                  chosen:executeQuery(connection:$target,sql:$sql,limit:2) { ...Output }
+                  skip:executeStatement(connection:$target,sql:"UPDATE anahata SET enabled=1") @include(if:$include) { success }
+                }
+                fragment Output on SqlQueryInfo { rows { cells { alias:value } } }
+                """, Map.of("target", DatabaseConnections.id(registered), "sql", "SELECT 1", "include", false));
+        assertTrue(result.getErrors().isEmpty(), result.toString());
+        assertTrue(result.getData().containsKey("chosen"));
+        assertFalse(result.getData().containsKey("skip"));
+        assertEquals(21, items(items(object(result.getData().get("chosen")).get("rows")).getFirst().get("cells")).getFirst().get("alias"));
+        verify(statement, never()).executeUpdate(anyString());
+    }
+
+    @Test
+    void invalidLaterCommandPreventsEarlierEffects() throws Exception {
+        GraphQLExecutionInfo result = execute("""
+                mutation { first:executeStatement(connection:"ANAHATA",sql:"UPDATE anahata SET enabled=1") { success }
+                  second:executeQuery(connection:"ANAHATA",sql:"SELECT 1",limit:1001) { success } }
+                """);
+        assertFalse(result.getErrors().isEmpty());
+        assertNull(result.getData());
+        verify(jdbc, never()).createStatement();
+        verify(manager, never()).showConnectionDialog(any());
+    }
+
+    @Test
+    void validationRejectsBadVariablesSchemaChannelsAndMultipleOperationsBeforeEffects() throws Exception {
+        for (String document : List.of("{ connections { offset } }", "mutation A { connect(connection:\"ANAHATA\") { success } } mutation B { connect(connection:\"ANAHATA\") { success } }", "mutation { unknown }")) {
+            assertFalse(execute(document).getErrors().isEmpty());
+        }
+        assertFalse(execute("mutation($n:Int!) { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",limit:$n) { success } }", Map.of("n", "invalid")).getErrors().isEmpty());
+        verify(jdbc, never()).createStatement();
+        verify(manager, never()).showConnectionDialog(any());
+    }
+
+    @Test
+    void allConnectionIdentitiesAreCheckedBeforeAnyEffect() throws Exception {
+        GraphQLExecutionInfo result = execute("mutation { first:disconnect(connection:\"ANAHATA\") { success } second:connect(connection:\"missing\") { success } }");
+        assertEquals("ConnectionNotFound", result.getErrors().getFirst().getCategory());
+        verify(manager, never()).disconnect(any());
+        verify(manager, never()).showConnectionDialog(any());
+    }
+
+    @Test
+    void ambiguousInactiveAndMismatchedConnectionsNeverFallback() throws Exception {
+        when(registered.getJDBCConnection()).thenReturn(null);
+        GraphQLExecutionInfo inactive = execute("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\") { success } }");
+        assertEquals("ConnectionInactive", inactive.getErrors().getFirst().getCategory());
+        verify(manager, never()).showConnectionDialog(any());
+        when(registered.getJDBCConnection()).thenReturn(jdbc);
+        when(jdbc.getCatalog()).thenReturn("anahata");
+        GraphQLExecutionInfo mismatch = execute("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",catalog:\"other\") { success } }");
+        assertEquals("DestinationMismatch", mismatch.getErrors().getFirst().getCategory());
+        verify(jdbc, never()).createStatement();
+        DatabaseConnection duplicate = mock(DatabaseConnection.class);
+        when(duplicate.getDisplayName()).thenReturn("ANAHATA");
+        when(duplicate.getName()).thenReturn("other-registration");
+        when(manager.getConnections()).thenReturn(new DatabaseConnection[]{registered, duplicate});
+        GraphQLExecutionInfo ambiguous = execute("mutation { connect(connection:\"ANAHATA\") { success } }");
+        assertEquals("ConnectionAmbiguous", ambiguous.getErrors().getFirst().getCategory());
+    }
+
+    @Test
+    void statementEffectsDoNotDependOnSelectingAffectedRows() throws Exception {
+        when(statement.executeUpdate(anyString())).thenReturn(3);
+        GraphQLExecutionInfo result = success("mutation { executeStatement(connection:\"ANAHATA\",sql:\"UPDATE anahata SET enabled=1\") { success } }");
+        assertEquals(true, object(result.getData().get("executeStatement")).get("success"));
+        verify(statement).executeUpdate("UPDATE anahata SET enabled=1");
+        verify(statement).close();
+        verify(jdbc, never()).close();
+        verify(jdbc, never()).commit();
+        verify(jdbc, never()).rollback();
+        verify(jdbc, never()).setAutoCommit(anyBoolean());
+    }
+
+    @Test
+    void multipleCommandsAreSerialWithPartialErrorsAndNoCombinedRollbackOrRetry() throws Exception {
+        Statement first = mock(Statement.class);
+        Statement second = mock(Statement.class);
+        when(jdbc.createStatement()).thenReturn(first, second);
+        when(first.executeUpdate("UPDATE anahata SET enabled=1")).thenReturn(1);
+        when(second.executeUpdate("UPDATE missing SET enabled=1")).thenThrow(new SQLException("jdbc:private user=secret", "42S02"));
+        GraphQLExecutionInfo result = execute("""
+                mutation { first:executeStatement(connection:"ANAHATA",sql:"UPDATE anahata SET enabled=1") { affectedRows }
+                  second:executeStatement(connection:"ANAHATA",sql:"UPDATE missing SET enabled=1") { success } }
+                """);
+        assertEquals(1, object(result.getData().get("first")).get("affectedRows"));
+        assertNull(result.getData().get("second"));
+        assertEquals(List.of("second"), result.getErrors().getFirst().getPath());
+        assertEquals("SqlTableNotFound", result.getErrors().getFirst().getCategory());
+        assertFalse(result.getErrors().getFirst().getMessage().contains("secret"));
+        var order = inOrder(first, second);
+        order.verify(first).executeUpdate(anyString());
+        order.verify(second).executeUpdate(anyString());
+        verify(first).close();
+        verify(second).close();
+        verify(jdbc, never()).rollback();
+        verify(jdbc, never()).commit();
+        verify(second, times(1)).executeUpdate(anyString());
+    }
+
+    @Test
+    void deniedAndDisabledToolsCannotBeExecutedManually() throws Exception {
+        JavaMethodToolCall call = call("mutation { connect(connection:\"ANAHATA\") { success } }", Map.of());
+        tool("mutate").setPermission(ToolPermission.DENY);
+        call.getResponse().execute();
+        assertEquals(ToolExecutionStatus.FAILED, call.getResponse().getStatus());
+        tool("mutate").setPermission(ToolPermission.PROMPT);
+        wrapper.setEnabled(false);
+        JavaMethodToolCall disabled = call("mutation { connect(connection:\"ANAHATA\") { success } }", Map.of());
+        disabled.getResponse().execute();
+        assertEquals(ToolExecutionStatus.FAILED, disabled.getResponse().getStatus());
+        verify(manager, never()).showConnectionDialog(any());
+        verify(jdbc, never()).createStatement();
+    }
+
+    @Test
+    void safeErrorsDistinguishTimeoutColumnAndPermissionsWithoutDriverMessages() throws Exception {
+        for (SQLException failure : List.of(new SQLTimeoutException("secret"), new SQLException("secret", "42S22"), new SQLException("secret", "42501"))) {
+            doThrow(failure).when(statement).executeQuery(anyString());
+            GraphQLExecutionInfo result = execute("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\") { success } }");
+            assertFalse(result.getErrors().isEmpty());
+            assertFalse(result.getErrors().getFirst().getMessage().contains("secret"));
+            assertTrue(result.getErrors().getFirst().getMessage().contains("reference"));
+        }
+        verify(jdbc, never()).close();
+    }
+
+    @Test
+    void driverWithoutTimeoutSupportDoesNotStartSql() throws Exception {
+        doThrow(new SQLFeatureNotSupportedException("private")).when(statement).setQueryTimeout(anyInt());
+        GraphQLExecutionInfo result = execute("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\") { success } }");
+        assertEquals("TimeoutUnsupported", result.getErrors().getFirst().getCategory());
+        verify(statement, never()).executeQuery(anyString());
+        verify(statement).close();
+    }
+
+    @Test
+    void cellTruncationAndBinaryEncodingAreExplicit() throws Exception {
+        when(cursor.getObject(1)).thenReturn("x".repeat(5000));
+        when(cursor.getObject(2)).thenReturn(new byte[]{1, 2, 3});
+        GraphQLExecutionInfo result = success("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",limit:2) { rows { cells { value truncated encoding } } } }");
+        List<Map<String, Object>> cells = items(items(object(result.getData().get("executeQuery")).get("rows")).getFirst().get("cells"));
+        assertEquals(4096, ((String) cells.get(0).get("value")).length());
+        assertEquals(true, cells.get(0).get("truncated"));
+        assertEquals("AQID", cells.get(1).get("value"));
+        assertEquals("base64", cells.get(1).get("encoding"));
+    }
+
+    @Test
+    void unknownDriverObjectsNeverReachThePayloadAndResourcesClose() throws Exception {
+        when(cursor.getObject(1)).thenReturn(new Object());
+        GraphQLExecutionInfo result = execute("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",limit:2) { rows { cells { value } } } }");
+        assertEquals("SqlValueUnsupported", result.getErrors().getFirst().getCategory());
+        verify(cursor).close();
+        verify(statement).close();
+        verify(jdbc, never()).close();
+    }
+
+    @Test
+    void interruptedIterationCancelsOwnedStatementAndClosesResources() throws Exception {
+        when(cursor.next()).thenAnswer(invocation -> {
+            Thread.currentThread().interrupt();
+            return true;
         });
-
-        when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
-
-        // Act
-        DatabaseMetadataInfo info = wrapException(() -> databaseToolkit.getMetadata("TestDB"));
-
-        // Assert
-        assertNotNull(info);
-        assertEquals("MockDB", info.getDatabaseProductName());
-        assertEquals("1.0", info.getDatabaseProductVersion());
+        try {
+            GraphQLExecutionInfo result = execute("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\",limit:2) { returnedRowCount } }");
+            assertFalse(result.getErrors().isEmpty());
+        } finally {
+            Thread.interrupted();
+        }
+        verify(statement).cancel();
+        verify(cursor).close();
+        verify(statement).close();
+        verify(jdbc, never()).close();
     }
 
     @Test
-    void test_givenActiveConnection_whenListTables_thenReturnsTables() {
-        // Arrange
-        DatabaseConnection mockConn = createMockConnection("TestDB", true);
-        Connection jdbcConn = mockConn.getJDBCConnection();
-        DatabaseMetaData mockMeta = mock(DatabaseMetaData.class);
-        ResultSet mockRs = mock(ResultSet.class);
-
-        wrapException(() -> {
-            when(jdbcConn.getMetaData()).thenReturn(mockMeta);
-            when(mockMeta.getTables(null, "public", "%", new String[]{"TABLE", "VIEW"})).thenReturn(mockRs);
-
-            when(mockRs.next()).thenReturn(true, false);
-            when(mockRs.getString("TABLE_NAME")).thenReturn("users");
-            when(mockRs.getString("TABLE_TYPE")).thenReturn("TABLE");
-        });
-
-        when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
-
-        // Act
-        List<TableInfo> tables = wrapException(() -> databaseToolkit.listTables("TestDB", "public"));
-
-        // Assert
-        assertEquals(1, tables.size());
-        assertEquals("users", tables.get(0).getTableName());
+    void opaqueDiscoveryIdSuppressesSensitiveRegisteredLabels() throws Exception {
+        when(registered.getDisplayName()).thenReturn("jdbc:private user=secret");
+        GraphQLExecutionInfo result = database.query("{ connections { items { id displayName } } }", Map.of());
+        assertTrue(result.getErrors().isEmpty());
+        String json = SchemaProvider.OBJECT_MAPPER.writeValueAsString(result);
+        assertFalse(json.contains("jdbc:"));
+        assertFalse(json.contains("secret"));
+        assertTrue(json.contains("db-"));
+        verify(registered, never()).getPassword();
+        verify(registered, never()).getDatabaseURL();
+        verify(registered, never()).getUser();
     }
 
     @Test
-    void test_givenActiveConnection_whenExecuteQuery_thenReturnsQueryResult() {
-        // Arrange
-        DatabaseConnection mockConn = createMockConnection("TestDB", true);
-        Connection jdbcConn = mockConn.getJDBCConnection();
-        Statement mockStmt = mock(Statement.class);
-        ResultSet mockRs = mock(ResultSet.class);
-        ResultSetMetaData mockRsMeta = mock(ResultSetMetaData.class);
-
-        wrapException(() -> {
-            when(jdbcConn.createStatement()).thenReturn(mockStmt);
-            when(mockStmt.executeQuery(anyString())).thenReturn(mockRs);
-            when(mockRs.getMetaData()).thenReturn(mockRsMeta);
-
-            when(mockRsMeta.getColumnCount()).thenReturn(1);
-            when(mockRsMeta.getColumnName(1)).thenReturn("id");
-
-            when(mockRs.next()).thenReturn(true, false);
-            when(mockRs.getObject(1)).thenReturn(108);
-        });
-
-        when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
-
-        // Act
-        QueryResult result = wrapException(() -> databaseToolkit.executeQuery("TestDB", "SELECT 1", 10));
-
-        // Assert
-        assertEquals(1, result.getRowCount());
-        assertEquals("id", result.getHeaders().get(0));
-        assertEquals(108, result.getRows().get(0).get("id"));
+    void nullableDriverFlagsAndEmptyResultStayDistinct() throws Exception {
+        when(metadata.isNullable(anyInt())).thenReturn(ResultSetMetaData.columnNullableUnknown);
+        when(cursor.next()).thenReturn(false);
+        GraphQLExecutionInfo result = success("""
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT 1",limit:2) {
+                  columns { nullable } rows { index } returnedRowCount hasNextPage
+                } }
+                """);
+        Map<String, Object> sql = object(result.getData().get("executeQuery"));
+        assertNull(items(sql.get("columns")).getFirst().get("nullable"));
+        assertTrue(items(sql.get("rows")).isEmpty());
+        assertEquals(0, sql.get("returnedRowCount"));
+        assertEquals(false, sql.get("hasNextPage"));
     }
 
     @Test
-    void test_givenActiveConnection_whenExecuteStatement_thenReturnsStatementResult() {
-        // Arrange
-        DatabaseConnection mockConn = createMockConnection("TestDB", true);
-        Connection jdbcConn = mockConn.getJDBCConnection();
-        Statement mockStmt = mock(Statement.class);
-
-        wrapException(() -> {
-            when(jdbcConn.createStatement()).thenReturn(mockStmt);
-            when(mockStmt.executeUpdate(anyString())).thenReturn(5);
-        });
-
-        when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
-
-        // Act
-        StatementResult result = wrapException(() -> databaseToolkit.executeStatement("TestDB", "UPDATE users SET active = 1"));
-
-        // Assert
-        assertEquals(5, result.getAffectedRows());
-        assertTrue(result.getMessage().contains("successfully"));
+    void invalidSqlTimeoutAndNullLimitAreRejectedBeforeAnyStatement() throws Exception {
+        List<Map<String, Object>> cases = List.of(Map.of("sql", ""), Map.of("timeout", 0), Map.of("timeout", 31),
+                java.util.Collections.singletonMap("n", null), Map.of("n", 0));
+        for (Map<String, Object> invalid : cases) {
+            Map<String, Object> variables = new LinkedHashMap<>();
+            variables.put("sql", "SELECT 1");
+            variables.putAll(invalid);
+            GraphQLExecutionInfo result = execute("""
+                    mutation($sql:String!,$timeout:Int=10,$n:Int=100) {
+                      executeQuery(connection:"ANAHATA",sql:$sql,timeoutSeconds:$timeout,limit:$n) { success }
+                    }
+                    """, variables);
+            assertFalse(result.getErrors().isEmpty(), "Invalid case: " + invalid);
+        }
+        verify(jdbc, never()).createStatement();
     }
 
     @Test
-    void test_givenActiveConnection_whenGetTableColumns_thenReturnsColumns() {
-        // Arrange
-        DatabaseConnection mockConn = createMockConnection("TestDB", true);
-        Connection jdbcConn = mockConn.getJDBCConnection();
-        DatabaseMetaData mockMeta = mock(DatabaseMetaData.class);
-        ResultSet mockPkRs = mock(ResultSet.class);
-        ResultSet mockColRs = mock(ResultSet.class);
-
-        wrapException(() -> {
-            when(jdbcConn.getMetaData()).thenReturn(mockMeta);
-
-            // Mock Primary Keys
-            when(mockMeta.getPrimaryKeys(null, null, "users")).thenReturn(mockPkRs);
-            when(mockPkRs.next()).thenReturn(true, false);
-            when(mockPkRs.getString("COLUMN_NAME")).thenReturn("id");
-
-            // Mock Columns
-            when(mockMeta.getColumns(null, null, "users", "%")).thenReturn(mockColRs);
-            when(mockColRs.next()).thenReturn(true, false);
-            when(mockColRs.getString("COLUMN_NAME")).thenReturn("id");
-            when(mockColRs.getString("TYPE_NAME")).thenReturn("INTEGER");
-            when(mockColRs.getInt("COLUMN_SIZE")).thenReturn(11);
-            when(mockColRs.getString("IS_NULLABLE")).thenReturn("NO");
-            when(mockColRs.getString("IS_AUTOINCREMENT")).thenReturn("YES");
-        });
-
-        when(mockManager.getConnections()).thenReturn(new DatabaseConnection[]{mockConn});
-
-        // Act
-        List<ColumnInfo> columns = wrapException(() -> databaseToolkit.getTableColumns("TestDB", "users"));
-
-        // Assert
-        assertEquals(1, columns.size());
-        ColumnInfo col = columns.get(0);
-        assertEquals("id", col.getColumnName());
-        assertTrue(col.isPrimaryKey());
-        assertTrue(col.isAutoIncrement());
-        assertFalse(col.isNullable());
+    void commandCountLimitAppliesBeforeAnyConnectionEffect() {
+        StringBuilder document = new StringBuilder("mutation {");
+        for (int i = 0; i < 9; i++) {
+            document.append("c").append(i).append(":").append("""
+                    connect(connection:"ANAHATA") { success }
+                    """);
+        }
+        document.append("}");
+        assertEquals("LimitExceeded", execute(document.toString()).getErrors().getFirst().getCategory());
+        verify(manager, never()).showConnectionDialog(any());
     }
 
     @Test
-    void test_givenNoConnection_whenConnect_thenThrowsException() {
-        // Arrange
-        when(mockManager.getConnections()).thenReturn(new DatabaseConnection[0]);
-
-        // Act & Assert
-        assertThrows(AgiToolException.class, () -> {
-            databaseToolkit.connect("NonExistent");
-        });
+    void selectedConnectionOutputUsesConcreteInfoWithoutMetadataAcquisition() throws Exception {
+        GraphQLExecutionInfo result = success("""
+                mutation { connect(connection:"ANAHATA") { success connected connection { id displayName } } }
+                """);
+        Map<String, Object> command = object(result.getData().get("connect"));
+        assertEquals(true, command.get("connected"));
+        assertEquals(DatabaseConnections.id(registered), object(command.get("connection")).get("id"));
+        verify(jdbc, never()).getMetaData();
+        verify(manager, never()).showConnectionDialog(any());
     }
 
     @Test
-    void test_givenToolkit_whenInitialize_thenRegistersConnectionListener() {
-        // Act
-        databaseToolkit.initialize();
-
-        // Assert
-        verify(mockManager).addConnectionListener(databaseToolkit);
+    void ordinaryToolkitsKeepTheirRegistrationRebindAndInvocation() throws Exception {
+        JavaObjectToolkit ordinary = new JavaObjectToolkit(wrapper.getToolManager(), OrdinaryToolkit.class);
+        ordinary.initialize();
+        ordinary.rebind();
+        ordinary.postActivate();
+        assertEquals(List.of("OrdinaryToolkit.echo"), ordinary.getAllTools().stream().map(JavaMethodTool::getName).toList());
+        JavaMethodToolCall call = ordinary.getAllTools().getFirst().createCall(message, "ordinary-call", Map.of("text", "original"));
+        call.setModifiedArgument("text", "edited");
+        call.getResponse().execute();
+        assertEquals(ToolExecutionStatus.EXECUTED, call.getResponse().getStatus());
+        assertEquals("edited", call.getResponse().getResult());
+        assertEquals(ToolPermission.PROMPT, ordinary.getAllTools().getFirst().getPermission());
     }
+
+    @Test
+    void explicitNullVariablesSurviveConversionAndCallSerialization() throws Exception {
+        Map<String, Object> nested = new LinkedHashMap<>();
+        nested.put("inner", null);
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("n", null);
+        variables.put("nested", nested);
+        JavaMethodToolCall call = call("""
+                mutation($n:Int=100) { executeQuery(connection:"ANAHATA",sql:"SELECT 1",limit:$n) { success } }
+                """, variables);
+        assertTrue(object(call.getArgs().get("variables")).containsKey("n"));
+        assertNull(object(call.getArgs().get("variables")).get("n"));
+        var serialized = SchemaProvider.OBJECT_MAPPER.readTree(SchemaProvider.OBJECT_MAPPER.writeValueAsString(call.getRawArgs()));
+        assertTrue(serialized.get("variables").has("n"));
+        assertTrue(serialized.get("variables").get("n").isNull());
+        assertTrue(serialized.get("variables").get("nested").get("inner").isNull());
+        call.getResponse().execute();
+        GraphQLExecutionInfo result = (GraphQLExecutionInfo) call.getResponse().getResult();
+        assertEquals("InvalidArgument", result.getErrors().getFirst().getCategory());
+        verify(jdbc, never()).createStatement();
+    }
+
+    @Test
+    void invalidVariableObjectIsSafelyRejectedAndCannotExecutePartialArguments() throws Exception {
+        JavaMethodToolCall rejected = tool("mutate").createCall(message, "bad-variables", Map.of("document", """
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT 1") { success } }
+                """, "variables", "jdbc:private user=secret"));
+        assertEquals(ToolExecutionStatus.FAILED, rejected.getResponse().getStatus());
+        assertFalse(rejected.getResponse().getErrors().contains("secret"));
+        rejected.getResponse().execute();
+        assertEquals(ToolExecutionStatus.FAILED, rejected.getResponse().getStatus());
+        assertNull(rejected.getResponse().getResult());
+        verify(jdbc, never()).createStatement();
+    }
+
+    @Test
+    void editedVariableSnapshotKeepsNullAndDoesNotActivateTheDefaultLimit() throws Exception {
+        JavaMethodToolCall call = call("""
+                mutation($n:Int=100) { executeQuery(connection:"ANAHATA",sql:"SELECT 1",limit:$n) { success } }
+                """, Map.of("n", 2));
+        call.setModifiedArgument("variables", java.util.Collections.singletonMap("n", null));
+        call.getResponse().execute();
+        GraphQLExecutionInfo result = (GraphQLExecutionInfo) call.getResponse().getResult();
+        assertEquals("InvalidArgument", result.getErrors().getFirst().getCategory());
+        var json = SchemaProvider.OBJECT_MAPPER.readTree(SchemaProvider.OBJECT_MAPPER.writeValueAsString(call.getResponse().getModifiedArgs()));
+        assertTrue(json.get("variables").has("n"));
+        assertTrue(json.get("variables").get("n").isNull());
+        verify(jdbc, never()).createStatement();
+    }
+
+    @Test
+    void malformedEditedVariableObjectIsRejectedWithoutStacktraceOrSql() throws Exception {
+        JavaMethodToolCall call = call("""
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT 1") { success } }
+                """, Map.of());
+        call.setModifiedArgument("variables", "jdbc:private user=secret");
+        call.getResponse().execute();
+        assertEquals(ToolExecutionStatus.FAILED, call.getResponse().getStatus());
+        assertFalse(call.getResponse().getErrors().contains("secret"));
+        assertFalse(call.getResponse().getErrors().contains(".java:"));
+        verify(jdbc, never()).createStatement();
+    }
+
+    @uno.anahata.asi.agi.tool.AgiToolkit("Ordinary Java toolkit regression fixture")
+    public static class OrdinaryToolkit extends uno.anahata.asi.agi.tool.AnahataToolkit {
+
+        @AgiTool("Echoes the selected text")
+        public String echo(String text) {
+            return text;
+        }
+    }
+
 }

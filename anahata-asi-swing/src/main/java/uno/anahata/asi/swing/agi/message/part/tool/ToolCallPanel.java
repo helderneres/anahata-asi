@@ -202,6 +202,19 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         argsContainer.setOpaque(false);
         getCentralContainer().add(argsContainer, "hidemode 3, push, growx, wmin 0, wrap");
 
+        // --- Tool Call Raw JSON Link (between args and response) ---
+        CodeHyperlink toolCallJsonLink = new CodeHyperlink("Tool Call Json",
+                () -> "Tool Call Invocation: " + getPart().getToolName(),
+                () -> {
+                    String raw = getPart().getRawCallJson();
+                    return raw != null && !raw.isBlank() ? raw : JacksonUtils.prettyPrint(getPart().getEffectiveArgs());
+                },
+                "json");
+        JPanel toolCallJsonRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        toolCallJsonRow.setOpaque(false);
+        toolCallJsonRow.add(toolCallJsonLink);
+        getCentralContainer().add(toolCallJsonRow, "hidemode 3, growx, wrap");
+
         // --- Response Panel (Middle) ---
         resultsTabbedPane = new AdjustingTabPane(150);
 
@@ -334,8 +347,8 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         statusPanel.add(toolProgressBar);
         controlsRow.add(statusPanel);
 
-        // Json Link (capitalized 'Json')
-        jsonLink = new CodeHyperlink("Json",
+        // Tool Response Json Link
+        jsonLink = new CodeHyperlink("Tool Response Json",
                 () -> "Tool Response: " + getPart().getToolName(),
                 () -> JacksonUtils.prettyPrint(getPart().getResponse()),
                 "json");
@@ -687,6 +700,8 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         if (executionTime != null && executionTime > 0) {
             sb.append(" (").append(executionTime).append(" ms)");
         }
+        
+        sb.append(String.format(" <font color='#888888'><b>[%,d]</b></font>", call.getTokenCount()));
         
         sb.append("</html>");
         

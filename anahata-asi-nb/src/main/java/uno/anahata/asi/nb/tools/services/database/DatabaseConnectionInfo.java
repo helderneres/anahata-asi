@@ -18,10 +18,12 @@ import lombok.Data;
 @Builder
 public class DatabaseConnectionInfo {
 
+    /**
+     * Opaque identifier of the registered connection.
+     */
+    private String id;
     private String displayName;
-    private String databaseUrl;
     private String driverClass;
-    private String user;
     private String schema;
     private boolean connected;
 }

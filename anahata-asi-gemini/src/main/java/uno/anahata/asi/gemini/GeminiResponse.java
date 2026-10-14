@@ -49,18 +49,6 @@ public class GeminiResponse extends Response<GeminiModelMessage> {
      */
     private final Optional<String> promptFeedback;
     /**
-     * The raw JSON of the request configuration.
-     */
-    private final String rawRequestConfigJson;
-    /**
-     * The raw JSON of the conversation history sent in the request.
-     */
-    private final String rawHistoryJson;
-    /**
-     * The raw JSON of the entire response.
-     */
-    private final String rawJson;    
-    /**
      * The model version used for this specific generation.
      */
     private final String modelVersion;
@@ -69,17 +57,12 @@ public class GeminiResponse extends Response<GeminiModelMessage> {
      * Constructs a GeminiResponse, performing the full conversion from the native
      * Google GenAI response to the Anahata domain model.
      *
-     * @param requestConfigJson The raw JSON of the request configuration.
-     * @param historyJson   The raw JSON of the conversation history sent in the request.
      * @param agi          The parent agi session, required for constructing model messages.
      * @param modelId       The ID of the model that generated this response.
      * @param genaiResponse The native response object from the API.
      */
-    public GeminiResponse(String requestConfigJson, String historyJson, Agi agi, String modelId, GenerateContentResponse genaiResponse) {
-        this.rawRequestConfigJson = requestConfigJson;
-        this.rawHistoryJson = historyJson;
+    public GeminiResponse(Agi agi, String modelId, GenerateContentResponse genaiResponse) {
         this.genaiResponse = genaiResponse;
-        this.rawJson = genaiResponse.toJson();
         this.modelVersion = genaiResponse.modelVersion().orElse(modelId);
 
         this.usageMetadata = genaiResponse.usageMetadata()

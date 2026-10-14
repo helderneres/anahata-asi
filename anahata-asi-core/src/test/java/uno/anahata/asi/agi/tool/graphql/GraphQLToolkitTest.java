@@ -224,6 +224,56 @@ public class GraphQLToolkitTest {
         assertTrue(bytes.size() > 0);
     }
 
+    /** Existing GraphQL subclasses do not opt into Database command behavior. */
+    @Test
+    public void readOnlyToolkitRemainsQueryOnlyAfterRebind() throws Exception {
+        MockAsiContainer container = new MockAsiContainer("graphql-opt-in-test");
+        Agi agi = new Agi(new AgiConfig(container, "graphql-opt-in-session"));
+        JavaObjectToolkit wrapper = new JavaObjectToolkit(agi.getToolManager(), TestToolkit.class);
+        wrapper.initialize();
+        wrapper.rebind();
+        wrapper.postActivate();
+        TestToolkit readOnly = (TestToolkit) wrapper.getToolkitInstance();
+        assertFalse(readOnly.isCommandToolkit());
+        assertEquals(List.of("TestToolkit.query", "TestToolkit.schema"), wrapper.getAllTools().stream().map(tool -> tool.getName()).sorted().toList());
+        GraphQLExecutionInfo rejected = readOnly.mutate("mutation { message }", Map.of());
+        assertEquals("MutationUnsupported", rejected.getErrors().getFirst().getCategory());
+        assertEquals("hello", readOnly.query("{ message }", Map.of()).getData().get("message"));
+        assertTrue(readOnly.query("{ __typename }", Map.of()).getErrors().isEmpty());
+    }
+
+    /** Selected nulls survive only the GraphQL response's local serializer. */
+    @Test
+    public void graphQLNullSerializationDoesNotChangeOrdinaryMapperPolicy() throws Exception {
+        var mapper = uno.anahata.asi.agi.tool.schema.SchemaProvider.OBJECT_MAPPER;
+        GraphQLExecutionInfo response = toolkit().query("{ nullable exploded }", Map.of());
+        var json = mapper.readTree(mapper.writeValueAsString(response));
+        assertTrue(json.get("data").has("nullable"));
+        assertTrue(json.get("data").get("nullable").isNull());
+        assertTrue(json.get("data").get("exploded").isNull());
+        assertEquals(1, json.get("errors").size());
+        assertFalse(response.toString().contains("@"));
+        assertFalse(mapper.readTree(mapper.writeValueAsString(java.util.Collections.singletonMap("ordinary", null))).has("ordinary"));
+    }
+
+    /** Only a synthetic variable map is cloned; no session/toolkit is restored. */
+    @Test
+    public void nullVariablesSurviveTheExistingKryoMapSerializer() throws Exception {
+        Map<String, Object> values = new java.util.LinkedHashMap<>();
+        values.put("n", null);
+        values.put("nested", java.util.Collections.singletonMap("inner", null));
+        GraphQLVariables original = new GraphQLVariables(values);
+        GraphQLVariables restored = uno.anahata.asi.persistence.kryo.KryoUtils.clone(original);
+        assertEquals(original, restored);
+        assertTrue(restored.containsKey("n"));
+        restored.put("afterRestore", 21);
+        var mapper = uno.anahata.asi.agi.tool.schema.SchemaProvider.OBJECT_MAPPER;
+        var json = mapper.readTree(mapper.writeValueAsString(restored));
+        assertTrue(json.get("n").isNull());
+        assertTrue(json.get("nested").get("inner").isNull());
+        assertEquals(21, json.get("afterRestore").intValue());
+    }
+
     /**
      * Creates a freshly initialized isolated engine without an AGI session.
      *

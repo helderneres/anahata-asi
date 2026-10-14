@@ -80,7 +80,6 @@ public class GeminiModelMessage extends AbstractModelMessage<GeminiResponse> {
         setBilledPromptTokens(promptTokens);
         setBilledCompletionTokens(completionTokens);
 
-        setRawJson(candidate.toJson());
         setCitationMetadata(candidate.citationMetadata()
             .map(cm -> cm.citations().orElse(List.of()).stream()
                 .map(Citation::uri)
@@ -163,7 +162,9 @@ public class GeminiModelMessage extends AbstractModelMessage<GeminiResponse> {
         String id = googleFc.id().orElse(null);
 
         // The ToolManager is accessible via the Agi reference in the message.
-        return getAgi().getToolManager().createToolCall(this, id, name, args);
+        AbstractToolCall call = getAgi().getToolManager().createToolCall(this, id, name, args);
+        call.setRawCallJson(googleFc.toJson());
+        return call;
     }
     
     /**

@@ -14,6 +14,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import uno.anahata.asi.agi.tool.spi.AbstractToolResponse;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
 import uno.anahata.asi.agi.tool.AgiToolException;
+import uno.anahata.asi.agi.tool.graphql.GraphQLToolkit;
+import uno.anahata.asi.agi.tool.ToolPermission;
 
 /**
  * A rich POJO that captures the complete and final outcome of a single tool
@@ -91,6 +93,11 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
 
     @Override
     public void execute() {
+        if (getStatus() == ToolExecutionStatus.FAILED
+                && getCall().getTool().getToolkitInstance() instanceof GraphQLToolkit gql && gql.isCommandToolkit()) {
+            addError("Issue a new GraphQL tool call after a protocol rejection; rejected arguments cannot be executed.");
+            return;
+        }
         if (!executing.compareAndSet(false, true)) {
             throw new IllegalStateException("Tool execution is already in progress for this call.");
         }
@@ -110,16 +117,34 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
         try {
             JavaMethodTool tool = getCall().getTool();
             Object toolkitInstance = tool.getToolkitInstance();
+            boolean graphqlCommands = toolkitInstance instanceof GraphQLToolkit gql
+                    && gql.isCommandToolkit();
+            if (graphqlCommands) {
+                if (!tool.getToolkit().isEnabled() || tool.getPermission() == ToolPermission.DENY || tool.getPermission() == null) {
+                    throw new AgiToolException("Tool execution is denied by the current toolkit permission.");
+                }
+            }
 
             var method = tool.getMethod();
             Parameter[] methodParameters = method.getParameters();
             Object[] argsToInvoke = new Object[methodParameters.length];
-            Map<String, Object> effectiveArgs = getCall().getEffectiveArgs();
+            Map<String, Object> effectiveArgs = graphqlCommands ? getExecutedArgs() : getCall().getEffectiveArgs();
 
             for (int i = 0; i < methodParameters.length; i++) {
                 Parameter p = methodParameters[i];
                 String paramName = p.getName();
-                argsToInvoke[i] = effectiveArgs.get(paramName);
+                Object value = effectiveArgs.get(paramName);
+                if (graphqlCommands && "variables".equals(paramName) && value != null) {
+                    try {
+                        value = ((GraphQLToolkit) toolkitInstance).copyVariables(value);
+                    } catch (IllegalArgumentException invalidVariables) {
+                        throw new AgiToolException("Invalid GraphQL variables. Provide a JSON object; no commands were started.");
+                    }
+                    if (getModifiedArgs().containsKey(paramName)) {
+                        getModifiedArgs().put(paramName, value); // Keeps the execution snapshot's explicit nulls in history.
+                    }
+                }
+                argsToInvoke[i] = value;
             }
 
             Object result = method.invoke(toolkitInstance, argsToInvoke);
@@ -142,6 +167,8 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
 
                 if (cause instanceof AgiToolException) {
                     addError(cause.getMessage());
+                } else if (getCall().getTool().getToolkitInstance() instanceof GraphQLToolkit gql && gql.isCommandToolkit()) {
+                    addError("GraphQL tool invocation failed. Verify the document and variables; inspect current permissions before issuing a new call.");
                 } else {
                     addError(ExceptionUtils.getStackTrace(cause));
                 }

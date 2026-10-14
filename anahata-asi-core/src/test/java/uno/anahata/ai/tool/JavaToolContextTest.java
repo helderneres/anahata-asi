@@ -85,8 +85,5 @@ public class JavaToolContextTest {
         @Override public ResponseUsageMetadata getUsageMetadata() { return null; }
         @Override public Optional<String> getPromptFeedback() { return Optional.empty(); }
         @Override public int getTotalTokenCount() { return 0; }
-        @Override public String getRawJson() { return "{}"; }
-        @Override public String getRawRequestConfigJson() { return "{}"; }
-        @Override public String getRawHistoryJson() { return "{}"; }
     }
 }

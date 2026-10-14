@@ -1,0 +1,121 @@
+type Query {
+  connections(nameContains: String, connected: Boolean, offset: Int = 0, limit: Int = 25): DatabaseConnectionPage!
+  connection(name: String, id: ID): DatabaseConnectionInfo
+}
+type DatabaseConnectionPage {
+  items: [DatabaseConnectionInfo!]!
+  offset: Int!
+  limit: Int!
+  hasNextPage: Boolean!
+  totalCount: Int
+}
+type DatabaseConnectionInfo {
+  id: ID!
+  displayName: String
+  driverClass: String
+  schema: String
+  connected: Boolean!
+  metadata: DatabaseMetadataInfo
+  tables(catalog: String, schema: String, tableNamePattern: String = "%", types: [String!] = ["TABLE", "VIEW"], offset: Int = 0, limit: Int = 25): TablePage
+}
+type DatabaseMetadataInfo {
+  databaseProductName: String
+  databaseProductVersion: String
+  driverName: String
+  driverVersion: String
+}
+type TablePage {
+  items: [TableInfo!]!
+  offset: Int!
+  limit: Int!
+  hasNextPage: Boolean!
+  totalCount: Int
+}
+type TableInfo {
+  catalog: String
+  schema: String
+  tableName: String
+  tableType: String
+  remarks: String
+  columns(columnNamePattern: String = "%"): [ColumnInfo!]
+  primaryKeys: [PrimaryKeyInfo!]
+  importedRelationships: [TableRelationshipInfo!]
+  exportedRelationships: [TableRelationshipInfo!]
+}
+type ColumnInfo {
+  columnName: String
+  dataType: String
+  columnSize: Int
+  nullable: Boolean
+  primaryKey: Boolean
+  autoIncrement: Boolean
+}
+type PrimaryKeyInfo {
+  catalog: String
+  schema: String
+  tableName: String
+  columnName: String
+  keySequence: Int
+  keyName: String
+}
+type TableRelationshipInfo {
+  primaryKeyCatalog: String
+  primaryKeySchema: String
+  primaryKeyTable: String
+  primaryKeyColumn: String
+  foreignKeyCatalog: String
+  foreignKeySchema: String
+  foreignKeyTable: String
+  foreignKeyColumn: String
+  keySequence: Int
+  updateRule: Int
+  deleteRule: Int
+  foreignKeyName: String
+  primaryKeyName: String
+  deferrability: Int
+}
+scalar SqlValue
+type Mutation {
+  connect(connection: ID!): ConnectionCommandInfo
+  disconnect(connection: ID!): ConnectionCommandInfo
+  executeQuery(connection: ID!, sql: String!, limit: Int = 100, timeoutSeconds: Int = 10, catalog: String, schema: String): SqlQueryInfo
+  executeStatement(connection: ID!, sql: String!, timeoutSeconds: Int = 10, catalog: String, schema: String): SqlStatementInfo
+}
+type ConnectionCommandInfo {
+  success: Boolean!
+  connected: Boolean!
+  connection: DatabaseConnectionInfo
+}
+type SqlQueryInfo {
+  success: Boolean!
+  columns: [SqlColumnInfo!]
+  rows: [SqlRowInfo!]
+  returnedRowCount: Int
+  limit: Int!
+  hasNextPage: Boolean
+  totalCount: Int
+  elapsedTimeMs: Float
+}
+type SqlColumnInfo {
+  index: Int!
+  label: String
+  name: String
+  jdbcType: Int
+  typeName: String
+  nullable: Boolean
+}
+type SqlRowInfo {
+  index: Int!
+  cells: [SqlCellInfo!]!
+}
+type SqlCellInfo {
+  columnIndex: Int!
+  value: SqlValue
+  truncated: Boolean!
+  encoding: String
+}
+type SqlStatementInfo {
+  success: Boolean!
+  affectedRows: Int!
+  elapsedTimeMs: Float
+}
