@@ -85,8 +85,15 @@ public abstract class AbstractToolCall<T extends AbstractTool<?, ?>, R extends A
     private byte[] thoughtSignature;
 
     /**
-     * The exact raw JSON string of this tool call invocation as received over the wire
-     * from the AI model (e.g. the raw function_call / tool_use block).
+     * Provider-supplied JSON retained for inspection of the original invocation.
+     * Depending on the adapter, this may be an invocation block or only its
+     * argument JSON; it is not necessarily the complete HTTP envelope. It is
+     * distinct from converted or user-edited arguments and is not consulted by
+     * Java method invocation. Null means the adapter supplied no raw text.
+     * <p>
+     * Unlike the latest API snapshot on Agi, this field is not transient and
+     * can accompany serialized call history. Its contents are not redacted.
+     * </p>
      */
     private String rawCallJson;
 

@@ -865,19 +865,25 @@ public class Agi extends BasicPropertyChangeSource {
     }
 
     /**
-     * Gets the ephemeral wire-level debug snapshot of the most recent API turn.
+     * Returns the provider's most recently published JSON diagnostic snapshot.
+     * The value is transient and may be absent before an exchange, after clearing
+     * history or after session restoration. Diagnostics are not automatically
+     * redacted and are intended for local inspection rather than tool result data.
      *
-     * @return An Optional containing the last RawApiJson, or empty if none exists.
+     * @return the current snapshot, or an empty optional when none has been published
      */
     public Optional<RawApiJson> getLastRawApiJson() {
         return Optional.ofNullable(lastRawApiJson);
     }
 
     /**
-     * Sets the ephemeral wire-level debug snapshot of the most recent API turn
-     * and broadcasts a property change event.
+     * Replaces the transient JSON diagnostic snapshot through the property-change
+     * mechanism. Its equality rules can suppress an event for equal non-null
+     * snapshots. Delivered events run on the calling thread; UI listeners must
+     * perform their own event-thread handoff. This setter does not parse/redact
+     * payloads or provide compound update synchronization.
      *
-     * @param lastRawApiJson The new wire-level debug snapshot.
+     * @param lastRawApiJson the snapshot to publish, or null to clear it
      */
     public void setLastRawApiJson(RawApiJson lastRawApiJson) {
         RawApiJson old = this.lastRawApiJson;

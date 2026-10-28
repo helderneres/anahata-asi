@@ -4,8 +4,11 @@ package uno.anahata.asi.agi.tool.graphql;
 import lombok.Getter;
 
 /**
- * A resolver failure whose explicitly authored message is safe to return. Never
- * pass driver exception messages, connection URLs or credentials here.
+ * Marks an explicitly authored resolver message as safe for public output.
+ * The GraphQL error boundary preserves this message and category instead of
+ * replacing them with a generic failure. This class performs no redaction:
+ * callers must never supply raw driver messages, SQL, connection URLs,
+ * credentials or implementation stack traces.
  *
  * @author anahata
  */
@@ -23,19 +26,20 @@ public class SafeGraphQLException extends RuntimeException {
     private final String category;
 
     /**
-     * Creates a field failure with an actionable, non-sensitive message.
+     * Creates a public field failure classified as {@code FieldUnavailable}.
      *
-     * @param safeMessage An authored message, never a raw exception message.
+     * @param safeMessage actionable message authored for public disclosure
      */
     public SafeGraphQLException(String safeMessage) {
         this("FieldUnavailable", safeMessage);
     }
 
     /**
-     * Creates an actionable failure with a stable domain classification.
+     * Creates a public failure with an application-defined classification.
+     * Neither the category nor message is validated or sanitized here.
      *
-     * @param category Public classification such as ConnectionInactive.
-     * @param safeMessage An authored message, never a raw exception message.
+     * @param category non-sensitive public classification, such as ConnectionInactive
+     * @param safeMessage actionable message authored for public disclosure
      */
     public SafeGraphQLException(String category, String safeMessage) {
         super(safeMessage);

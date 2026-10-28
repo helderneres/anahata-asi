@@ -10,21 +10,27 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
- * Execution-local memoization and cooperative resource budget. The context is
- * never retained by a toolkit or returned as response data. Failed loads are
- * cached too, preventing repeated JDBC work for aliases and dependent fields.
- * <p>
- * Deadline checks cannot interrupt a JDBC driver blocked inside a metadata
- * call. Resolvers must check before and after calls and while iterating their
- * rows.
- * </p>
+ * Holds memoized results and cooperative budgets for one GraphQL execution.
+ * Each execution receives a new instance; a toolkit must not retain it across
+ * requests or expose it as response data. Keys and cached values remain
+ * private to resolvers and may include complete connection and table identity.
+ *
+ * <p>Concurrent callers share a future for each key. A winning supplier runs
+ * synchronously on its caller's thread; other callers wait for that result.
+ * Null results and runtime failures are cached for the request as well.</p>
+ *
+ * <p>Budget checks are cooperative. They cannot interrupt a blocking JDBC
+ * call, supplier or future wait. Resolvers must check before and after source
+ * calls and while consuming rows. In particular, waiting on another load does
+ * not repeatedly check the deadline.</p>
  *
  * @author anahata
  */
 public class GraphQLRequestContext {
 
     /**
-     * Request-local completed values or failures, safely shared across threads.
+     * Request-local futures for successful values, nulls or runtime failures.
+     * Keys must have stable equality and hash codes for the lifetime of the request.
      */
     private final Map<Object, CompletableFuture<Object>> cache = new ConcurrentHashMap<>();
 
@@ -44,11 +50,13 @@ public class GraphQLRequestContext {
     private final long deadlineNanos;
 
     /**
-     * Creates the state for one execution using the toolkit's configured
-     * budget.
+     * Creates budgets using the monotonic clock and zero consumed operations.
+     * Arguments are configuration values and are stored without validation.
+     * Callers must supply a positive operation ceiling and duration within the
+     * range that can be converted safely to nanoseconds.
      *
-     * @param maxMetadataOperations Maximum actual metadata operations.
-     * @param maxDurationMillis Cooperative time allowance in milliseconds.
+     * @param maxMetadataOperations maximum actual metadata calls for the request
+     * @param maxDurationMillis cooperative time allowance in milliseconds
      */
     public GraphQLRequestContext(int maxMetadataOperations, long maxDurationMillis) {
         this.maxMetadataOperations = maxMetadataOperations;
@@ -56,19 +64,24 @@ public class GraphQLRequestContext {
     }
 
     /**
-     * Obtains the context installed by the inherited query tool.
+     * Obtains the request context installed by the query or mutation engine.
+     * The context lookup does not itself create or validate a context.
      *
-     * @param environment The native graphql-java resolver environment.
-     * @return The execution-local context.
+     * @param environment non-null native resolver environment
+     * @return installed request context, or null if the environment has none
+     * @throws NullPointerException if environment is null
      */
     public static GraphQLRequestContext from(DataFetchingEnvironment environment) {
         return environment.getGraphQlContext().get(GraphQLRequestContext.class);
     }
 
     /**
-     * Enforces the cooperative deadline and honors thread interruption.
+     * Rejects further work once the deadline expires or the thread is interrupted.
+     * This check preserves the thread's interrupt flag. It does not stop work
+     * already blocked inside a driver or another component.
      *
-     * @throws SafeGraphQLException When the execution must stop doing new work.
+     * @throws SafeGraphQLException with category LimitExceeded when the deadline
+     *     has elapsed or the current thread has been interrupted
      */
     public void checkBudget() {
         if (Thread.currentThread().isInterrupted() || System.nanoTime() - deadlineNanos >= 0) {
@@ -77,10 +90,12 @@ public class GraphQLRequestContext {
     }
 
     /**
-     * Reserves one metadata operation immediately before calling the driver.
+     * Reserves an actual metadata call after checking the cooperative deadline.
+     * The counter is incremented atomically. Calls that exceed the ceiling are
+     * rejected and remain counted; a failed reservation is not rolled back.
+     * Invoke this immediately before new driver work, not for a cache hit.
      *
-     * @throws SafeGraphQLException When time or metadata-call budget is
-     * exhausted.
+     * @throws SafeGraphQLException when the time or metadata-call budget is exhausted
      */
     public void consumeMetadataOperation() {
         checkBudget();
@@ -90,14 +105,28 @@ public class GraphQLRequestContext {
     }
 
     /**
-     * Loads a value at most once per request, including a failed or null load.
-     * Keys must include all private identity and metadata arguments that affect
-     * the value, particularly connection, catalog, schema and table.
+     * Returns the result of one successful or failed load for a request key.
+     * The first caller installs a future and runs its supplier synchronously.
+     * Other callers share that future, including a null result or a cached
+     * {@link RuntimeException}, which is rethrown to each caller. Waiting uses
+     * {@link CompletableFuture#join()} without a timeout; the deadline is checked
+     * before lookup, not continuously during the load or wait.
      *
-     * @param <T> The cached value type.
-     * @param key Complete identity of the operation.
-     * @param supplier Operation executed only for the first use of the key.
-     * @return The shared value.
+     * <p>The supplier must not recursively load the same key: it would wait on
+     * its own unfinished future. It should also avoid cyclic dependencies between
+     * keys and must arrange any needed resource cleanup itself. Only runtime
+     * exceptions are cached by this implementation, so suppliers must not rely
+     * on an {@link Error} completing the shared future.</p>
+     *
+     * @param <T> result type shared by all users of this key
+     * @param key non-null, stable identity including every source argument affecting
+     *     the result
+     * @param supplier loader used only by the first caller for the key
+     * @return cached result, including null
+     * @throws SafeGraphQLException if the cooperative budget rejects the initial lookup
+     * @throws NullPointerException if key is null, or the winning caller's supplier is
+     *     null
+     * @throws RuntimeException if the winning supplier fails; that failure is cached
      */
     @SuppressWarnings("unchecked")
     public <T> T getOrCompute(Object key, Supplier<T> supplier) {

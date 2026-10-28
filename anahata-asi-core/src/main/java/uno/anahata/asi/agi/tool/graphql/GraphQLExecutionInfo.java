@@ -13,8 +13,15 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * A portable GraphQL response containing only selected JSON values and safe
- * errors. Engine, JDBC and IDE objects never belong in this transport model.
+ * Contains selected GraphQL data and public errors without engine types.
+ * Data and errors are independent: partial data can coexist with field errors,
+ * and returning this object does not establish that every field succeeded.
+ * Engine, JDBC and IDE handles do not belong in the response graph.
+ *
+ * <p>The Lombok-generated constructor and getters retain the supplied map and
+ * list references rather than copying them. Producers must supply a non-null
+ * error list, using an empty list on success. Data may be null for an
+ * operation-level rejection or an execution result with no data.</p>
  *
  * @author anahata
  */
@@ -29,17 +36,22 @@ public class GraphQLExecutionInfo implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Selected response data; nullable when validation prevents execution.
+     * Selected response keys and portable scalar, map or list values.
+     * Null denotes absence of operation data; selected fields may also be null.
      */
     private final Map<String, Object> data;
 
     /**
-     * Safe errors, including partial field failures without stack traces.
+     * Non-null public errors, empty when no validation or field errors occurred.
      */
     private final List<GraphQLErrorInfo> errors;
 
     /**
-     * A compact UI hint; the structured data/errors remain the source of truth.
+     * Returns a compact UI hint containing data keys and the error count.
+     * The hint omits field values and does not replace inspection of both data
+     * and errors.
+     *
+     * @return diagnostic summary, not a success assertion
      */
     @Override
     public String toString() {
@@ -54,10 +66,21 @@ public class GraphQLExecutionInfo implements Serializable {
      */
     public static final class ResponseSerializer extends StdSerializer<GraphQLExecutionInfo> {
 
+        /**
+         * Creates the serializer for the concrete GraphQL response type.
+         */
         public ResponseSerializer() {
             super(GraphQLExecutionInfo.class);
         }
 
+        /**
+         * Writes data and errors while preserving explicit nulls in selected data.
+         *
+         * @param response non-null response with a non-null error list
+         * @param generator destination JSON generator, owned by the caller
+         * @param provider Jackson provider for error DTOs and remaining scalar values
+         * @throws IOException if the generator or a delegated serializer cannot write
+         */
         @Override
         public void serialize(GraphQLExecutionInfo response, JsonGenerator generator, SerializerProvider provider) throws IOException {
             generator.writeStartObject();
@@ -68,6 +91,17 @@ public class GraphQLExecutionInfo implements Serializable {
             generator.writeEndObject();
         }
 
+        /**
+         * Writes maps and lists recursively without dropping null entries.
+         * Map keys must be strings. Other non-null values are delegated to Jackson;
+         * this helper does not itself validate that they are portable public values.
+         * It does not close or flush the caller's generator.
+         *
+         * @param value JSON-style value, including null
+         * @param generator destination JSON generator
+         * @param provider provider used for values not handled directly
+         * @throws IOException if JSON output or delegated serialization fails
+         */
         static void writeSelected(Object value, JsonGenerator generator, SerializerProvider provider) throws IOException {
             if (value == null) {
                 generator.writeNull();

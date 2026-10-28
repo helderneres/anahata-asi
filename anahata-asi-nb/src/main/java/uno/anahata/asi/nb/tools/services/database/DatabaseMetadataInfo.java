@@ -5,10 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 
 /**
- * Represents the metadata of a database server.
+ * Selected database-product and driver identification reported by JDBC.
  * <p>
- * Extracts and serializes key information from {@link java.sql.DatabaseMetaData}
- * to provide the ASI with context about the target database dialect and capabilities.
+ * Only requested attributes are obtained from {@link java.sql.DatabaseMetaData};
+ * an unselected attribute remains {@code null} in this DTO. Driver-reported
+ * nulls are also preserved. The object contains descriptive strings, not a
+ * live metadata handle or a complete catalogue of database capabilities.
  * </p>
  *
  * @author anahata
@@ -16,8 +18,24 @@ import lombok.Data;
 @Data
 @Builder
 public class DatabaseMetadataInfo {
+    /**
+     * Selected database product name from {@link
+     * java.sql.DatabaseMetaData#getDatabaseProductName()}, or {@code null} if not populated.
+     */
     private String databaseProductName;
+    /**
+     * Selected driver-reported database product version string, or {@code null} if not
+     * populated; no semantic-version interpretation is applied.
+     */
     private String databaseProductVersion;
+    /**
+     * Selected JDBC driver name from {@link java.sql.DatabaseMetaData#getDriverName()}, or
+     * {@code null} if not populated.
+     */
     private String driverName;
+    /**
+     * Selected driver-reported JDBC version string, or {@code null} if not populated; this is
+     * distinct from the database product version.
+     */
     private String driverVersion;
 }

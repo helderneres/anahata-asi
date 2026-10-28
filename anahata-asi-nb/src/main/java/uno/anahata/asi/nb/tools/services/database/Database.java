@@ -1,6 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.tools.services.database;
 
+import graphql.analysis.FieldComplexityEnvironment;
 import java.util.List;
 import java.util.Map;
 import org.netbeans.api.db.explorer.ConnectionListener;
@@ -19,11 +20,18 @@ import uno.anahata.asi.agi.tool.graphql.GraphQLToolkit;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Database Integration Toolkit.
+ * NetBeans Database Explorer toolkit exposing an embedded GraphQL contract.
  * <p>
- * Provides comprehensive database interaction capabilities, allowing the ASI to
- * list connections, inspect schemas, and execute queries natively within the
- * IDE. It monitors the IDE's ConnectionManager for real-time updates.
+ * The inherited schema and query tools describe and resolve selected metadata;
+ * {@link #mutate(String, Map)} performs explicit connection or raw SQL
+ * commands governed by the tool permission. No HTTP endpoint is created. JDBC and IDE handles are retained in
+ * private resolver sources rather than public response values.
+ * </p>
+ * <p>
+ * Initialization and rebinding build the engine before registering this instance
+ * as a connection listener. Metadata and SQL may block in a JDBC driver and must
+ * be invoked outside the Swing event dispatch thread. Serial fields within one
+ * Mutation neither serialize independent calls nor create a shared transaction.
  * </p>
  *
  * @author anahata
@@ -40,8 +48,8 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Provides the existing stable identifier for this IDE integration.</p>
+     *
+     * @return the stable toolkit identifier {@code database}
      */
     @Override
     public String getId() {
@@ -50,8 +58,8 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Preserves the existing user-facing Database toolkit name.</p>
+     *
+     * @return the Database integration display name
      */
     @Override
     public String getName() {
@@ -60,9 +68,8 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Describes the NetBeans/JDBC integration shared by GraphQL and SQL
-     * tools.</p>
+     *
+     * @return a description of the IDE and JDBC integration
      */
     @Override
     public String getDescription() {
@@ -72,7 +79,10 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      * <p>
-     * Builds the GraphQL engine before registering the IDE listener once.</p>
+     * Builds the transient executable schema and registers this toolkit instance for
+     * IDE connection changes. Repeated registration is guarded by
+     * {@link #syncListeners()}.
+     * </p>
      */
     @Override
     public void initialize() {
@@ -83,8 +93,9 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      * <p>
-     * Restores transient GraphQL state and reconnects the IDE listener after
-     * persistence.</p>
+     * Rebuilds transient GraphQL state and ensures this instance has an IDE connection
+     * listener. It does not reconnect database sessions or load metadata eagerly.
+     * </p>
      */
     @Override
     public void rebind() {
@@ -94,8 +105,8 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Publishes metadata discovery without exposing JDBC or IDE objects.</p>
+     *
+     * @return the metadata and explicit-command SDL used by this toolkit
      */
     @Override
     protected String getSchemaSdl() {
@@ -104,8 +115,8 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Wires independent JDBC operations to selected GraphQL fields.</p>
+     *
+     * @return wiring for selected JDBC operations and already-acquired Info properties
      */
     @Override
     protected RuntimeWiring buildRuntimeWiring() {
@@ -115,8 +126,13 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      * <p>
-     * Guides bounded discovery and keeps raw SQL tools subject to existing
-     * permissions.</p>
+     * Describes bounded discovery, complete destination identities, selection-driven
+     * result acquisition, and raw SQL effects. Instructions do not replace the current
+     * tool permission or validate SQL as read-only.
+     * </p>
+     *
+     * @return the bounded-discovery and explicit-command instructions
+     * @throws Exception as permitted by the inherited instruction-provider contract
      */
     @Override
     public List<String> getSystemInstructions() throws Exception {
@@ -134,8 +150,12 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      * <p>
-     * Publishes aggregate counts only; connection names can embed sensitive
-     * JDBC details.</p>
+     * Adds registered and currently connected counts from the IDE registry. It does
+     * not request JDBC metadata, open connections, or publish names and credentials.
+     * </p>
+     *
+     * @param message the context message receiving aggregate connection counts
+     * @throws Exception as permitted by the inherited context-provider contract
      */
     @Override
     public void populateMessage(RagMessage message) throws Exception {
@@ -154,7 +174,18 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     }
 
     /**
-     * Explicit command channel using the existing Java tool permission.
+     * Executes one explicit Mutation through the existing Java tool protocol.
+     * <p>
+     * Approval applies to the complete document and variables. Commands may have
+     * side effects even when only {@code success} is selected. Raw SQL is not made
+     * read-only by a method name or SELECT prefix. Fields execute serially without
+     * a shared transaction, automatic rollback, or retry; inspect data and errors
+     * before deciding whether another call is appropriate.
+     * </p>
+     *
+     * @param document one Mutation operation, optionally using variables and fragments
+     * @param variables JSON-compatible variable values, or {@code null} for none
+     * @return selected command data and safe errors, including partial field failures
      */
     @Override
     @AgiTool("Executes one GraphQL Mutation with explicit database commands. Raw SQL may have effects, including executeQuery. "
@@ -165,11 +196,31 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
         return super.mutate(document, variables);
     }
 
+    /**
+     * Enables this reference implementation's explicit command channel.
+     *
+     * @return {@code true}; other GraphQL toolkits opt in independently
+     */
     @Override
     protected boolean supportsMutations() {
         return true;
     }
 
+    /**
+     * Validates selected root command arguments and pins their destinations.
+     * <p>
+     * Queries need no additional domain preflight here. Command preflight performs no
+     * SQL execution, connection dialog, or transaction management, but may inspect an
+     * active connection's catalog and schema. Runtime failures remain possible after
+     * preflight and do not undo earlier effects.
+     * </p>
+     *
+     * @param fields native selected fields with coerced arguments
+     * @param request the execution-local cache and cooperative budget
+     * @param mutation whether this is the explicit Mutation channel
+     * @throws uno.anahata.asi.agi.tool.graphql.SafeGraphQLException if command arguments,
+     *     identities, or request budgets are invalid
+     */
     @Override
     protected void validateSelection(List<GraphQLFieldInfo> fields, GraphQLRequestContext request, boolean mutation) {
         if (mutation) {
@@ -178,11 +229,20 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     }
 
     /**
-     * SQL rows are bounded by the parent limit; cells/columns have a separate
-     * ceiling.
+     * Estimates SQL list cost without counting the parent row limit twice.
+     * <p>
+     * Rows are bounded at the SQL parent; columns and cells use a separate column
+     * ceiling. Actual row, cell, text, and deadline budgets still apply during execution,
+     * so acceptance of the estimate does not guarantee completion.
+     * </p>
+     *
+     * @param field the native field definition and coerced arguments
+     * @param children the accumulated child-field complexity
+     * @param maximum the configured complexity rejection threshold
+     * @return a cost capped at one above the threshold
      */
     @Override
-    protected int fieldComplexity(graphql.analysis.FieldComplexityEnvironment field, int children, int maximum) {
+    protected int fieldComplexity(FieldComplexityEnvironment field, int children, int maximum) {
         String parent = field.getParentType().getName();
         if ("SqlQueryInfo".equals(parent) && "rows".equals(field.getFieldDefinition().getName())) {
             return Math.min(maximum + 1, 1 + children);
@@ -195,7 +255,11 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     }
 
     /**
-     * Synchronizes the toolkit with the IDE's ConnectionManager.
+     * Registers this instance with the IDE connection registry at most once.
+     * <p>
+     * Synchronization protects listener registration only. It does not lock JDBC
+     * work or serialize commands from independent requests.
+     * </p>
      */
     private synchronized void syncListeners() {
         if (!listening) {
@@ -208,8 +272,9 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      * <p>
-     * Records IDE registry changes without querying or connecting database
-     * servers.</p>
+     * Records registry changes without querying, connecting, or disconnecting database
+     * servers. The callback performs no JDBC work on the notifying thread.
+     * </p>
      */
     @Override
     public void connectionsChanged() {

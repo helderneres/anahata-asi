@@ -51,14 +51,26 @@ import uno.anahata.asi.agi.tool.ToolPermission;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
 
 /**
- * Embedded GraphQL infrastructure using the existing Java toolkit protocol.
- * Native resolvers perform work only for selected fields; this class provides
- * engine lifecycle, separate query/command validation and shared resource
- * limits.
- * <p>
- * No HTTP server, generic selection planner or field authorization layer is
- * created. Existing Anahata toolkit permissions govern the inherited tools.
- * </p>
+ * Hosts an embedded GraphQL engine within the existing Java toolkit protocol.
+ * Subclasses provide SDL and native resolver wiring, keeping domain operations
+ * in resolvers and public results free of JDBC or IDE handles. Query and command
+ * channels share validation, response normalization and cooperative budgets.
+ *
+ * <p>The framework invokes {@link #initialize()} or {@link #rebind()} before
+ * use. Both rebuild the transient engine; subclasses overriding them must call
+ * the superclass implementation. Coordinate lifecycle changes with application
+ * execution rather than assuming a concurrent schema rebuild is atomic with
+ * all subclass state.</p>
+ *
+ * <p>Execution is synchronous for the caller and may block in resolvers. The
+ * caller must use an appropriate background execution context for JDBC or other
+ * blocking work instead of running it on the UI event dispatch thread. A fresh
+ * {@link GraphQLRequestContext} separates each request's cache and budgets;
+ * subclass resolvers remain responsible for their own shared-state safety.</p>
+ *
+ * <p>Mutations require explicit opt-in and normal tool authorization; there
+ * is no HTTP server, generic planner, per-field authorization layer or shared
+ * transaction. Resource ownership and effects remain domain responsibilities.</p>
  *
  * @author anahata
  */
@@ -73,8 +85,15 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
             .setSerializationInclusion(JsonInclude.Include.ALWAYS);
 
     /**
-     * Copies JSON variable values without turning explicit null into an
-     * omitted/default value.
+     * Converts JSON-style variables to a mutable map without omitting nulls.
+     * Conversion uses a local mapper copy and does not alter the shared mapper's
+     * configuration. The resulting map preserves explicit nulls when it is later
+     * serialized as part of a tool call.
+     *
+     * @param variables non-null object convertible to a string-keyed variable map
+     * @return new mutable variable map with converted nested JSON-style values
+     * @throws IllegalArgumentException if the value cannot be converted to the map type
+     * @throws NullPointerException if conversion produces a null map
      */
     public final Map<String, Object> copyVariables(Object variables) {
         Map<String, Object> copied = VARIABLES_MAPPER.convertValue(variables, new TypeReference<Map<String, Object>>() {
@@ -114,9 +133,11 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Restores the executable schema and transient engine after
-     * persistence.</p>
+     * <p>Rebuilds the schema and transient engine after restoring toolkit context.
+     * The domain hooks are called again; rebuilding the engine does not execute a
+     * query or open a domain connection.</p>
+     *
+     * @throws RuntimeException if SDL parsing, schema construction or wiring fails
      */
     @Override
     public void rebind() {
@@ -126,9 +147,10 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Builds the schema after the JavaObjectToolkit has attached its
-     * context.</p>
+     * <p>Builds the executable schema after the Java toolkit context is attached.
+     * Subclass lifecycle overrides must call this method before using the engine.</p>
+     *
+     * @throws RuntimeException if SDL parsing, schema construction or wiring fails
      */
     @Override
     public void initialize() {
@@ -137,10 +159,10 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     }
 
     /**
-     * Returns the executable schema so an agent can choose fields and
-     * arguments.
+     * Returns the SDL used to build the currently initialized engine.
+     * This discovery call does not fetch domain metadata or evaluate resolvers.
      *
-     * @return The exact SDL used by the embedded engine.
+     * @return current SDL, or null before successful initialization or rebinding
      */
     @AgiTool(value = "Returns this toolkit's GraphQL schema. Discover Query fields and any explicitly supported Mutation commands.")
     public String schema() {
@@ -160,6 +182,21 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
      */
     @AgiTool(value = "Executes one read-only GraphQL query with optional variables. Only selected fields perform work. "
             + "Mutation/subscription and multiple operations are rejected. Limits apply to nesting, cost and metadata work.")
+    /**
+     * Executes one named or abbreviated Query operation with optional variables.
+     * Mutation, Subscription, multiple operations and non-executable definitions
+     * are rejected before resolver execution. Native validation and request limits
+     * apply; resolvers acquire only the work associated with selected fields.
+     *
+     * <p>The caller waits for completion. Partial data can coexist with errors,
+     * and a returned response is not an assertion that every field succeeded.</p>
+     *
+     * @param query GraphQL document; null, blank or oversized input is rejected in the
+     *     response
+     * @param variables variable map, or null to supply no variables; explicit null
+     *     entries remain distinct from omission
+     * @return non-null response containing selected data and safe errors
+     */
     public GraphQLExecutionInfo query(
             @AgiToolParam("One GraphQL query operation; abbreviated { ... } queries are supported.") String query,
             @AgiToolParam(value = "GraphQL variable values, or an empty map when none are needed.", required = false) Map<String, Object> variables) {
@@ -167,9 +204,22 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     }
 
     /**
-     * Executes a command document only when a concrete toolkit deliberately
-     * supports mutations and exposes this method through its own @AgiTool.
-     * Existing read-only subclasses acquire no additional advertised tool.
+     * Executes one Mutation operation when commands are explicitly supported.
+     * A subclass must opt in through {@link #supportsMutations()} and expose its
+     * own annotated tool method. Once native operation execution is reached, the
+     * call must belong to this toolkit's executing mutate tool and satisfy the
+     * current toolkit permission checks; a direct Java invocation has no such
+     * execution context.
+     *
+     * <p>Top-level fields follow GraphQL's serial mutation semantics, without a
+     * shared transaction, automatic rollback or retry. A later failure does not
+     * undo effects already performed. Callers must inspect both data and errors
+     * and determine the resulting state before retrying.</p>
+     *
+     * @param document GraphQL Mutation document with exactly one operation
+     * @param variables variable map, or null for no variables
+     * @return non-null response, including MutationUnsupported when the subclass has
+     *     not opted in
      */
     public GraphQLExecutionInfo mutate(String document, Map<String, Object> variables) {
         if (!supportsMutations()) {
@@ -179,30 +229,56 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     }
 
     /**
-     * Opt-in for concrete command toolkits; the default remains query-only.
+     * Declares whether the concrete toolkit supports a command channel.
+     * Overriding this hook does not by itself register an annotated tool method
+     * or bypass the current tool authorization and preflight checks.
+     *
+     * @return false by default; true only for an explicitly enabled command toolkit
      */
     protected boolean supportsMutations() {
         return false;
     }
 
     /**
-     * Explicit opt-in used by the Java protocol; ordinary toolkits are
-     * unchanged.
+     * Reports the command opt-in to the existing Java tool protocol.
+     * The protocol uses this flag for GraphQL-specific argument conversion and
+     * invocation checks; it does not enable commands on ordinary Java toolkits.
+     *
+     * @return the value supplied by supportsMutations
      */
     public final boolean isCommandToolkit() {
         return supportsMutations();
     }
 
     /**
-     * Validates all selected fields before any resolver, after native schema,
-     * variable and directive processing. Domain overrides must not perform
-     * effects.
+     * Validates selected fields after native validation and argument coercion.
+     * The engine traverses fragments, aliases and active directives before calling
+     * this hook, for both query and mutation operations. The default implementation
+     * does nothing. Override it for bounded domain checks before resolver effects;
+     * do not execute commands or make irreversible changes in this hook.
+     *
+     * <p>Completing this hook is not a transaction guarantee: the source can change
+     * before resolvers run, and failures may still occur after earlier effects.</p>
+     *
+     * @param fields unmodifiable list of selected field descriptions; nested argument
+     *     values are not deeply immutable
+     * @param request execution-local cache and cooperative budget
+     * @param mutation true for a Mutation operation, false for a Query
+     * @throws SafeGraphQLException to reject the operation with an authored public
+     *     error
      */
     protected void validateSelection(List<GraphQLFieldInfo> fields, GraphQLRequestContext request, boolean mutation) {
     }
 
     /**
-     * Executes a single operation on its explicit channel.
+     * Executes a validated document with a fresh request cache and budget.
+     * Runtime failures at this boundary become a generic response; no automatic
+     * retry or rollback is attempted.
+     *
+     * @param query untrusted operation document
+     * @param variables variable values, or null for an empty variable map
+     * @param mutation true for the command channel, false for the query channel
+     * @return selected data and public errors, or an operation-level failure
      */
     private GraphQLExecutionInfo executeDocument(String query, Map<String, Object> variables, boolean mutation) {
         String validationError = validateDocument(query, mutation);
@@ -229,72 +305,84 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     }
 
     /**
-     * Supplies a schema using concrete public Info attributes and private
-     * sources.
+     * Supplies SDL for the next engine initialization or rebind.
+     * The schema must define Query and all types referenced by the runtime wiring.
+     * A command-enabled subclass must also supply its Mutation contract. Describe
+     * public information types without exposing live domain handles.
      *
-     * @return Schema definition language for this toolkit.
+     * @return non-null SDL accepted by the native schema parser
      */
     protected abstract String getSchemaSdl();
 
     /**
-     * Supplies native data fetchers for domain operations selected by a query.
+     * Supplies native field resolvers and scalar implementations for the SDL.
+     * Constructing wiring must not itself execute domain commands. Resolvers own
+     * selection-driven work, domain resource cleanup and shared-state safety.
      *
-     * @return Executable wiring, without a custom resolver SPI.
+     * @return non-null wiring matching the schema returned by getSchemaSdl
      */
     protected abstract RuntimeWiring buildRuntimeWiring();
 
     /**
-     * Configures the maximum number of nested field levels.
+     * Configures the nesting-depth ceiling when the engine is built.
+     * Changes to the returned value take effect on initialization or rebind.
      *
-     * @return Default depth of twelve.
+     * @return positive maximum depth; 12 by default
      */
     protected int getMaxQueryDepth() {
         return 12;
     }
 
     /**
-     * Configures complexity, including page and nested list cardinality
-     * estimates.
+     * Configures the estimated field-cost ceiling when the engine is built.
+     * The estimate includes selected fields and list cardinality; actual domain
+     * work remains bounded separately by request and resolver budgets.
      *
-     * @return Maximum calculated query complexity.
+     * @return positive rejection threshold; 10,000 by default
      */
     protected int getMaxQueryComplexity() {
         return 10_000;
     }
 
     /**
-     * Bounds parser input size independently of field complexity.
+     * Bounds document length before native parsing.
+     * This limit applies to the document string, not to the separate variable map.
      *
-     * @return Maximum number of characters in one query document.
+     * @return maximum Java string length of a document; 20,000 by default
      */
     protected int getMaxQueryCharacters() {
         return 20_000;
     }
 
     /**
-     * Bounds actual metadata calls, including aliases and independent child
-     * fields.
+     * Bounds actual metadata operations reserved within each request.
+     * Resolvers must consume the request budget for new source work; cached values
+     * do not inherently consume another operation.
      *
-     * @return Maximum metadata operations in a request.
+     * @return maximum metadata reservations per request; 250 by default
      */
     protected int getMaxMetadataOperations() {
         return 250;
     }
 
     /**
-     * Configures a cooperative deadline; it cannot interrupt blocking JDBC
-     * calls.
+     * Supplies a cooperative duration for each execution's request context.
+     * Checks do not forcibly interrupt a blocked driver, supplier or future wait;
+     * domain code must also enforce any available source-specific timeouts.
      *
-     * @return Time allowance in milliseconds.
+     * @return positive duration in milliseconds; 10,000 by default
      */
     protected long getMaxDurationMillis() {
         return 10_000;
     }
 
     /**
-     * Replaces all transient engine state using the toolkit's two native hooks.
-     * The volatile engine publication happens after SDL and wiring are
-     * complete.
+     * Builds and publishes a new engine from SDL, wiring and limit hooks.
+     * The engine reference is assigned only after successful construction. Native
+     * schema errors propagate to the lifecycle caller; this method does not
+     * serialize concurrent lifecycle changes with subclass state.
+     *
+     * @throws RuntimeException if parsing, schema generation or engine setup fails
      */
     private void buildEngine() {
         String sdl = getSchemaSdl();
@@ -321,8 +409,14 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     }
 
     /**
-     * Native traversal resolves fragments, aliases, directives and coerced
-     * arguments before any field executes. All commands are gated together.
+     * Checks current command context and validates the native field selection.
+     * Arguments have been coerced and active directives resolved by graphql-java.
+     * The synthetic __typename field is omitted from the domain field list because
+     * it has no ordinary fields container and performs no domain work.
+     *
+     * @param execution native context for the operation about to execute
+     * @throws AbortExecutionException if public permission, selection or budget checks
+     *     reject the operation
      */
     private void preflight(ExecutionContext execution) {
         boolean mutation = execution.isMutationOperation();
@@ -364,11 +458,13 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     }
 
     /**
-     * Checks executable operation definitions instead of matching string
-     * prefixes.
+     * Validates executable operation definitions rather than matching a prefix.
+     * Exactly one operation must use the requested channel; additional fragments
+     * are permitted. Schema and variable-type validation remain engine work.
      *
-     * @param query Untrusted query text.
-     * @return A safe validation error or null when one query operation exists.
+     * @param query untrusted document, including null
+     * @param mutation true to require Mutation, false to require Query
+     * @return public validation message, or null when document structure is accepted
      */
     private String validateDocument(String query, boolean mutation) {
         if (query == null || query.isBlank() || query.length() > getMaxQueryCharacters()) {
@@ -403,16 +499,16 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     }
 
     /**
-     * Estimates list fan-out without executing any resolver. A paginated parent
-     * multiplies its children by limit; the items field avoids double counting.
-     * Unpaginated lists use a conservative estimate of one hundred elements;
-     * actual work remains subject to request and domain row budgets.
+     * Estimates selected-field fan-out without invoking domain resolvers.
+     * A limit argument multiplies child cost; an unbounded list uses the default
+     * maximum page limit unless a parent limit already accounts for its items.
+     * Subclasses may specialize known domain cardinalities, while retaining
+     * conservative estimates and independent limits on actual work.
      *
-     * @param environment Coerced field arguments and native schema definition.
-     * @param childComplexity Calculated child cost.
-     * @param maxComplexity Configured rejection threshold.
-     * @return Field cost capped just above the threshold, avoiding subtree
-     * overflow.
+     * @param environment coerced arguments and native field definition
+     * @param childComplexity estimated combined child cost
+     * @param maxComplexity configured rejection threshold
+     * @return estimated field cost, capped just above the configured threshold
      */
     protected int fieldComplexity(FieldComplexityEnvironment environment, int childComplexity, int maxComplexity) {
         long multiplier = 1;
@@ -490,10 +586,13 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     }
 
     /**
-     * Copies a response map to a portable ordered map, checking every value.
+     * Copies selected response entries into an ordered, string-keyed map.
+     * Nested maps and lists are normalized recursively; the original map is not
+     * retained in the returned graph.
      *
-     * @param source Engine-selected values only.
-     * @return JSON-compatible data without internal GraphQL model objects.
+     * @param source non-null engine-selected response entries
+     * @return new ordered map of supported public values
+     * @throws SafeGraphQLException if a key is not a string or a value is unsupported
      */
     private static Map<String, Object> normalizeMap(Map<?, ?> source) {
         Map<String, Object> result = new LinkedHashMap<>();
@@ -507,10 +606,12 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
     }
 
     /**
-     * Normalizes selected scalar, list and map values recursively.
+     * Retains supported scalar values and copies nested maps and lists.
+     * Numbers are retained as supplied; this method does not impose a numeric range.
      *
-     * @param value One selected response value.
-     * @return A portable JSON-compatible value.
+     * @param value selected scalar, map, list or null
+     * @return supported scalar or newly normalized container, including null
+     * @throws SafeGraphQLException if value has an unsupported type
      */
     private static Object normalizeValue(Object value) {
         if (value == null || value instanceof String || value instanceof Number || value instanceof Boolean) {

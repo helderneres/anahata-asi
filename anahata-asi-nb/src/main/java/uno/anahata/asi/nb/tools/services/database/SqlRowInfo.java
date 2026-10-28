@@ -6,12 +6,27 @@ import lombok.Builder;
 import lombok.Data;
 
 /**
- * A zero-based result row containing cells in JDBC column order.
+ * One row admitted to the bounded SQL result, with positional cells.
+ * <p>
+ * Indices restart at zero for each query result; no offset is applied by this
+ * row DTO. Cell order follows the JDBC column positions rather than labels,
+ * so duplicate aliases remain distinct. The object is disconnected and does
+ * not provide access to a cursor.
+ * </p>
  */
 @Data
 @Builder
 public class SqlRowInfo {
 
+    /**
+     * Zero-based position among rows admitted to this command's result, not a persistent row
+     * identifier or a database ordering guarantee.
+     */
     private int index;
+    /**
+     * Cells in ascending one-based JDBC column order. The producer supplies an empty list
+     * when cells were not selected; absence of extracted cells does not establish that the
+     * row has no columns.
+     */
     private List<SqlCellInfo> cells;
 }

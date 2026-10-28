@@ -59,9 +59,9 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
     }
 
     /**
-     * The raw exception thrown during execution, for debugging and session
-     * serialization. Ignored during schema generation as it's an internal
-     * detail.
+     * Last caught invocation failure, retained only for local diagnostics.
+     * This transient field is excluded from JSON; persisted outcomes are
+     * represented by the response's result, status and public error text.
      */
     @JsonIgnore
     private transient Throwable exception;
@@ -83,7 +83,10 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
     }
 
     /**
-     * {@inheritDoc}
+     * Rebinds inherited state and recreates the transient execution guard.
+     * The inherited hook marks a restored executing response as interrupted;
+     * it does not resume that invocation. Call this hook while the response is
+     * inactive, not during an invocation.
      */
     @Override
     public void rebind() {
@@ -91,6 +94,30 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
         this.executing = new AtomicBoolean(false);
     }
 
+    /**
+     * Invokes the tool synchronously on the calling thread and records its outcome.
+     * The caller must arrange background execution for potentially blocking tools;
+     * this method does not schedule work on a worker or Swing event thread.
+     * <p>
+     * The invocation establishes a thread-local response and an executing-call
+     * registration, and clears both in the normal invocation cleanup. For command
+     * GraphQL toolkits, it rejects a response already marked failed, a disabled
+     * toolkit or a denied/undefined permission. Interactive approval remains the
+     * responsibility of the existing call-dispatch flow; this method is not a new
+     * approval mechanism.
+     * </p>
+     * <p>
+     * GraphQL command toolkits use the captured argument edits and copy variable
+     * maps before invocation, preserving explicit nulls. Callers must not mutate
+     * argument structures concurrently. A returned GraphQL result may contain field
+     * errors even when this response has status
+     * {@link ToolExecutionStatus#EXECUTED}; inspect the result's data and errors.
+     * Failures caught during invocation are recorded in this response instead
+     * of being retried.
+     * </p>
+     *
+     * @throws IllegalStateException if this response already has an invocation in progress
+     */
     @Override
     public void execute() {
         if (getStatus() == ToolExecutionStatus.FAILED
@@ -186,6 +213,14 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
         }
     }
 
+    /**
+     * Requests interruption of this response's current execution thread.
+     * This does not wait for termination or forcibly abort a blocking driver call;
+     * the invoked tool and its dependencies must cooperate with interruption.
+     *
+     * @throws IllegalStateException if no live execution thread is associated with
+     * this response
+     */
     @Override
     public void stop() {
         Thread t = getThread();

@@ -5,9 +5,14 @@ import lombok.Builder;
 import lombok.Data;
 
 /**
- * A JDBC primary-key component with its complete table identity and sequence.
- * Composite keys retain the driver's key sequence instead of collapsing to a
- * name.
+ * One column component of a JDBC-reported primary key.
+ * <p>
+ * A composite key yields separate components. Keep the owning connection,
+ * catalog, schema and table identity together, and use {@code keySequence}
+ * to interpret column order; neither a table name nor a constraint name is
+ * assumed globally unique. This object contains copied values only and owns
+ * no JDBC resources.
+ * </p>
  *
  * @author anahata
  */
@@ -16,27 +21,29 @@ import lombok.Data;
 public class PrimaryKeyInfo {
 
     /**
-     * Catalog reported by JDBC, possibly null.
+     * Owning table catalog reported in JDBC {@code TABLE_CAT}, possibly {@code null}.
      */
     private String catalog;
     /**
-     * Schema reported by JDBC, possibly null.
+     * Owning table schema reported in JDBC {@code TABLE_SCHEM}, possibly {@code null}.
      */
     private String schema;
     /**
-     * Exact table name reported by JDBC.
+     * Owning table identifier from JDBC {@code TABLE_NAME}, without case normalization.
      */
     private String tableName;
     /**
-     * Column participating in the primary key.
+     * Column identifier participating in this key component.
      */
     private String columnName;
     /**
-     * One-based position in a composite primary key, possibly unknown.
+     * One-based position from JDBC {@code KEY_SEQ}, or {@code null} when SQL NULL is
+     * reported. The list itself is not resorted by this DTO.
      */
     private Integer keySequence;
     /**
-     * Constraint name, possibly absent in the driver.
+     * Primary-key constraint name from JDBC {@code PK_NAME}, possibly {@code null}; not
+     * assumed globally unique.
      */
     private String keyName;
 }

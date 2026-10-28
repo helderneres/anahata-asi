@@ -244,6 +244,25 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
         return signature;
     }
 
+    /**
+     * Creates a deferred call from provider arguments without invoking the Java method.
+     * Missing required parameter names and conversion failures are recorded in the
+     * returned response as {@link uno.anahata.asi.agi.tool.ToolExecutionStatus#FAILED}; they are not a
+     * successful execution of the requested operation.
+     * <p>
+     * For a {@link GraphQLToolkit} that explicitly enables commands, the
+     * {@code variables} parameter is copied with GraphQL null-preserving semantics.
+     * An explicit null entry must not become an omitted variable and activate a
+     * GraphQL default. The retained raw-argument map uses the same representation
+     * for that parameter. Other toolkit parameters use the shared conversion policy.
+     * </p>
+     *
+     * @param modelMessage the model message owning the call
+     * @param id the provider invocation identifier
+     * @param jsonArgs non-null JSON-style parameter values keyed by Java parameter name
+     * @return a deferred call, possibly with a failed response when validation or
+     * conversion rejected its arguments
+     */
     @Override
     public JavaMethodToolCall createCall(AbstractModelMessage modelMessage, String id, Map<String, Object> jsonArgs) {
         // 1. Pre-flight validation for required parameters
@@ -293,6 +312,11 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
         return new JavaMethodToolCall(modelMessage, id, this, retainedRawArgs, convertedArgs);
     }
 
+    /**
+     * Returns the response wrapper type used to describe Java tool results.
+     *
+     * @return {@link JavaMethodToolResponse} as the protocol response type
+     */
     @Override
     public Type getResponseType() {
         return JavaMethodToolResponse.class;

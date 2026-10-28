@@ -5,8 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 
 /**
- * One JDBC foreign-key component, preserving both table identities and rules.
- * The key sequence allows callers to reconstruct composite relationships.
+ * One column-pair component of a JDBC foreign-key relationship.
+ * <p>
+ * The primary-key side is referenced and the foreign-key side is referencing,
+ * regardless of whether discovery used imported or exported keys. Composite
+ * relationships produce multiple components; the sequence records their
+ * column order. Preserve both complete table identities and constraint
+ * information rather than grouping solely by a potentially absent name.
+ * Copied numeric rules retain JDBC constants, not application-specific enums.
+ * </p>
  *
  * @author anahata
  */
@@ -15,59 +22,67 @@ import lombok.Data;
 public class TableRelationshipInfo {
 
     /**
-     * Referenced table catalog, possibly absent.
+     * Catalog of the referenced table from JDBC {@code PKTABLE_CAT}, possibly {@code null}.
      */
     private String primaryKeyCatalog;
     /**
-     * Referenced table schema, possibly absent.
+     * Schema of the referenced table from JDBC {@code PKTABLE_SCHEM}, possibly {@code null}.
      */
     private String primaryKeySchema;
     /**
-     * Referenced table name.
+     * Identifier of the referenced table from JDBC {@code PKTABLE_NAME}.
      */
     private String primaryKeyTable;
     /**
-     * Referenced column name.
+     * Referenced column identifier from JDBC {@code PKCOLUMN_NAME} for this component.
      */
     private String primaryKeyColumn;
     /**
-     * Referencing table catalog, possibly absent.
+     * Catalog of the referencing table from JDBC {@code FKTABLE_CAT}, possibly {@code null}.
      */
     private String foreignKeyCatalog;
     /**
-     * Referencing table schema, possibly absent.
+     * Schema of the referencing table from JDBC {@code FKTABLE_SCHEM}, possibly {@code null}.
      */
     private String foreignKeySchema;
     /**
-     * Referencing table name.
+     * Identifier of the referencing table from JDBC {@code FKTABLE_NAME}.
      */
     private String foreignKeyTable;
     /**
-     * Referencing column name.
+     * Referencing column identifier from JDBC {@code FKCOLUMN_NAME} for this component.
      */
     private String foreignKeyColumn;
     /**
-     * One-based position in the relationship, possibly unknown.
+     * One-based position of this column pair in a composite relationship from JDBC {@code
+     * KEY_SEQ}, or {@code null} for SQL NULL.
      */
     private Integer keySequence;
     /**
-     * JDBC update-rule constant, possibly unknown.
+     * JDBC {@code UPDATE_RULE} constant, such as {@link
+     * java.sql.DatabaseMetaData#importedKeyCascade}, or {@code null} for SQL NULL; no rule is
+     * executed by this DTO.
      */
     private Integer updateRule;
     /**
-     * JDBC delete-rule constant, possibly unknown.
+     * JDBC {@code DELETE_RULE} constant, such as {@link
+     * java.sql.DatabaseMetaData#importedKeyRestrict}, or {@code null} for SQL NULL.
      */
     private Integer deleteRule;
     /**
-     * Foreign-key constraint name, possibly absent.
+     * Referencing foreign-key constraint name from JDBC {@code FK_NAME}, possibly {@code
+     * null}; insufficient alone to identify a relationship across tables.
      */
     private String foreignKeyName;
     /**
-     * Referenced primary-key constraint name, possibly absent.
+     * Referenced primary/unique-key constraint name from JDBC {@code PK_NAME}, possibly
+     * {@code null}.
      */
     private String primaryKeyName;
     /**
-     * JDBC deferrability constant, possibly unknown.
+     * JDBC {@code DEFERRABILITY} constant, such as {@link
+     * java.sql.DatabaseMetaData#importedKeyNotDeferrable}, or {@code null} for SQL NULL. This
+     * reports metadata and does not change transaction settings.
      */
     private Integer deferrability;
 }

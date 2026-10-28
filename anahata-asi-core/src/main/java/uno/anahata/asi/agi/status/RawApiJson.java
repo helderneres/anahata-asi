@@ -6,18 +6,25 @@ package uno.anahata.asi.agi.status;
 import java.io.Serializable;
 
 /**
- * Ephemeral wire-level debug snapshot of an AI API exchange.
+ * Immutable container for provider JSON diagnostics of an API exchange.
  * <p>
- * Captures the exact JSON payloads exchanged over the wire (request configuration,
- * serialized conversation history, and raw provider response). Held exclusively
- * as a transient field on {@link uno.anahata.asi.agi.Agi} for live UI telemetry
- * in the StatusPanel, completely decoupled from historical messages and session persistence.
+ * Providers supply request configuration, serialized history and response text;
+ * an SDK may reconstruct that text, so it is not a byte-for-byte HTTP capture.
+ * The normal owner is the transient last-exchange field on
+ * {@link uno.anahata.asi.agi.Agi}. This record itself is serializable: its
+ * lifetime and persistence depend on where the caller retains it.
+ * </p>
+ * <p>
+ * Values are not redacted, parsed or validated here and may contain sensitive
+ * request or response data. Keep diagnostic inspection separate from public
+ * tool results. Instances are immutable; publishing or replacing the latest
+ * snapshot is the owner's responsibility.
  * </p>
  *
- * @param requestConfigJson The raw JSON of the request configuration (system instructions, tools, etc.).
- * @param historyJson The raw JSON of the conversation history sent in the HTTP payload.
- * @param responseJson The raw JSON response returned by the AI provider.
- *
+ * @param requestConfigJson provider configuration JSON, possibly null or empty
+ * @param historyJson serialized request history, possibly null or empty
+ * @param responseJson response JSON or accumulated chunk array, possibly null
+ * or empty before a response is available
  * @author anahata
  */
 public record RawApiJson(
@@ -32,15 +39,18 @@ public record RawApiJson(
     public static final RawApiJson EMPTY = new RawApiJson("", "", "");
 
     /**
-     * Returns a new {@code RawApiJson} with the specified chunk appended to the response JSON array.
+     * Returns a snapshot with a non-blank chunk appended to the response text.
+     * The existing request configuration and history are carried over unchanged.
      * <p>
-     * If {@code responseJson} is null or blank, wraps the chunk in a JSON array.
-     * For subsequent chunks, the chunk is appended before the closing array bracket,
-     * maintaining a valid JSON array format for syntax highlighting and inspection in the UI.
+     * A first chunk is wrapped in an array; an existing bracketed array receives
+     * another element. Other non-blank response text is treated as the first element.
+     * This is string assembly, not JSON validation: callers must supply valid JSON
+     * values. Each append copies the accumulated text, so this is not a bounded or
+     * constant-cost streaming buffer.
      * </p>
      *
-     * @param chunk The raw JSON chunk to append.
-     * @return A new {@code RawApiJson} instance containing the appended chunk.
+     * @param chunk JSON text to append; null or blank leaves this instance unchanged
+     * @return this instance for null/blank input, otherwise a new diagnostic snapshot
      */
     public RawApiJson appendResponseChunk(String chunk) {
         if (chunk == null || chunk.isBlank()) {
