@@ -2,6 +2,7 @@
 package uno.anahata.asi.nb.tools.services.database;
 
 import java.beans.PropertyChangeSupport;
+import java.time.Duration;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -19,6 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.netbeans.api.db.explorer.ConnectionManager;
 import org.netbeans.api.db.explorer.DatabaseConnection;
+import uno.anahata.asi.nb.tools.services.database.policy.DatabaseExecutionMode;
+import uno.anahata.asi.nb.tools.services.database.policy.DatabaseLoadingPolicy;
+import uno.anahata.asi.nb.tools.services.database.policy.DatabaseMutationPolicy;
 import uno.anahata.asi.agi.Agi;
 import uno.anahata.asi.agi.AgiConfig;
 import uno.anahata.asi.agi.ExpandToolsPreference;
@@ -157,15 +161,16 @@ public class DatabaseTest {
     }
 
     @Test
-    void approvedConnectRunsEvenForSuccessOnlyAndHasNoMetadataChildren() {
+    void approvedConnectRunsEvenForSuccessOnlyAndHasNoMetadataChildren() throws Exception {
         when(registered.getJDBCConnection()).thenReturn(null);
-        doAnswer(invocation -> {
+        when(manager.connect(registered)).thenAnswer(invocation -> {
             when(registered.getJDBCConnection()).thenReturn(jdbc);
-            return null;
-        }).when(manager).showConnectionDialog(registered);
+            return true;
+        });
         GraphQLExecutionInfo result = success("mutation { connect(connection:\"ANAHATA\") { success } }");
         assertEquals(true, object(result.getData().get("connect")).get("success"));
-        verify(manager).showConnectionDialog(registered);
+        verify(manager).connect(registered);
+        verify(manager, never()).showConnectionDialog(any());
         verifyNoInteractions(jdbc);
     }
 
@@ -472,7 +477,7 @@ public class DatabaseTest {
 
     @Test
     void invalidSqlTimeoutAndNullLimitAreRejectedBeforeAnyStatement() throws Exception {
-        List<Map<String, Object>> cases = List.of(Map.of("sql", ""), Map.of("timeout", 0), Map.of("timeout", 31),
+        List<Map<String, Object>> cases = List.of(Map.of("sql", ""), Map.of("timeout", 0), Map.of("timeout", -1),
                 java.util.Collections.singletonMap("n", null), Map.of("n", 0));
         for (Map<String, Object> invalid : cases) {
             Map<String, Object> variables = new LinkedHashMap<>();
@@ -511,6 +516,147 @@ public class DatabaseTest {
         assertEquals(DatabaseConnections.id(registered), object(command.get("connection")).get("id"));
         verify(jdbc, never()).getMetaData();
         verify(manager, never()).showConnectionDialog(any());
+    }
+
+    @Test
+    void correctedSqlDocumentWithObjectVariablesReachesTheFixtureAndKeepsSelection() throws Exception {
+        GraphQLExecutionInfo result = execute("""
+                mutation ExecuteSql($conn: ID!, $sql: String!) {
+                  executeQuery(connection: $conn, sql: $sql, limit: 100) {
+                    success columns { index label }
+                    rows { cells { columnIndex value } }
+                    returnedRowCount hasNextPage elapsedTimeMs
+                  }
+                }
+                """, Map.of("conn", "ANAHATA", "sql", "SELECT 1"));
+        assertTrue(result.getErrors().isEmpty(), result.getErrors().toString());
+        assertEquals(1, object(result.getData().get("executeQuery")).get("returnedRowCount"));
+        verify(statement).executeQuery("SELECT 1");
+        verify(metadata, never()).getColumnName(anyInt());
+        verify(cursor).close();
+        verify(statement).close();
+        verify(jdbc, never()).close();
+    }
+
+    @Test
+    void missingSqlSubselectionsAreActionableAndStartNoEffects() throws Exception {
+        GraphQLExecutionInfo result = execute("""
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT private_literal") { columns rows } }
+                """);
+        assertEquals(2, result.getErrors().size());
+        for (var error : result.getErrors()) {
+            assertEquals("SubselectionRequired", error.getType());
+            assertEquals("NOT_STARTED", error.getEffects());
+            assertFalse(error.getLocations().isEmpty());
+            assertFalse(error.getMessage().contains("private_literal"));
+        }
+        verify(jdbc, never()).createStatement();
+        verifyNoInteractions(statement);
+    }
+
+    @Test
+    void extendedModeHasNoPolicyPageMaximumOrAdditionalTimeoutAndNoIntegerOverflow() throws Exception {
+        database.getExecutionPolicies().putMode(DatabaseExecutionMode.EXTENDED_WORK);
+        GraphQLExecutionInfo result = success("""
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT 1",limit:2147483647) {
+                  returnedRowCount hasNextPage limit
+                } }
+                """);
+        assertEquals(Integer.MAX_VALUE, object(result.getData().get("executeQuery")).get("limit"));
+        verify(statement).setLargeMaxRows(2147483648L);
+        verify(statement, never()).setQueryTimeout(anyInt());
+        verify(cursor, times(2)).next();
+        verify(cursor, never()).getMetaData();
+        verify(cursor, never()).getObject(anyInt());
+        verify(jdbc, never()).close();
+    }
+
+    @Test
+    void positiveSubsecondTimeoutIsNeverAdaptedToJdbcUnlimited() throws Exception {
+        database.getExecutionPolicies().putMutationPolicy(new DatabaseMutationPolicy().putTimeout(Duration.ofMillis(900)));
+        success("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\") { success } }");
+        verify(statement).setQueryTimeout(1);
+    }
+
+    @Test
+    void explicitTimeoutCanExceedLegacyThirtySecondsWithinOneCallDeadline() throws Exception {
+        database.getExecutionPolicies().putMode(DatabaseExecutionMode.EXTENDED_WORK);
+        success("""
+                mutation {
+                  a:executeStatement(connection:"ANAHATA",sql:"UPDATE anahata SET enabled=1",timeoutSeconds:60) { success }
+                  b:executeQuery(connection:"ANAHATA",sql:"SELECT 1",timeoutSeconds:90) { success }
+                }
+                """);
+        verify(statement, times(2)).setQueryTimeout(intThat(value -> value > 30 && value <= 60));
+    }
+
+    @Test
+    void configurationChangesDuringSqlAffectOnlyLaterCalls() throws Exception {
+        database.getExecutionPolicies().putMutationPolicy(new DatabaseMutationPolicy()
+                .putResultLoadingPolicy(new DatabaseLoadingPolicy().putDefaultPageSize(2)));
+        when(statement.executeQuery(anyString())).thenAnswer(invocation -> {
+            database.getExecutionPolicies().putMutationPolicy(new DatabaseMutationPolicy()
+                    .putResultLoadingPolicy(new DatabaseLoadingPolicy().putDefaultPageSize(7)));
+            return cursor;
+        });
+        GraphQLExecutionInfo first = success("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\") { limit } }");
+        assertEquals(2, object(first.getData().get("executeQuery")).get("limit"));
+        GraphQLExecutionInfo second = success("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\") { limit } }");
+        assertEquals(7, object(second.getData().get("executeQuery")).get("limit"));
+    }
+
+    @Test
+    void inconsistentComposedPolicyRejectsTheDocumentBeforeStatements() throws Exception {
+        database.getExecutionPolicies().putMutationPolicy(new DatabaseMutationPolicy()
+                .putResultLoadingPolicy(new DatabaseLoadingPolicy().putMaxPageSize(1)));
+        GraphQLExecutionInfo result = execute("mutation { executeQuery(connection:\"ANAHATA\",sql:\"SELECT 1\") { success } }");
+        assertEquals("InvalidPolicy", result.getErrors().getFirst().getCategory());
+        verify(jdbc, never()).createStatement();
+    }
+
+    @Test
+    void nestedMetadataInMutationUsesResultLoadingPolicy() throws Exception {
+        database.getExecutionPolicies().putMutationPolicy(new DatabaseMutationPolicy()
+                .putResultLoadingPolicy(new DatabaseLoadingPolicy().putDefaultPageSize(7)));
+        GraphQLExecutionInfo result = success("""
+                mutation { connect(connection:"ANAHATA") { connection { tables { limit } } } }
+                """);
+        Map<String, Object> connection = object(object(result.getData().get("connect")).get("connection"));
+        assertEquals(7, object(connection.get("tables")).get("limit"));
+        verify(jdbc, never()).getMetaData();
+        verify(manager, never()).connect(any());
+    }
+
+    @Test
+    void oversizedGraphqlIntegerIsRejectedBeforeSqlAndOverflowLookaheadFallsBackSafely() throws Exception {
+        database.getExecutionPolicies().putMode(DatabaseExecutionMode.EXTENDED_WORK);
+        GraphQLExecutionInfo invalid = execute("""
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT 1",limit:2147483648) { success } }
+                """);
+        assertFalse(invalid.getErrors().isEmpty());
+        verify(jdbc, never()).createStatement();
+        doThrow(new SQLFeatureNotSupportedException()).when(statement).setLargeMaxRows(anyLong());
+        GraphQLExecutionInfo result = success("""
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT 1",limit:2147483647) { returnedRowCount } }
+                """);
+        assertEquals(1, object(result.getData().get("executeQuery")).get("returnedRowCount"));
+        verify(cursor).close();
+        verify(jdbc, never()).close();
+    }
+
+    @Test
+    void actualSqlRowBudgetRemainsExplicitAfterPageMaximumIsRemoved() throws Exception {
+        database.getExecutionPolicies().putMode(DatabaseExecutionMode.EXTENDED_WORK);
+        when(cursor.next()).thenReturn(true);
+        GraphQLExecutionInfo result = execute("""
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT 1",limit:20000) { rows { index } } }
+                """);
+        assertEquals("LimitExceeded", result.getErrors().getFirst().getCategory());
+        assertNull(result.getErrors().getFirst().getEffects());
+        assertTrue(result.getErrors().getFirst().getMessage().contains("10000 rows"));
+        verify(cursor).close();
+        verify(statement).close();
+        verify(jdbc, never()).close();
     }
 
     @Test

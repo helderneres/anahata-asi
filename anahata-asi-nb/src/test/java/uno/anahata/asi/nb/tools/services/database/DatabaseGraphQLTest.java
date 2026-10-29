@@ -2,6 +2,9 @@
 package uno.anahata.asi.nb.tools.services.database;
 
 import java.sql.Connection;
+import uno.anahata.asi.nb.tools.services.database.policy.DatabaseExecutionMode;
+import uno.anahata.asi.nb.tools.services.database.policy.DatabaseQueryPolicy;
+import uno.anahata.asi.nb.tools.services.database.policy.DatabaseLoadingPolicy;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -738,6 +741,92 @@ public class DatabaseGraphQLTest {
         verify(metadata, never()).getImportedKeys(any(), any(), any());
         verify(metadata, never()).getExportedKeys(any(), any(), any());
         verify(tables).close();
+        verify(connection, never()).close();
+    }
+
+    /**
+     * Dynamic defaults must remain distinguishable from explicit GraphQL null.
+     */
+    @Test
+    void effectiveDefaultChangesWithoutSchemaRebuildAndExplicitNullDoesNotDefault() throws Exception {
+        database.getExecutionPolicies().putQueryPolicy(new DatabaseQueryPolicy()
+                .putLoadingPolicy(new DatabaseLoadingPolicy().putDefaultPageSize(7)));
+        GraphQLExecutionInfo result = successful("{ connection(name:\"ANAHATA\") { tables { limit } } }");
+        assertEquals(7, tablePage(result).get("limit"));
+        GraphQLExecutionInfo invalid = database.query("{ connection(name:\"ANAHATA\") { tables(limit:null) { limit } } }", Map.of());
+        assertEquals("InvalidArgument", invalid.getErrors().getFirst().getCategory());
+        verify(connection, never()).getMetaData();
+        assertFalse(database.schema().contains("limit: Int ="));
+    }
+
+    /**
+     * Large representable page requests do not overflow or acquire unselected
+     * rows.
+     */
+    @Test
+    void extendedModeAcceptsMaximumGraphqlIntWithoutAcquiringUnselectedMetadata() throws Exception {
+        database.getExecutionPolicies().putMode(DatabaseExecutionMode.EXTENDED_WORK);
+        GraphQLExecutionInfo result = successful("""
+                { connection(name:"ANAHATA") { tables(offset:10000,limit:2147483647) { offset limit totalCount } } }
+                """);
+        assertEquals(Integer.MAX_VALUE, tablePage(result).get("limit"));
+        verify(connection, never()).getMetaData();
+    }
+
+    /**
+     * The mode removes the policy ceiling, while preserving returned-item
+     * selection.
+     */
+    @Test
+    void extendedTablePageCanExceedExplorationMaximumWithoutHiddenHundredItemCap() throws Exception {
+        database.getExecutionPolicies().putMode(DatabaseExecutionMode.EXTENDED_WORK);
+        ResultSet resultSet = mock(ResultSet.class);
+        AtomicInteger index = new AtomicInteger();
+        when(resultSet.next()).thenAnswer(invocation -> index.incrementAndGet() <= 150);
+        when(resultSet.getString("TABLE_NAME")).thenAnswer(invocation -> "anahata_" + index.get());
+        when(metadata.getTables(any(), any(), any(), any())).thenReturn(resultSet);
+        GraphQLExecutionInfo result = successful("""
+                { connection(name:"ANAHATA") { tables(limit:200) { items { tableName } hasNextPage } } }
+                """);
+        assertEquals(150, list(tablePage(result).get("items")).size());
+        assertEquals(false, tablePage(result).get("hasNextPage"));
+        verify(metadata, never()).getColumns(any(), any(), any(), any());
+        verify(metadata, never()).getPrimaryKeys(any(), any(), any());
+        verify(metadata, never()).getImportedKeys(any(), any(), any());
+        verify(metadata, never()).getExportedKeys(any(), any(), any());
+        verify(resultSet).close();
+        verify(connection, never()).close();
+    }
+
+    /**
+     * Native valid broad metadata reaches the selected resolvers without a cost
+     * estimator.
+     */
+    @Test
+    void broadMetadataDocumentWithOmittedPageSizeReachesSelectedJdbcOperations() throws Exception {
+        ResultSet tableRows = tables(table("catalog", "public", "users"));
+        ResultSet columnRows = rows(column("id"));
+        ResultSet primaryRows = rows(primaryKey("catalog", "public", "users", "id"));
+        ResultSet importedRows = rows(relationship());
+        ResultSet exportedRows = rows(relationship());
+        when(metadata.getTables(any(), any(), any(), any())).thenReturn(tableRows);
+        when(metadata.getColumns("catalog", "public", "users", "%")).thenReturn(columnRows);
+        when(metadata.getPrimaryKeys("catalog", "public", "users")).thenReturn(primaryRows);
+        when(metadata.getImportedKeys("catalog", "public", "users")).thenReturn(importedRows);
+        when(metadata.getExportedKeys("catalog", "public", "users")).thenReturn(exportedRows);
+        successful("""
+                { connection(name:"ANAHATA") { tables(schema:"public",tableNamePattern:"users") { items {
+                  catalog schema tableName tableType remarks
+                  columns { columnName dataType columnSize nullable primaryKey autoIncrement }
+                  primaryKeys { catalog schema tableName columnName keySequence keyName }
+                  importedRelationships { primaryKeyCatalog primaryKeySchema primaryKeyTable primaryKeyColumn foreignKeyTable }
+                  exportedRelationships { foreignKeyCatalog foreignKeySchema foreignKeyTable foreignKeyColumn primaryKeyTable }
+                } } } }
+                """);
+        verify(metadata).getColumns("catalog", "public", "users", "%");
+        verify(metadata, times(1)).getPrimaryKeys("catalog", "public", "users");
+        verify(metadata).getImportedKeys("catalog", "public", "users");
+        verify(metadata).getExportedKeys("catalog", "public", "users");
         verify(connection, never()).close();
     }
 

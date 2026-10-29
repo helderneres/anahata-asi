@@ -1,6 +1,7 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.tools.services.database;
 
+import graphql.language.OperationDefinition;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.DataFetchingEnvironmentImpl;
 import graphql.schema.PropertyDataFetcher;
@@ -24,7 +25,6 @@ import org.netbeans.api.db.explorer.ConnectionManager;
 import org.netbeans.api.db.explorer.DatabaseConnection;
 import org.netbeans.api.db.explorer.JDBCDriver;
 import uno.anahata.asi.agi.tool.graphql.GraphQLRequestContext;
-import uno.anahata.asi.agi.tool.graphql.GraphQLToolkit;
 import uno.anahata.asi.agi.tool.graphql.SafeGraphQLException;
 import uno.anahata.asi.agi.tool.query.FilterMatcher;
 import uno.anahata.asi.agi.tool.query.ToolFilter;
@@ -33,16 +33,18 @@ import uno.anahata.asi.agi.tool.query.ToolProjector;
 /**
  * Selection-driven discovery wiring for IDE registrations and JDBC metadata.
  * <p>
- * Private request sources compose concrete Info values with the IDE-owned handle
- * and complete catalog/schema/table identity needed by selected children. Only
- * selected schema fields become response data. Expensive operations use native
- * field resolvers; attributes already acquired use the native property fetcher.
+ * Private request sources compose concrete Info values with the IDE-owned
+ * handle and complete catalog/schema/table identity needed by selected
+ * children. Only selected schema fields become response data. Expensive
+ * operations use native field resolvers; attributes already acquired use the
+ * native property fetcher.
  * </p>
  * <p>
- * Metadata calls require an active connection and never open a connection dialog
- * or close the IDE connection. Resolver-owned result sets close in their callers.
- * JDBC calls may block and must run outside the Swing event dispatch thread;
- * cooperative checks cannot interrupt a driver blocked inside a metadata method.
+ * Metadata calls require an active connection and never open a connection
+ * dialog or close the IDE connection. Resolver-owned result sets close in their
+ * callers. JDBC calls may block and must run outside the Swing event dispatch
+ * thread; cooperative checks cannot interrupt a driver blocked inside a
+ * metadata method.
  * </p>
  *
  * @author anahata
@@ -55,7 +57,7 @@ final class DatabaseGraphQL {
      */
     static final String SCHEMA = """
             type Query {
-              connections(nameContains: String, connected: Boolean, offset: Int = 0, limit: Int = 25): DatabaseConnectionPage!
+              connections(nameContains: String, connected: Boolean, offset: Int = 0, limit: Int): DatabaseConnectionPage!
               connection(name: String, id: ID): DatabaseConnectionInfo
             }
             type DatabaseConnectionPage {
@@ -72,7 +74,7 @@ final class DatabaseGraphQL {
               schema: String
               connected: Boolean!
               metadata: DatabaseMetadataInfo
-              tables(catalog: String, schema: String, tableNamePattern: String = "%", types: [String!] = ["TABLE", "VIEW"], offset: Int = 0, limit: Int = 25): TablePage
+              tables(catalog: String, schema: String, tableNamePattern: String = "%", types: [String!] = ["TABLE", "VIEW"], offset: Int = 0, limit: Int): TablePage
             }
             type DatabaseMetadataInfo {
               databaseProductName: String
@@ -167,9 +169,9 @@ final class DatabaseGraphQL {
     /**
      * Builds native discovery wiring and appends explicit command wiring.
      * <p>
-     * Columns, primary keys, and each relationship direction are independent expensive
-     * fields. Column primary-key membership shares one request-local key acquisition
-     * with the selected table-level key list.
+     * Columns, primary keys, and each relationship direction are independent
+     * expensive fields. Column primary-key membership shares one request-local
+     * key acquisition with the selected table-level key list.
      * </p>
      *
      * @return executable resolver wiring for a newly initialized GraphQL engine
@@ -212,14 +214,17 @@ final class DatabaseGraphQL {
     /**
      * Filters and pages the small IDE registration snapshot in memory.
      * <p>
-     * Name matching is case-insensitive against sanitized display labels. Results are
-     * sorted by display name, nulls first, for this snapshot; registry changes and equal
-     * labels do not provide a stable cross-request cursor. No JDBC metadata is loaded.
+     * Name matching is case-insensitive against sanitized display labels.
+     * Results are sorted by display name, nulls first, for this snapshot;
+     * registry changes and equal labels do not provide a stable cross-request
+     * cursor. No JDBC metadata is loaded.
      * </p>
      *
-     * @param environment optional name/state filters and zero-based offset/limit
+     * @param environment optional name/state filters and zero-based
+     * offset/limit
      * @return a page with the filtered snapshot's known total count
-     * @throws SafeGraphQLException if filters, paging, or the request budget are invalid
+     * @throws SafeGraphQLException if filters, paging, or the request budget
+     * are invalid
      */
     private static MetadataPageInfo<ConnectionSource> connections(DataFetchingEnvironment environment) {
         PageArguments page = pageArguments(environment);
@@ -252,12 +257,15 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Resolves exactly one opaque id or original display name without connecting.
+     * Resolves exactly one opaque id or original display name without
+     * connecting.
      *
-     * @param environment exactly one of the nullable {@code id} or {@code name} arguments
-     * @return a safe source retaining the matched IDE-owned registration privately
-     * @throws SafeGraphQLException if arguments are invalid, no unique registration
-     *     matches, or the cooperative request budget is exhausted
+     * @param environment exactly one of the nullable {@code id} or {@code name}
+     * arguments
+     * @return a safe source retaining the matched IDE-owned registration
+     * privately
+     * @throws SafeGraphQLException if arguments are invalid, no unique
+     * registration matches, or the cooperative request budget is exhausted
      */
     private static ConnectionSource connection(DataFetchingEnvironment environment) {
         String name = environment.getArgument("name");
@@ -273,7 +281,8 @@ final class DatabaseGraphQL {
      * Associates cheap public attributes with the private IDE registration.
      *
      * @param connection the IDE-owned handle for selected child fetchers
-     * @return a request source containing credential-free Info and the private handle
+     * @return a request source containing credential-free Info and the private
+     * handle
      */
     static ConnectionSource connectionSource(DatabaseConnection connection) {
         return new ConnectionSource(CONNECTION_PROJECTOR.apply(connection), connection);
@@ -283,7 +292,8 @@ final class DatabaseGraphQL {
      * Copies cheap IDE attributes without requesting JDBC metadata.
      *
      * @param connection the registered connection handle
-     * @return public discovery attributes, excluding URL, user, and password fields
+     * @return public discovery attributes, excluding URL, user, and password
+     * fields
      */
     private static DatabaseConnectionInfo connectionInfo(DatabaseConnection connection) {
         JDBCDriver driver = connection.getJDBCDriver();
@@ -296,15 +306,17 @@ final class DatabaseGraphQL {
     /**
      * Combines selected database/driver descriptors in one bounded operation.
      * <p>
-     * The parent selection determines which JDBC getters run. Selecting no descriptor
-     * fields returns an empty Info without requesting connection metadata. Unselected
-     * or driver-null attributes remain null, rather than implying an acquisition.
+     * The parent selection determines which JDBC getters run. Selecting no
+     * descriptor fields returns an empty Info without requesting connection
+     * metadata. Unselected or driver-null attributes remain null, rather than
+     * implying an acquisition.
      * </p>
      *
-     * @param environment selected descriptor fields and the private connection source
+     * @param environment selected descriptor fields and the private connection
+     * source
      * @return only the acquired metadata descriptors
      * @throws SafeGraphQLException if an active connection, metadata operation,
-     *     or request budget is unavailable
+     * or request budget is unavailable
      */
     private static DatabaseMetadataInfo connectionMetadata(DataFetchingEnvironment environment) {
         ConnectionSource source = environment.getSource();
@@ -336,21 +348,24 @@ final class DatabaseGraphQL {
     /**
      * Pushes discovery filters into JDBC and streams a bounded table page.
      * <p>
-     * Catalog, schema pattern, table pattern, and types are passed to getTables without
-     * rewriting their driver-defined null or wildcard semantics. Offset rows are skipped
-     * and one look-ahead row determines continuation. Only returned rows get child
-     * sources; total count stays unknown without a complete scan. Ordering across pages
-     * depends on the driver and a stable catalog.
+     * Catalog, schema pattern, table pattern, and types are passed to getTables
+     * without rewriting their driver-defined null or wildcard semantics. Offset
+     * rows are skipped and one look-ahead row determines continuation. Only
+     * returned rows get child sources; total count stays unknown without a
+     * complete scan. Ordering across pages depends on the driver and a stable
+     * catalog.
      * </p>
      * <p>
-     * When neither items nor continuation is selected, paging is returned without JDBC
-     * metadata access. Cursor traversal still consumes the request-wide row budget,
-     * including skipped and look-ahead rows.
+     * When neither items nor continuation is selected, paging is returned
+     * without JDBC metadata access. Cursor traversal still consumes the
+     * request-wide row budget, including skipped and look-ahead rows.
      * </p>
      *
-     * @param environment selected page fields, JDBC filters, and parent connection
+     * @param environment selected page fields, JDBC filters, and parent
+     * connection
      * @return bounded items/continuation with a null total count
-     * @throws SafeGraphQLException if arguments, identities, driver access, or budgets fail
+     * @throws SafeGraphQLException if arguments, identities, driver access, or
+     * budgets fail
      */
     private static MetadataPageInfo<TableSource> tables(DataFetchingEnvironment environment) {
         ConnectionSource connection = environment.getSource();
@@ -404,15 +419,19 @@ final class DatabaseGraphQL {
     /**
      * Loads bounded columns for the exact parent table without loading keys.
      * <p>
-     * Catalog/schema identities use explicit empty qualifiers when absent; literal
-     * schema/table names are escaped for JDBC pattern parameters. The caller's column
-     * pattern keeps native wildcard semantics. Nullable sizes and YES/NO/unknown flags
-     * are retained. Primary keys are acquired only by their separate selected fields.
+     * Catalog/schema identities use explicit empty qualifiers when absent;
+     * literal schema/table names are escaped for JDBC pattern parameters. The
+     * caller's column pattern keeps native wildcard semantics. Nullable sizes
+     * and YES/NO/unknown flags are retained. Primary keys are acquired only by
+     * their separate selected fields.
      * </p>
      *
-     * @param environment the complete parent table identity and optional column pattern
-     * @return column Info values with private parent identity for conditional PK lookup
-     * @throws SafeGraphQLException if identity/escaping, driver access, or budgets fail
+     * @param environment the complete parent table identity and optional column
+     * pattern
+     * @return column Info values with private parent identity for conditional
+     * PK lookup
+     * @throws SafeGraphQLException if identity/escaping, driver access, or
+     * budgets fail
      */
     private static List<ColumnSource> columns(DataFetchingEnvironment environment) {
         TableSource table = environment.getSource();
@@ -441,11 +460,14 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Resolves column membership using the cache shared with table primary keys.
+     * Resolves column membership using the cache shared with table primary
+     * keys.
      *
-     * @param environment the selected primary-key flag and its private column source
+     * @param environment the selected primary-key flag and its private column
+     * source
      * @return whether the driver's key components include this column name
-     * @throws SafeGraphQLException if the shared key acquisition or request budget fails
+     * @throws SafeGraphQLException if the shared key acquisition or request
+     * budget fails
      */
     private static boolean columnPrimaryKey(DataFetchingEnvironment environment) {
         ColumnSource column = environment.getSource();
@@ -456,9 +478,10 @@ final class DatabaseGraphQL {
     /**
      * Loads one table's key components at most once in the current request.
      * <p>
-     * The cache key includes the IDE handle, catalog, schema, and literal table name.
-     * Aliases and column membership reuse the same result; the driver sequence number
-     * is preserved without imposing a different component order.
+     * The cache key includes the IDE handle, catalog, schema, and literal table
+     * name. Aliases and column membership reuse the same result; the driver
+     * sequence number is preserved without imposing a different component
+     * order.
      * </p>
      *
      * @param table the parent table and its complete private JDBC identity
@@ -491,14 +514,16 @@ final class DatabaseGraphQL {
     /**
      * Loads only the selected foreign-key direction for an exact parent table.
      * <p>
-     * Imported keys describe foreign keys on the current table referencing another
-     * primary-key table. Exported keys describe foreign keys on other tables referencing
-     * the current primary-key table. Every returned component retains both identities
-     * and the driver's sequence/rule values; the other direction is not queried.
+     * Imported keys describe foreign keys on the current table referencing
+     * another primary-key table. Exported keys describe foreign keys on other
+     * tables referencing the current primary-key table. Every returned
+     * component retains both identities and the driver's sequence/rule values;
+     * the other direction is not queried.
      * </p>
      *
      * @param environment the private table source and request budget
-     * @param imported {@code true} for imported keys, {@code false} for exported keys
+     * @param imported {@code true} for imported keys, {@code false} for
+     * exported keys
      * @return bounded relationship components for the requested direction
      * @throws SafeGraphQLException if identity, driver access, or budgets fail
      */
@@ -530,15 +555,17 @@ final class DatabaseGraphQL {
     /**
      * Obtains and caches metadata from an already-active IDE connection.
      * <p>
-     * The first access acquires the JDBC metadata object; later selected fields share
-     * it only within this request. The registration is never implicitly connected and
-     * neither the JDBC connection nor this metadata object is owned by the resolver.
+     * The first access acquires the JDBC metadata object; later selected fields
+     * share it only within this request. The registration is never implicitly
+     * connected and neither the JDBC connection nor this metadata object is
+     * owned by the resolver.
      * </p>
      *
      * @param source the private IDE registration
      * @param environment the execution-local cache and budget
      * @return shared metadata for this registration within the current request
-     * @throws SafeGraphQLException if the connection is inactive or metadata/budgets fail
+     * @throws SafeGraphQLException if the connection is inactive or
+     * metadata/budgets fail
      */
     private static DatabaseMetaData metadata(ConnectionSource source, DataFetchingEnvironment environment) {
         MetadataCacheKey key = new MetadataCacheKey(source.getDatabaseConnection());
@@ -554,16 +581,19 @@ final class DatabaseGraphQL {
     /**
      * Reserves one operation unit around a group of JDBC metadata reads.
      * <p>
-     * The supplied operation is checked before and after execution. SQLExceptions are
-     * logged locally and replaced with an authored safe field failure. This wrapper
-     * does not impose a hard driver timeout or close resources owned by the operation.
+     * The supplied operation is checked before and after execution.
+     * SQLExceptions are logged locally and replaced with an authored safe field
+     * failure. This wrapper does not impose a hard driver timeout or close
+     * resources owned by the operation.
      * </p>
      *
      * @param <T> the extracted metadata result type
      * @param environment cooperative time and operation budgets
-     * @param operation the JDBC reads whose owning caller closes any opened result set
+     * @param operation the JDBC reads whose owning caller closes any opened
+     * result set
      * @return the extracted result
-     * @throws SafeGraphQLException if the driver fails or a request budget is exhausted
+     * @throws SafeGraphQLException if the driver fails or a request budget is
+     * exhausted
      */
     private static <T> T metadataOperation(DataFetchingEnvironment environment, SqlSupplier<T> operation) {
         GraphQLRequestContext context = GraphQLRequestContext.from(environment);
@@ -579,22 +609,26 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Validates zero-based paging before any result set is opened.
+     * Validates zero-based paging using the request's immutable resource
+     * policy. An omitted limit uses its dynamic default; explicit null remains
+     * invalid. The offset traversal ceiling is independent of the configured
+     * page maximum.
      *
-     * @param environment offset and limit; null uses zero and 25 respectively
-     * @return a page request with offset 0..10000 and limit 1..100
-     * @throws SafeGraphQLException if either inclusive range is violated
+     * @param environment coerced paging and the current resource selection
+     * @return validated page values without offset-plus-limit integer
+     * arithmetic
+     * @throws SafeGraphQLException if paging violates policy or the offset
+     * bound
      */
     private static PageArguments pageArguments(DataFetchingEnvironment environment) {
         Integer offset = environment.getArgument("offset");
-        Integer limit = environment.getArgument("limit");
         int requestedOffset = offset == null ? 0 : offset;
-        int requestedLimit = limit == null ? GraphQLToolkit.DEFAULT_PAGE_LIMIT : limit;
+        int requestedLimit = DatabasePolicySupport.pageLimit(environment.getArguments(),
+                GraphQLRequestContext.from(environment),
+                environment.getOperationDefinition().getOperation() == OperationDefinition.Operation.MUTATION,
+                environment.getFieldDefinition().getName());
         if (requestedOffset < 0 || requestedOffset > MAX_OFFSET) {
             throw new SafeGraphQLException("InvalidArgument", "offset must be between 0 and " + MAX_OFFSET + ".");
-        }
-        if (requestedLimit < 1 || requestedLimit > GraphQLToolkit.MAX_PAGE_LIMIT) {
-            throw new SafeGraphQLException("InvalidArgument", "limit must be between 1 and " + GraphQLToolkit.MAX_PAGE_LIMIT + ".");
         }
         return new PageArguments(requestedOffset, requestedLimit);
     }
@@ -602,7 +636,8 @@ final class DatabaseGraphQL {
     /**
      * Bounds a discovery filter without normalizing driver wildcard semantics.
      *
-     * @param value an optional JDBC pattern, qualifier, or connection-name filter
+     * @param value an optional JDBC pattern, qualifier, or connection-name
+     * filter
      * @return the unchanged value, including null or an empty string
      * @throws SafeGraphQLException if the filter exceeds 1024 UTF-16 code units
      */
@@ -616,13 +651,15 @@ final class DatabaseGraphQL {
     /**
      * Requires a literal driver-reported table name before child discovery.
      * <p>
-     * A missing name is a field failure, not an unconstrained JDBC lookup. Catalog and
-     * schema may remain null in the Info; child callers translate absent qualifiers
-     * with {@link #exactQualifier(String)} before invoking JDBC.
+     * A missing name is a field failure, not an unconstrained JDBC lookup.
+     * Catalog and schema may remain null in the Info; child callers translate
+     * absent qualifiers with {@link #exactQualifier(String)} before invoking
+     * JDBC.
      * </p>
      *
      * @param table the private source produced from a returned table row
-     * @return its identity with a non-null table name and possibly absent qualifiers
+     * @return its identity with a non-null table name and possibly absent
+     * qualifiers
      * @throws SafeGraphQLException if the driver did not report a table name
      */
     private static TableInfo tableIdentity(TableSource table) {
@@ -638,7 +675,8 @@ final class DatabaseGraphQL {
      * Distinguishes an absent parent qualifier from unconstrained JDBC null.
      *
      * @param qualifier the catalog/schema reported by the driver, possibly null
-     * @return an empty no-catalog/no-schema qualifier for null, or the unchanged value
+     * @return an empty no-catalog/no-schema qualifier for null, or the
+     * unchanged value
      */
     private static String exactQualifier(String qualifier) {
         return qualifier == null ? "" : qualifier;
@@ -649,8 +687,10 @@ final class DatabaseGraphQL {
      *
      * @param name a non-null literal identity reported by table discovery
      * @param escape the driver search escape, possibly null or empty
-     * @return a pattern matching the literal identity without intentional wildcards
-     * @throws SafeGraphQLException if wildcard characters require unsupported escaping
+     * @return a pattern matching the literal identity without intentional
+     * wildcards
+     * @throws SafeGraphQLException if wildcard characters require unsupported
+     * escaping
      */
     private static String exactNamePattern(String name, String escape) {
         if (escape == null || escape.isEmpty()) {
@@ -665,15 +705,17 @@ final class DatabaseGraphQL {
     /**
      * Advances resolver-owned metadata rows with cooperative budget checks.
      * <p>
-     * Every existing row consumes the request-wide row ceiling, including rows later
-     * skipped by pagination. This does not preempt a driver blocked in next().
+     * Every existing row consumes the request-wide row ceiling, including rows
+     * later skipped by pagination. This does not preempt a driver blocked in
+     * next().
      * </p>
      *
      * @param rows the resolver-owned metadata cursor
      * @param environment the request deadline and shared row counter
      * @return whether the cursor reached another row
      * @throws SQLException if the driver cannot advance
-     * @throws SafeGraphQLException if time, interruption, or row budgets are exhausted
+     * @throws SafeGraphQLException if time, interruption, or row budgets are
+     * exhausted
      */
     private static boolean next(ResultSet rows, DataFetchingEnvironment environment) throws SQLException {
         GraphQLRequestContext context = GraphQLRequestContext.from(environment);
@@ -690,7 +732,8 @@ final class DatabaseGraphQL {
      * Rejects an oversized child collection instead of silently truncating it.
      *
      * @param size the number of child rows already collected
-     * @throws SafeGraphQLException if another row would exceed the 1000-row ceiling
+     * @throws SafeGraphQLException if another row would exceed the 1000-row
+     * ceiling
      */
     private static void checkChildCapacity(int size) {
         if (size >= MAX_CHILD_ROWS) {
@@ -715,7 +758,8 @@ final class DatabaseGraphQL {
      * Maps JDBC YES/NO text to a nullable Boolean.
      *
      * @param value driver text, possibly null, empty, or unrecognized
-     * @return true for YES, false for NO ignoring case, or null for unknown text
+     * @return true for YES, false for NO ignoring case, or null for unknown
+     * text
      */
     private static Boolean jdbcBoolean(String value) {
         if ("YES".equalsIgnoreCase(value)) {
@@ -747,7 +791,8 @@ final class DatabaseGraphQL {
     /**
      * Composes concrete public Info with a private resolver source.
      *
-     * @param <T> the public attribute container read by the native property fetcher
+     * @param <T> the public attribute container read by the native property
+     * fetcher
      */
     @Getter
     @RequiredArgsConstructor
@@ -762,7 +807,8 @@ final class DatabaseGraphQL {
     /**
      * Associates a public connection Info with its request-local IDE handle.
      * <p>
-     * The handle is not a schema output property and is never closed by discovery.
+     * The handle is not a schema output property and is never closed by
+     * discovery.
      * </p>
      */
     @Getter
@@ -787,7 +833,8 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Carries a returned page item's complete identity and private parent registration.
+     * Carries a returned page item's complete identity and private parent
+     * registration.
      */
     @Getter
     private static final class TableSource extends InfoSource<TableInfo> {
@@ -810,12 +857,15 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Carries column attributes and the table identity used only for selected PK lookup.
+     * Carries column attributes and the table identity used only for selected
+     * PK lookup.
      */
     @Getter
     private static final class ColumnSource extends InfoSource<ColumnInfo> {
+
         /**
-         * Parent source used to share exact-table primary-key metadata within the request.
+         * Parent source used to share exact-table primary-key metadata within
+         * the request.
          */
         private final TableSource table;
 
@@ -823,7 +873,8 @@ final class DatabaseGraphQL {
          * Associates acquired column properties with the exact parent table.
          *
          * @param info acquired nullable column attributes
-         * @param table the private table source needed for conditional key membership
+         * @param table the private table source needed for conditional key
+         * membership
          */
         private ColumnSource(ColumnInfo info, TableSource table) {
             super(info);
@@ -832,7 +883,8 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Validated immutable zero-based page values used before opening any cursor.
+     * Validated immutable zero-based page values used before opening any
+     * cursor.
      */
     @Value
     private static class PageArguments {
@@ -848,7 +900,8 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Tracks traversed metadata rows across selected parents, children, and aliases.
+     * Tracks traversed metadata rows across selected parents, children, and
+     * aliases.
      */
     private static final class MetadataRowBudget {
 
@@ -860,7 +913,8 @@ final class DatabaseGraphQL {
         /**
          * Reserves one existing metadata row before extracting its attributes.
          *
-         * @throws SafeGraphQLException if the 10000-row execution ceiling is exceeded
+         * @throws SafeGraphQLException if the 10000-row execution ceiling is
+         * exceeded
          */
         private void consume() {
             if (rows.incrementAndGet() > MAX_REQUEST_ROWS) {
@@ -870,7 +924,8 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Type-distinct request cache key for one IDE registration's metadata object.
+     * Type-distinct request cache key for one IDE registration's metadata
+     * object.
      */
     @Value
     private static class MetadataCacheKey {
@@ -882,7 +937,8 @@ final class DatabaseGraphQL {
     }
 
     /**
-     * Complete request-local key preventing PK collisions across catalogs and schemas.
+     * Complete request-local key preventing PK collisions across catalogs and
+     * schemas.
      */
     @Value
     private static class TableIdentity {

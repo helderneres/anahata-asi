@@ -15,6 +15,7 @@ import uno.anahata.asi.agi.tool.spi.AbstractToolResponse;
 import uno.anahata.asi.agi.tool.ToolExecutionStatus;
 import uno.anahata.asi.agi.tool.AgiToolException;
 import uno.anahata.asi.agi.tool.graphql.GraphQLToolkit;
+import uno.anahata.asi.agi.tool.graphql.GraphQLArgumentBindingException;
 import uno.anahata.asi.agi.tool.ToolPermission;
 
 /**
@@ -59,9 +60,9 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
     }
 
     /**
-     * Last caught invocation failure, retained only for local diagnostics.
-     * This transient field is excluded from JSON; persisted outcomes are
-     * represented by the response's result, status and public error text.
+     * Last caught invocation failure, retained only for local diagnostics. This
+     * transient field is excluded from JSON; persisted outcomes are represented
+     * by the response's result, status and public error text.
      */
     @JsonIgnore
     private transient Throwable exception;
@@ -83,9 +84,9 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
     }
 
     /**
-     * Rebinds inherited state and recreates the transient execution guard.
-     * The inherited hook marks a restored executing response as interrupted;
-     * it does not resume that invocation. Call this hook while the response is
+     * Rebinds inherited state and recreates the transient execution guard. The
+     * inherited hook marks a restored executing response as interrupted; it
+     * does not resume that invocation. Call this hook while the response is
      * inactive, not during an invocation.
      */
     @Override
@@ -95,28 +96,30 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
     }
 
     /**
-     * Invokes the tool synchronously on the calling thread and records its outcome.
-     * The caller must arrange background execution for potentially blocking tools;
-     * this method does not schedule work on a worker or Swing event thread.
+     * Invokes the tool synchronously on the calling thread and records its
+     * outcome. The caller must arrange background execution for potentially
+     * blocking tools; this method does not schedule work on a worker or Swing
+     * event thread.
      * <p>
      * The invocation establishes a thread-local response and an executing-call
-     * registration, and clears both in the normal invocation cleanup. For command
-     * GraphQL toolkits, it rejects a response already marked failed, a disabled
-     * toolkit or a denied/undefined permission. Interactive approval remains the
-     * responsibility of the existing call-dispatch flow; this method is not a new
-     * approval mechanism.
+     * registration, and clears both in the normal invocation cleanup. For
+     * command GraphQL toolkits, it rejects a response already marked failed, a
+     * disabled toolkit or a denied/undefined permission. Interactive approval
+     * remains the responsibility of the existing call-dispatch flow; this
+     * method is not a new approval mechanism.
      * </p>
      * <p>
-     * GraphQL command toolkits use the captured argument edits and copy variable
-     * maps before invocation, preserving explicit nulls. Callers must not mutate
-     * argument structures concurrently. A returned GraphQL result may contain field
-     * errors even when this response has status
-     * {@link ToolExecutionStatus#EXECUTED}; inspect the result's data and errors.
-     * Failures caught during invocation are recorded in this response instead
-     * of being retried.
+     * GraphQL command toolkits use the captured argument edits and copy
+     * variable maps before invocation, preserving explicit nulls. Callers must
+     * not mutate argument structures concurrently. A returned GraphQL result
+     * may contain field errors even when this response has status
+     * {@link ToolExecutionStatus#EXECUTED}; inspect the result's data and
+     * errors. Failures caught during invocation are recorded in this response
+     * instead of being retried.
      * </p>
      *
-     * @throws IllegalStateException if this response already has an invocation in progress
+     * @throws IllegalStateException if this response already has an invocation
+     * in progress
      */
     @Override
     public void execute() {
@@ -163,9 +166,12 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
                 Object value = effectiveArgs.get(paramName);
                 if (graphqlCommands && "variables".equals(paramName) && value != null) {
                     try {
+                        GraphQLArgumentBindingException.requireObject(value);
                         value = ((GraphQLToolkit) toolkitInstance).copyVariables(value);
                     } catch (IllegalArgumentException invalidVariables) {
-                        throw new AgiToolException("Invalid GraphQL variables. Provide a JSON object; no commands were started.");
+                        throw new AgiToolException(invalidVariables instanceof GraphQLArgumentBindingException
+                                ? invalidVariables.getMessage()
+                                : "Invalid GraphQL variables (phase ARGUMENT_BINDING; argument variables; expected object; effects NOT_STARTED).");
                     }
                     if (getModifiedArgs().containsKey(paramName)) {
                         getModifiedArgs().put(paramName, value); // Keeps the execution snapshot's explicit nulls in history.
@@ -180,7 +186,10 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
             setStatus(ToolExecutionStatus.EXECUTED);
 
         } catch (Throwable e) {
-            log.error("Exception executing tool " + getCall(), e);
+            boolean graphQLFailure = getCall().getTool().getToolkitInstance() instanceof GraphQLToolkit gql && gql.isCommandToolkit();
+            if (!graphQLFailure) {
+                log.error("Exception executing tool " + getCall(), e);
+            }
             Throwable cause = (e instanceof InvocationTargetException && e.getCause() != null) ? e.getCause() : e;
             this.exception = cause;
 
@@ -190,7 +199,11 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
                 setStatus(ToolExecutionStatus.INTERRUPTED);
                 Thread.currentThread().interrupt();
             } else {
-                log.error("Tool execution failed for: {}", getCall().getToolName(), cause);
+                if (graphQLFailure) {
+                    log.warn("GraphQL tool invocation failed: {} ({})", getCall().getToolName(), cause.getClass().getSimpleName());
+                } else {
+                    log.error("Tool execution failed for: {}", getCall().getToolName(), cause);
+                }
 
                 if (cause instanceof AgiToolException) {
                     addError(cause.getMessage());
@@ -214,12 +227,12 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
     }
 
     /**
-     * Requests interruption of this response's current execution thread.
-     * This does not wait for termination or forcibly abort a blocking driver call;
+     * Requests interruption of this response's current execution thread. This
+     * does not wait for termination or forcibly abort a blocking driver call;
      * the invoked tool and its dependencies must cooperate with interruption.
      *
-     * @throws IllegalStateException if no live execution thread is associated with
-     * this response
+     * @throws IllegalStateException if no live execution thread is associated
+     * with this response
      */
     @Override
     public void stop() {

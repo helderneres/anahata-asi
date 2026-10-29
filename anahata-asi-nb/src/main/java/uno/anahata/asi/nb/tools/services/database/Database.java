@@ -1,7 +1,6 @@
 /* Licensed under the Anahata Software License (ASL) v 108. See the LICENSE file for details. Força Barça! */
 package uno.anahata.asi.nb.tools.services.database;
 
-import graphql.analysis.FieldComplexityEnvironment;
 import java.util.List;
 import java.util.Map;
 import org.netbeans.api.db.explorer.ConnectionListener;
@@ -16,22 +15,27 @@ import uno.anahata.asi.agi.tool.graphql.GraphQLRequestContext;
 import uno.anahata.asi.agi.tool.AgiToolkit;
 import graphql.schema.idl.RuntimeWiring;
 import uno.anahata.asi.agi.tool.graphql.GraphQLToolkit;
+import uno.anahata.asi.agi.tool.graphql.SafeGraphQLException;
 
 import lombok.extern.slf4j.Slf4j;
+import uno.anahata.asi.nb.tools.services.database.policy.DatabasePolicyConfiguration;
+import uno.anahata.asi.nb.tools.services.database.policy.DatabaseExecutionPolicies;
 
 /**
  * NetBeans Database Explorer toolkit exposing an embedded GraphQL contract.
  * <p>
  * The inherited schema and query tools describe and resolve selected metadata;
- * {@link #mutate(String, Map)} performs explicit connection or raw SQL
- * commands governed by the tool permission. No HTTP endpoint is created. JDBC and IDE handles are retained in
- * private resolver sources rather than public response values.
+ * {@link #mutate(String, Map)} performs explicit connection or raw SQL commands
+ * governed by the tool permission. No HTTP endpoint is created. JDBC and IDE
+ * handles are retained in private resolver sources rather than public response
+ * values.
  * </p>
  * <p>
- * Initialization and rebinding build the engine before registering this instance
- * as a connection listener. Metadata and SQL may block in a JDBC driver and must
- * be invoked outside the Swing event dispatch thread. Serial fields within one
- * Mutation neither serialize independent calls nor create a shared transaction.
+ * Initialization and rebinding build the engine before registering this
+ * instance as a connection listener. Metadata and SQL may block in a JDBC
+ * driver and must be invoked outside the Swing event dispatch thread. Serial
+ * fields within one Mutation neither serialize independent calls nor create a
+ * shared transaction.
  * </p>
  *
  * @author anahata
@@ -45,6 +49,43 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
      * connection changes.
      */
     private transient boolean listening = false;
+
+    /**
+     * Toolkit-local editable policy configuration. Its coherent snapshots are
+     * copied once per request; configuring it never changes authorization or
+     * connections.
+     */
+    private DatabasePolicyConfiguration executionPolicies = new DatabasePolicyConfiguration();
+
+    /**
+     * Returns the Java-side policy configuration for this toolkit instance.
+     * Configuration is not a model-callable tool and changes affect later
+     * calls.
+     *
+     * @return thread-safe, copy-on-write configuration owned by this toolkit
+     */
+    public DatabasePolicyConfiguration getExecutionPolicies() {
+        return executionPolicies;
+    }
+
+    /**
+     * Captures and validates one immutable nested policy before any resolver
+     * effects. All resource policies in the document share its one cooperative
+     * deadline.
+     *
+     * @param mutation whether the request uses the command channel
+     * @return isolated request context carrying the effective configuration
+     * @throws SafeGraphQLException if composed policy values are inconsistent
+     */
+    @Override
+    protected GraphQLRequestContext createRequestContext(boolean mutation) {
+        try {
+            DatabaseExecutionPolicies snapshot = executionPolicies.resolve();
+            return new GraphQLRequestContext(getMaxMetadataOperations(), snapshot.getTimeout(mutation), snapshot);
+        } catch (IllegalArgumentException invalid) {
+            throw new SafeGraphQLException("InvalidPolicy", "The configured execution policy is inconsistent. Review positive defaults, maximum page sizes and timeout before retrying; no operation was started.");
+        }
+    }
 
     /**
      * {@inheritDoc}
@@ -79,8 +120,8 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      * <p>
-     * Builds the transient executable schema and registers this toolkit instance for
-     * IDE connection changes. Repeated registration is guarded by
+     * Builds the transient executable schema and registers this toolkit
+     * instance for IDE connection changes. Repeated registration is guarded by
      * {@link #syncListeners()}.
      * </p>
      */
@@ -93,8 +134,9 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      * <p>
-     * Rebuilds transient GraphQL state and ensures this instance has an IDE connection
-     * listener. It does not reconnect database sessions or load metadata eagerly.
+     * Rebuilds transient GraphQL state and ensures this instance has an IDE
+     * connection listener. It does not reconnect database sessions or load
+     * metadata eagerly.
      * </p>
      */
     @Override
@@ -116,7 +158,8 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      *
-     * @return wiring for selected JDBC operations and already-acquired Info properties
+     * @return wiring for selected JDBC operations and already-acquired Info
+     * properties
      */
     @Override
     protected RuntimeWiring buildRuntimeWiring() {
@@ -126,32 +169,34 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      * <p>
-     * Describes bounded discovery, complete destination identities, selection-driven
-     * result acquisition, and raw SQL effects. Instructions do not replace the current
-     * tool permission or validate SQL as read-only.
+     * Describes bounded discovery, complete destination identities,
+     * selection-driven result acquisition, and raw SQL effects. Instructions do
+     * not replace the current tool permission or validate SQL as read-only.
      * </p>
      *
      * @return the bounded-discovery and explicit-command instructions
-     * @throws Exception as permitted by the inherited instruction-provider contract
+     * @throws Exception as permitted by the inherited instruction-provider
+     * contract
      */
     @Override
     public List<String> getSystemInstructions() throws Exception {
         return List.of(
                 "Database exposes only schema(), query() and mutate(). Discover the schema before issuing calls.",
-                "Use query() for selection-driven metadata discovery. Pages default to 25, maximum 100; use complete catalog/schema/table identities.",
+                "Use query() for selection-driven metadata discovery; use complete catalog/schema/table identities. Page defaults and maximums follow the configured execution mode. An omitted limit uses the effective default; explicit null is invalid.",
                 "Use mutate() for explicit connect/disconnect and raw SQL commands, including executeQuery. Raw SQL can have effects and requires the configured command permission.",
                 "Use discovered connection ids; no fallback destination or implicit connection dialog is allowed. Discover columns before composing SQL.",
-                "Mutation fields execute serially, without a shared transaction, rollback or automatic retry. A failure after an effect does not undo it; verify before retrying.",
+                "Mutation fields execute serially, without a shared transaction, rollback or automatic retry. A failure after an effect does not undo it; verify before retrying. Connection status REQUIRES_INTERACTION or PENDING is not completed success; use IDE Services when interaction is required.",
                 "SQL rows/cells are positional; labels may repeat. Respect returnedRowCount, hasNextPage and cell truncation; totalCount may be unknown.",
-                "Inspect both data and errors. Null, an empty list and a failed field have different meanings. Select only needed fields."
+                "Inspect both data and errors. Null, an empty list and a failed field have different meanings. Select only needed fields. variables must be a JSON object, not a quoted JSON string. SQL output requires subselections: columns { index label } rows { cells { columnIndex value } }."
         );
     }
 
     /**
      * {@inheritDoc}
      * <p>
-     * Adds registered and currently connected counts from the IDE registry. It does
-     * not request JDBC metadata, open connections, or publish names and credentials.
+     * Adds registered and currently connected counts from the IDE registry. It
+     * does not request JDBC metadata, open connections, or publish names and
+     * credentials.
      * </p>
      *
      * @param message the context message receiving aggregate connection counts
@@ -176,16 +221,20 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * Executes one explicit Mutation through the existing Java tool protocol.
      * <p>
-     * Approval applies to the complete document and variables. Commands may have
-     * side effects even when only {@code success} is selected. Raw SQL is not made
-     * read-only by a method name or SELECT prefix. Fields execute serially without
-     * a shared transaction, automatic rollback, or retry; inspect data and errors
-     * before deciding whether another call is appropriate.
+     * Approval applies to the complete document and variables. Commands may
+     * have side effects even when only {@code success} is selected. Raw SQL is
+     * not made read-only by a method name or SELECT prefix. Fields execute
+     * serially without a shared transaction, automatic rollback, or retry;
+     * inspect data and errors before deciding whether another call is
+     * appropriate.
      * </p>
      *
-     * @param document one Mutation operation, optionally using variables and fragments
-     * @param variables JSON-compatible variable values, or {@code null} for none
-     * @return selected command data and safe errors, including partial field failures
+     * @param document one Mutation operation, optionally using variables and
+     * fragments
+     * @param variables JSON-compatible variable values, or {@code null} for
+     * none
+     * @return selected command data and safe errors, including partial field
+     * failures
      */
     @Override
     @AgiTool("Executes one GraphQL Mutation with explicit database commands. Raw SQL may have effects, including executeQuery. "
@@ -209,17 +258,17 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * Validates selected root command arguments and pins their destinations.
      * <p>
-     * Queries need no additional domain preflight here. Command preflight performs no
-     * SQL execution, connection dialog, or transaction management, but may inspect an
-     * active connection's catalog and schema. Runtime failures remain possible after
-     * preflight and do not undo earlier effects.
+     * Queries need no additional domain preflight here. Command preflight
+     * performs no SQL execution, connection dialog, or transaction management,
+     * but may inspect an active connection's catalog and schema. Runtime
+     * failures remain possible after preflight and do not undo earlier effects.
      * </p>
      *
      * @param fields native selected fields with coerced arguments
      * @param request the execution-local cache and cooperative budget
      * @param mutation whether this is the explicit Mutation channel
-     * @throws uno.anahata.asi.agi.tool.graphql.SafeGraphQLException if command arguments,
-     *     identities, or request budgets are invalid
+     * @throws uno.anahata.asi.agi.tool.graphql.SafeGraphQLException if command
+     * arguments, identities, or request budgets are invalid
      */
     @Override
     protected void validateSelection(List<GraphQLFieldInfo> fields, GraphQLRequestContext request, boolean mutation) {
@@ -229,36 +278,10 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     }
 
     /**
-     * Estimates SQL list cost without counting the parent row limit twice.
-     * <p>
-     * Rows are bounded at the SQL parent; columns and cells use a separate column
-     * ceiling. Actual row, cell, text, and deadline budgets still apply during execution,
-     * so acceptance of the estimate does not guarantee completion.
-     * </p>
-     *
-     * @param field the native field definition and coerced arguments
-     * @param children the accumulated child-field complexity
-     * @param maximum the configured complexity rejection threshold
-     * @return a cost capped at one above the threshold
-     */
-    @Override
-    protected int fieldComplexity(FieldComplexityEnvironment field, int children, int maximum) {
-        String parent = field.getParentType().getName();
-        if ("SqlQueryInfo".equals(parent) && "rows".equals(field.getFieldDefinition().getName())) {
-            return Math.min(maximum + 1, 1 + children);
-        }
-        if (("SqlQueryInfo".equals(parent) && "columns".equals(field.getFieldDefinition().getName()))
-                || ("SqlRowInfo".equals(parent) && "cells".equals(field.getFieldDefinition().getName()))) {
-            return (int) Math.min(maximum + 1L, 1L + DatabaseCommands.MAX_COLUMNS * (long) Math.max(1, children));
-        }
-        return super.fieldComplexity(field, children, maximum);
-    }
-
-    /**
      * Registers this instance with the IDE connection registry at most once.
      * <p>
-     * Synchronization protects listener registration only. It does not lock JDBC
-     * work or serialize commands from independent requests.
+     * Synchronization protects listener registration only. It does not lock
+     * JDBC work or serialize commands from independent requests.
      * </p>
      */
     private synchronized void syncListeners() {
@@ -272,8 +295,9 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     /**
      * {@inheritDoc}
      * <p>
-     * Records registry changes without querying, connecting, or disconnecting database
-     * servers. The callback performs no JDBC work on the notifying thread.
+     * Records registry changes without querying, connecting, or disconnecting
+     * database servers. The callback performs no JDBC work on the notifying
+     * thread.
      * </p>
      */
     @Override

@@ -137,46 +137,24 @@ public class GraphQLToolkitTest {
     }
 
     /**
-     * Applies coerced variable limits to complexity before any data is fetched.
+     * Valid selections reach resolvers without estimating list cardinality or
+     * alias fan-out. Actual resolver budgets and depth checks remain separate.
      */
     @Test
-    public void estimatesPagedFanOutFromVariables() {
-        TestToolkit toolkit = new TestToolkit();
-        toolkit.maxComplexity = 20;
-        toolkit.initialize();
-        GraphQLExecutionInfo allowed = toolkit.query("query($n:Int) { expensive(limit:$n) { label } }", Map.of("n", 2));
-        assertTrue(allowed.getErrors().isEmpty());
-        assertEquals(1, toolkit.fetches.get());
-        GraphQLExecutionInfo rejected = toolkit.query("query($n:Int) { expensive(limit:$n) { label } }", Map.of("n", 100));
-        assertFalse(rejected.getErrors().isEmpty());
-        assertEquals(1, toolkit.fetches.get());
-    }
-
-    /**
-     * Counts independent aliases instead of allowing a shallow wide query
-     * bypass.
-     */
-    @Test
-    public void rejectsExcessiveAliasedFieldsBeforeFetching() {
-        TestToolkit toolkit = new TestToolkit();
-        toolkit.maxComplexity = 5;
-        toolkit.initialize();
-        GraphQLExecutionInfo result = toolkit.query("{ a:message b:message c:message d:message e:message f:message }", Map.of());
-        assertFalse(result.getErrors().isEmpty());
-        assertEquals(0, toolkit.fetches.get());
-    }
-
-    /**
-     * Multiple huge nested fan-outs cannot overflow the native integer cost
-     * sum.
-     */
-    @Test
-    public void rejectsCombinedNestedFanOutWithoutIntegerOverflow() {
+    public void executesValidSelectionsWithoutEstimatedFieldCostRejection() {
         TestToolkit toolkit = toolkit();
+        GraphQLExecutionInfo largePage = toolkit.query(
+                "query($n:Int) { expensive(limit:$n) { label } }", Map.of("n", Integer.MAX_VALUE));
+        assertTrue(largePage.getErrors().isEmpty());
+        assertEquals(1, toolkit.fetches.get());
+        GraphQLExecutionInfo aliases = toolkit.query(
+                "{ a:message b:message c:message d:message e:message f:message }", Map.of());
+        assertTrue(aliases.getErrors().isEmpty());
+        assertEquals(7, toolkit.fetches.get());
         String subtree = "nodes { children { children { children { children { children { label } } } } } }";
-        GraphQLExecutionInfo result = toolkit.query("{ a:" + subtree + " b:" + subtree + " }", Map.of());
-        assertFalse(result.getErrors().isEmpty());
-        assertEquals(0, toolkit.fetches.get());
+        GraphQLExecutionInfo nested = toolkit.query("{ a:" + subtree + " b:" + subtree + " }", Map.of());
+        assertTrue(nested.getErrors().isEmpty());
+        assertEquals(9, toolkit.fetches.get());
     }
 
     /**
@@ -193,6 +171,8 @@ public class GraphQLToolkitTest {
         assertEquals(1, result.getErrors().size());
         GraphQLErrorInfo error = result.getErrors().get(0);
         assertEquals(List.of("exploded"), error.getPath());
+        assertEquals("exploded", error.getField());
+        assertFalse(error.getLocations().isEmpty());
         assertFalse(error.getMessage().contains("jdbc:"));
         assertFalse(error.getMessage().contains("password"));
         assertFalse(error.getMessage().contains("IllegalStateException"));
@@ -224,7 +204,9 @@ public class GraphQLToolkitTest {
         assertTrue(bytes.size() > 0);
     }
 
-    /** Existing GraphQL subclasses do not opt into Database command behavior. */
+    /**
+     * Existing GraphQL subclasses do not opt into Database command behavior.
+     */
     @Test
     public void readOnlyToolkitRemainsQueryOnlyAfterRebind() throws Exception {
         MockAsiContainer container = new MockAsiContainer("graphql-opt-in-test");
@@ -242,7 +224,9 @@ public class GraphQLToolkitTest {
         assertTrue(readOnly.query("{ __typename }", Map.of()).getErrors().isEmpty());
     }
 
-    /** Selected nulls survive only the GraphQL response's local serializer. */
+    /**
+     * Selected nulls survive only the GraphQL response's local serializer.
+     */
     @Test
     public void graphQLNullSerializationDoesNotChangeOrdinaryMapperPolicy() throws Exception {
         var mapper = uno.anahata.asi.agi.tool.schema.SchemaProvider.OBJECT_MAPPER;
@@ -256,7 +240,9 @@ public class GraphQLToolkitTest {
         assertFalse(mapper.readTree(mapper.writeValueAsString(java.util.Collections.singletonMap("ordinary", null))).has("ordinary"));
     }
 
-    /** Only a synthetic variable map is cloned; no session/toolkit is restored. */
+    /**
+     * Only a synthetic variable map is cloned; no session/toolkit is restored.
+     */
     @Test
     public void nullVariablesSurviveTheExistingKryoMapSerializer() throws Exception {
         Map<String, Object> values = new java.util.LinkedHashMap<>();
@@ -272,6 +258,60 @@ public class GraphQLToolkitTest {
         assertTrue(json.get("n").isNull());
         assertTrue(json.get("nested").get("inner").isNull());
         assertEquals(21, json.get("afterRestore").intValue());
+    }
+
+    /**
+     * Retains native field diagnostics without copying argument values or
+     * starting resolver work.
+     */
+    @Test
+    public void nativeValidationReportsSubselectionTypePathAndCoordinates() {
+        TestToolkit toolkit = toolkit();
+        GraphQLExecutionInfo result = toolkit.query("{ nodes expensive }", Map.of());
+        assertNull(result.getData());
+        assertEquals(2, result.getErrors().size());
+        for (GraphQLErrorInfo error : result.getErrors()) {
+            assertEquals("ValidationError", error.getCategory());
+            assertEquals("SubselectionRequired", error.getType());
+            assertTrue(List.of("nodes", "expensive").contains(error.getField()));
+            assertEquals(List.of(error.getField()), error.getPath());
+            assertEquals("NOT_STARTED", error.getEffects());
+            assertFalse(error.getLocations().isEmpty());
+            assertTrue(error.getLocations().getFirst().get("line") > 0);
+            assertTrue(error.getLocations().getFirst().get("column") > 0);
+            assertTrue(error.getMessage().contains("subfields"));
+        }
+        assertEquals(0, toolkit.fetches.get());
+    }
+
+    /**
+     * Schema errors and coercion failures identify their phase without echoing
+     * rejected scalar values in the model-visible response.
+     */
+    @Test
+    public void validationDoesNotEchoVariableValues() {
+        TestToolkit toolkit = toolkit();
+        String secret = "private-jdbc-password-value";
+        GraphQLExecutionInfo result = toolkit.query(
+                "query($n:Int) { expensive(limit:$n) { label } }", Map.of("n", secret));
+        assertNull(result.getData());
+        assertFalse(result.getErrors().isEmpty());
+        GraphQLErrorInfo error = result.getErrors().getFirst();
+        assertEquals("ValidationError", error.getCategory());
+        assertEquals("VariableCoercion", error.getType());
+        assertEquals("NOT_STARTED", error.getEffects());
+        assertFalse(error.getMessage().contains(secret));
+        assertEquals(0, toolkit.fetches.get());
+    }
+
+    /**
+     * A partial resolver failure cannot claim that no command effects started.
+     */
+    @Test
+    public void resolverErrorsDoNotAssertEffectsNotStarted() {
+        GraphQLExecutionInfo result = toolkit().query("{ message exploded }", Map.of());
+        assertNull(result.getErrors().getFirst().getEffects());
+        assertEquals("hello", result.getData().get("message"));
     }
 
     /**
@@ -305,11 +345,6 @@ public class GraphQLToolkitTest {
          * Override for tests proving depth enforcement.
          */
         private int maxDepth = 12;
-
-        /**
-         * Override for tests proving variable-aware complexity enforcement.
-         */
-        private int maxComplexity = 10_000;
 
         /**
          * {@inheritDoc}
@@ -376,14 +411,5 @@ public class GraphQLToolkitTest {
             return maxDepth;
         }
 
-        /**
-         * {@inheritDoc}
-         * <p>
-         * Returns the complexity selected by the individual test.</p>
-         */
-        @Override
-        protected int getMaxQueryComplexity() {
-            return maxComplexity;
-        }
     }
 }

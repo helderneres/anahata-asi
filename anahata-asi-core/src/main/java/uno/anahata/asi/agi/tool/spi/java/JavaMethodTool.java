@@ -19,6 +19,7 @@ import uno.anahata.asi.agi.tool.spi.AbstractTool;
 import uno.anahata.asi.agi.tool.schema.SchemaProvider;
 import uno.anahata.asi.agi.tool.AgiTool;
 import uno.anahata.asi.agi.tool.graphql.GraphQLToolkit;
+import uno.anahata.asi.agi.tool.graphql.GraphQLArgumentBindingException;
 
 /**
  * A model-agnostic, stateful representation of a single Java method tool. This
@@ -141,13 +142,13 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
         return ((JavaObjectToolkit) toolkit).getToolkitInstance();
     }
 
-    
     /**
-     * Performs post-restoration logic, warming up the reflection method and parameters.
-     * This is called during the session binding phase to ensure the tool is ready 
-     * before the UI or AI processing begins.
+     * Performs post-restoration logic, warming up the reflection method and
+     * parameters. This is called during the session binding phase to ensure the
+     * tool is ready before the UI or AI processing begins.
      *
-     * @throws Exception if method restoration or parameter initialization fails.
+     * @throws Exception if method restoration or parameter initialization
+     * fails.
      */
     public void postActivate() throws Exception {
         if (method == null) {
@@ -186,7 +187,7 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
      *
      * @throws Exception if parameter mapping or schema generation fails.
      */
-    private void initParameters() throws Exception{
+    private void initParameters() throws Exception {
         // A tool creates its own parameters.
 
         getParameters().clear();
@@ -197,8 +198,8 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
     }
 
     /**
-     * Returns a rich, formatted description string containing the base description,
-     * current permission status, and effective max depth details.
+     * Returns a rich, formatted description string containing the base
+     * description, current permission status, and effective max depth details.
      *
      * @return The formatted tool description.
      */
@@ -245,23 +246,28 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
     }
 
     /**
-     * Creates a deferred call from provider arguments without invoking the Java method.
-     * Missing required parameter names and conversion failures are recorded in the
-     * returned response as {@link uno.anahata.asi.agi.tool.ToolExecutionStatus#FAILED}; they are not a
-     * successful execution of the requested operation.
+     * Creates a deferred call from provider arguments without invoking the Java
+     * method. Missing required parameter names and conversion failures are
+     * recorded in the returned response as
+     * {@link uno.anahata.asi.agi.tool.ToolExecutionStatus#FAILED}; they are not
+     * a successful execution of the requested operation.
      * <p>
      * For a {@link GraphQLToolkit} that explicitly enables commands, the
-     * {@code variables} parameter is copied with GraphQL null-preserving semantics.
-     * An explicit null entry must not become an omitted variable and activate a
-     * GraphQL default. The retained raw-argument map uses the same representation
-     * for that parameter. Other toolkit parameters use the shared conversion policy.
+     * {@code variables} parameter is copied with GraphQL null-preserving
+     * semantics. An explicit null entry must not become an omitted variable and
+     * activate a GraphQL default. The retained raw-argument map uses the same
+     * representation for that parameter. Strings containing JSON are rejected
+     * as strings, not parsed as objects. Type rejections identify the binding
+     * phase and argument without reproducing its content. Other toolkit
+     * parameters use the shared conversion policy.
      * </p>
      *
      * @param modelMessage the model message owning the call
      * @param id the provider invocation identifier
-     * @param jsonArgs non-null JSON-style parameter values keyed by Java parameter name
-     * @return a deferred call, possibly with a failed response when validation or
-     * conversion rejected its arguments
+     * @param jsonArgs non-null JSON-style parameter values keyed by Java
+     * parameter name
+     * @return a deferred call, possibly with a failed response when validation
+     * or conversion rejected its arguments
      */
     @Override
     public JavaMethodToolCall createCall(AbstractModelMessage modelMessage, String id, Map<String, Object> jsonArgs) {
@@ -287,6 +293,9 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
                 String paramName = javaParam.getName();
                 Object rawValue = jsonArgs.get(paramName);
                 if (rawValue != null) {
+                    if (graphQL != null && "variables".equals(paramName)) {
+                        GraphQLArgumentBindingException.requireObject(rawValue);
+                    }
                     // Use the stored generic Type for accurate deserialization
                     Object convertedValue = graphQL != null && "variables".equals(paramName)
                             ? graphQL.copyVariables(rawValue)
@@ -295,9 +304,14 @@ public class JavaMethodTool extends AbstractTool<JavaMethodToolParameter, JavaMe
                 }
             }
         } catch (IllegalArgumentException e) {
-            log.error("Failed to convert arguments", e);
+            if (graphQL == null) {
+                log.error("Failed to convert arguments", e);
+            } else {
+                log.warn("GraphQL argument binding rejected ({})", e.getClass().getSimpleName());
+            }
             String reason = graphQL == null ? "Tool call rejected: Failed to convert arguments. Error: " + e.getMessage()
-                    : "Tool call rejected: Invalid GraphQL arguments. Provide the document and a JSON object of variables; discover the current schema.";
+                    : e instanceof GraphQLArgumentBindingException ? e.getMessage()
+                            : "Tool call rejected: Invalid GraphQL arguments (phase ARGUMENT_BINDING; effects NOT_STARTED). Provide the document and a JSON object of variables; discover the current schema.";
             JavaMethodToolCall call = new JavaMethodToolCall(modelMessage, id, this, jsonArgs, convertedArgs);
             call.getResponse().fail(reason);
             return call;

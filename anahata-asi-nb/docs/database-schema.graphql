@@ -1,5 +1,5 @@
 type Query {
-  connections(nameContains: String, connected: Boolean, offset: Int = 0, limit: Int = 25): DatabaseConnectionPage!
+  connections(nameContains: String, connected: Boolean, offset: Int = 0, limit: Int): DatabaseConnectionPage!
   connection(name: String, id: ID): DatabaseConnectionInfo
 }
 type DatabaseConnectionPage {
@@ -16,7 +16,7 @@ type DatabaseConnectionInfo {
   schema: String
   connected: Boolean!
   metadata: DatabaseMetadataInfo
-  tables(catalog: String, schema: String, tableNamePattern: String = "%", types: [String!] = ["TABLE", "VIEW"], offset: Int = 0, limit: Int = 25): TablePage
+  tables(catalog: String, schema: String, tableNamePattern: String = "%", types: [String!] = ["TABLE", "VIEW"], offset: Int = 0, limit: Int): TablePage
 }
 type DatabaseMetadataInfo {
   databaseProductName: String
@@ -74,14 +74,18 @@ type TableRelationshipInfo {
   primaryKeyName: String
   deferrability: Int
 }
+
 scalar SqlValue
 type Mutation {
   connect(connection: ID!): ConnectionCommandInfo
   disconnect(connection: ID!): ConnectionCommandInfo
-  executeQuery(connection: ID!, sql: String!, limit: Int = 100, timeoutSeconds: Int = 10, catalog: String, schema: String): SqlQueryInfo
-  executeStatement(connection: ID!, sql: String!, timeoutSeconds: Int = 10, catalog: String, schema: String): SqlStatementInfo
+  executeQuery(connection: ID!, sql: String!, limit: Int, timeoutSeconds: Int, catalog: String, schema: String): SqlQueryInfo
+  executeStatement(connection: ID!, sql: String!, timeoutSeconds: Int, catalog: String, schema: String): SqlStatementInfo
 }
+enum ConnectionCommandStatus { SUCCEEDED PENDING REQUIRES_INTERACTION FAILED UNKNOWN }
 type ConnectionCommandInfo {
+  status: ConnectionCommandStatus!
+  message: String!
   success: Boolean!
   connected: Boolean!
   connection: DatabaseConnectionInfo
