@@ -586,7 +586,20 @@ public class ToolCallPanel extends AbstractPartPanel<AbstractToolCall<?, ?>> {
         toolProgressBar.setVisible(response.getStatus() == ToolExecutionStatus.EXECUTING);
         declineButton.setVisible(response.getStatus() == ToolExecutionStatus.PENDING);
 
-        if (response.getStatus() == ToolExecutionStatus.EXECUTING) {
+        // The response owns execution rules; ordinary tools retain their existing controls.
+        String blockReason = response.getExecutionBlockReason();
+        statusCombo.setEnabled(blockReason == null);
+        statusCombo.setToolTipText(blockReason);
+        revertButton.setEnabled(blockReason == null);
+        revertButton.setToolTipText(blockReason == null
+                ? "Clear execution results, errors and logs and set status to DECLINED" : blockReason);
+        runButton.setToolTipText(blockReason);
+        if (blockReason != null) {
+            runButton.setText("New call required");
+            runButton.setEnabled(false);
+            revertButton.setVisible(false);
+            declineButton.setVisible(false);
+        } else if (response.getStatus() == ToolExecutionStatus.EXECUTING) {
             runButton.setText("Stop");
             runButton.setIcon(agiConfig.getActionIcon(ActionIconKey.STOP, 16));
             runButton.addActionListener(e -> response.stop());

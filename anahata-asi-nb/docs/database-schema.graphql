@@ -79,8 +79,16 @@ scalar SqlValue
 type Mutation {
   connect(connection: ID!): ConnectionCommandInfo
   disconnect(connection: ID!): ConnectionCommandInfo
-  executeQuery(connection: ID!, sql: String!, limit: Int, timeoutSeconds: Int, catalog: String, schema: String): SqlQueryInfo
-  executeStatement(connection: ID!, sql: String!, timeoutSeconds: Int, catalog: String, schema: String): SqlStatementInfo
+  executeQuery(connection: ID!, sql: String!, limit: Int, timeoutSeconds: Int,
+    "Expected JDBC catalog; assertion only, not a destination switch."
+    catalog: String,
+    "Expected JDBC schema; distinct from catalog; assertion only."
+    schema: String): SqlQueryInfo
+  executeStatement(connection: ID!, sql: String!, timeoutSeconds: Int,
+    "Expected JDBC catalog; assertion only, not a destination switch."
+    catalog: String,
+    "Expected JDBC schema; distinct from catalog; assertion only."
+    schema: String): SqlStatementInfo
 }
 enum ConnectionCommandStatus { SUCCEEDED PENDING REQUIRES_INTERACTION FAILED UNKNOWN }
 type ConnectionCommandInfo {

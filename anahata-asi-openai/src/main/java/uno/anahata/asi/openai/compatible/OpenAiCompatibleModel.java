@@ -637,7 +637,7 @@ public class OpenAiCompatibleModel extends AbstractModel {
             return;
         }
 
-        log.info("delta is " + choice);
+        log.debug("Received streaming choice at index {}", choice.path("index").asInt(-1));
 
         // 1. AUTODETECT / FIELD DISCOVERY: Check if field name is unknown or style is unconfigured
         if (reasoningFieldName == null) {
@@ -865,32 +865,32 @@ public class OpenAiCompatibleModel extends AbstractModel {
                 : getMaxOutputTokens();//whatever the user had in the request config or in the model default
 
         log.info(getModelId() + " starting targetMaxOutput: " + targetMaxOutput);
-        
+
         int effectiveMaxContextWindowSize = request.config().getAgi().getConfig().getTokenThreshold();
         if (maxInputTokens != null && maxInputTokens > 0) {
             effectiveMaxContextWindowSize = Math.min(maxInputTokens, effectiveMaxContextWindowSize > 0 ? effectiveMaxContextWindowSize : maxInputTokens);
         }
         log.info(getModelId() + " effectiveMaxContextWindowSize: " + effectiveMaxContextWindowSize);
-        
+
         String payloadStr = payload.toString();
         int estimatedPayloadTokens = (int) (TokenizerUtils.countTokens(payloadStr, getTokenizerType()) * 1.01);
         log.info(getModelId() + " payload tokens (+1.01%): " + estimatedPayloadTokens);
 
         int availableForOutput = Math.max(1, effectiveMaxContextWindowSize - estimatedPayloadTokens);
         log.info(getModelId() + " availableForOutput : " + availableForOutput);
-        
+
         if (targetMaxOutput != null && targetMaxOutput > 0 && targetMaxOutput > availableForOutput) {
             log.warn("Reducing max_tokens from {} to {} due to max context windows size", targetMaxOutput, availableForOutput);
             targetMaxOutput = Math.min(targetMaxOutput, availableForOutput);
-        } 
-        
+        }
+
         if (targetMaxOutput != null) {
-            log.info("setting max_tokens to: {}", targetMaxOutput);        
+            log.info("setting max_tokens to: {}", targetMaxOutput);
             payload.put("max_tokens", targetMaxOutput);
         } else {
             log.info("targetMaxOutput was null so, not setting max_tokens: {}", targetMaxOutput);
         }
-        
+
         enrichPayload(payload, request);
         return payload;
     }

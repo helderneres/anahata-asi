@@ -331,6 +331,23 @@ public class DatabaseTest {
     }
 
     @Test
+    void schemaAssertionIsDistinctFromCatalogAndNeverSwitchesDestination() throws Exception {
+        when(jdbc.getCatalog()).thenReturn("anahata_catalog");
+        when(jdbc.getSchema()).thenReturn(null);
+        GraphQLExecutionInfo result = execute("""
+                mutation { executeQuery(connection:"ANAHATA",sql:"SELECT 1",catalog:"anahata_catalog",schema:"private_schema") { success } }
+                """);
+        var error = result.getErrors().getFirst();
+        assertEquals("DestinationMismatch", error.getCategory());
+        assertEquals("NOT_STARTED", error.getEffects());
+        assertTrue(error.getMessage().contains("getSchema"));
+        assertFalse(error.getMessage().contains("private_schema"));
+        verify(jdbc, never()).createStatement();
+        verify(jdbc, never()).setCatalog(anyString());
+        verify(jdbc, never()).setSchema(anyString());
+    }
+
+    @Test
     void statementEffectsDoNotDependOnSelectingAffectedRows() throws Exception {
         when(statement.executeUpdate(anyString())).thenReturn(3);
         GraphQLExecutionInfo result = success("mutation { executeStatement(connection:\"ANAHATA\",sql:\"UPDATE anahata SET enabled=1\") { success } }");

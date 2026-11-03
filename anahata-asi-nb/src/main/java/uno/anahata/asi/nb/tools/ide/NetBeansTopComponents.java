@@ -6,6 +6,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.swing.Action;
@@ -105,7 +106,7 @@ public final class NetBeansTopComponents {
                 Node[] nodes = tc.getActivatedNodes();
                 if (nodes != null && nodes.length > 0) {
                     activatedNodes = Arrays.stream(nodes)
-                            .map(Node::getDisplayName)
+                            .map(node -> contextLabel(node.getDisplayName()))
                             .collect(Collectors.joining(", "));
                 }
 
@@ -145,12 +146,29 @@ public final class NetBeansTopComponents {
                     }
                 }
 
-                results.add(new TopComponentInfo(id, name, isActivated, displayName, htmlDisplayName, tooltip, className, modeName, activatedNodes, supportedActions, filePath, primaryFilePath, sizeInBytes));
+                results.add(new TopComponentInfo(contextLabel(id), contextLabel(name), isActivated,
+                        contextLabel(displayName), contextLabel(htmlDisplayName), contextLabel(tooltip),
+                        className, modeName, activatedNodes, contextLabel(supportedActions),
+                        contextLabel(filePath), contextLabel(primaryFilePath), sizeInBytes));
             }
         });
         
         log.debug("Gathered info for {} TopComponents in {}ms (including EDT wait)", results.size(), System.currentTimeMillis() - start);
         return results;
+    }
+
+    /**
+     * Removes an entire JDBC-bearing caption before it enters an Info or RAG report.
+     * Keeping suffixes can disclose connection users or URL parameters. This is a
+     * narrow IDE-caption boundary, not a general sanitizer for arbitrary file text.
+     * No connection is looked up or opened, and the IDE's own labels stay unchanged.
+     *
+     * @param label optional IDE caption or path
+     * @return unchanged ordinary text, null, or authored database-discovery guidance
+     */
+    private static String contextLabel(String label) {
+        return label != null && label.toLowerCase(Locale.ROOT).contains("jdbc:")
+                ? "[Database connection details omitted; use Database discovery]" : label;
     }
 
     /**

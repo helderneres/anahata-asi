@@ -196,10 +196,9 @@ public abstract class GraphQLToolkit extends AnahataToolkit {
      */
     @AgiTool(value = "Executes one read-only GraphQL query with optional object variables. Only selected fields perform work. "
             + "Mutation/subscription and multiple operations are rejected. Document size, nesting and actual-work budgets apply.")
-
     public GraphQLExecutionInfo query(
             @AgiToolParam("One GraphQL query operation; abbreviated { ... } queries are supported.") String query,
-            @AgiToolParam(value = "GraphQL variable values, or an empty map when none are needed.", required = false) Map<String, Object> variables) {
+            @AgiToolParam(value = "JSON object of GraphQL variables. Omit when unused or pass an empty object; never a quoted JSON string.", required = false) Map<String, Object> variables) {
         return executeDocument(query, variables, false);
     }
 

@@ -353,15 +353,17 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
     }
 
     /**
-     * Adds a log message to this response, which can be displayed to the user.
+     * Appends a diagnostic in arrival order, preserving any previous error.
+     * Updates token accounting and notifies listeners on the calling thread;
+     * UI listeners must arrange their own event-dispatch-thread handoff.
      *
-     * @param error The error message to add.
+     * @param error the diagnostic to append
      */
     public void addError(String error) {
         if (this.errors == null) {
             this.errors = error;
         } else {
-            this.errors = "\n" + error;
+            this.errors += "\n" + error;
         }
         updateTokenCount();
         propertyChangeSupport.firePropertyChange("errors", null, this.errors);
@@ -434,6 +436,20 @@ public abstract class AbstractToolResponse<C extends AbstractToolCall<?, ?>> ext
             updateTokenCount();
             propertyChangeSupport.firePropertyChange("logs", null, logs);
         }
+    }
+
+    /**
+     * Describes why this response cannot currently be executed again.
+     * The default imposes no additional restriction. Consumers may use this
+     * read-only hint to suppress contradictory UI actions; execute remains
+     * responsible for enforcing the restriction and ordinary authorization.
+     * This method performs no execution or domain access.
+     *
+     * @return authored guidance, or null when this response adds no restriction
+     */
+    @JsonIgnore
+    public String getExecutionBlockReason() {
+        return null;
     }
 
     /**

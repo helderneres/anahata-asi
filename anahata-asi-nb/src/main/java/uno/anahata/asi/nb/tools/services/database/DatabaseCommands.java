@@ -91,8 +91,16 @@ final class DatabaseCommands {
             type Mutation {
               connect(connection: ID!): ConnectionCommandInfo
               disconnect(connection: ID!): ConnectionCommandInfo
-              executeQuery(connection: ID!, sql: String!, limit: Int, timeoutSeconds: Int, catalog: String, schema: String): SqlQueryInfo
-              executeStatement(connection: ID!, sql: String!, timeoutSeconds: Int, catalog: String, schema: String): SqlStatementInfo
+              executeQuery(connection: ID!, sql: String!, limit: Int, timeoutSeconds: Int,
+                "Expected JDBC catalog; assertion only, not a destination switch."
+                catalog: String,
+                "Expected JDBC schema; distinct from catalog; assertion only."
+                schema: String): SqlQueryInfo
+              executeStatement(connection: ID!, sql: String!, timeoutSeconds: Int,
+                "Expected JDBC catalog; assertion only, not a destination switch."
+                catalog: String,
+                "Expected JDBC schema; distinct from catalog; assertion only."
+                schema: String): SqlStatementInfo
             }
             enum ConnectionCommandStatus { SUCCEEDED PENDING REQUIRES_INTERACTION FAILED UNKNOWN }
             type ConnectionCommandInfo {
@@ -282,9 +290,13 @@ final class DatabaseCommands {
      */
     private static void verifyDestination(Connection jdbc, String catalog, String schema) {
         try {
-            if (catalog != null && !Objects.equals(catalog, jdbc.getCatalog())
-                    || schema != null && !Objects.equals(schema, jdbc.getSchema())) {
-                throw new SafeGraphQLException("DestinationMismatch", "The active catalog/schema differs from the requested destination. No automatic switch was made.");
+            if (catalog != null && !Objects.equals(catalog, jdbc.getCatalog())) {
+                throw new SafeGraphQLException("DestinationMismatch",
+                        "The catalog assertion differs from JDBC getCatalog(). Verify the catalog argument; it does not switch the destination.");
+            }
+            if (schema != null && !Objects.equals(schema, jdbc.getSchema())) {
+                throw new SafeGraphQLException("DestinationMismatch",
+                        "The schema assertion differs from JDBC getSchema(). Schema and catalog are distinct; verify the schema argument. No automatic switch was made.");
             }
         } catch (SQLException failure) {
             throw sqlFailure(failure);

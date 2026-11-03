@@ -181,13 +181,13 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
     @Override
     public List<String> getSystemInstructions() throws Exception {
         return List.of(
-                "Database exposes only schema(), query() and mutate(). Discover the schema before issuing calls.",
+                "Database exposes only schema(), query() and mutate(). schema() describes the Toolkit contract, not generated types for every database table. Discover the schema before issuing calls.",
                 "Use query() for selection-driven metadata discovery; use complete catalog/schema/table identities. Page defaults and maximums follow the configured execution mode. An omitted limit uses the effective default; explicit null is invalid.",
                 "Use mutate() for explicit connect/disconnect and raw SQL commands, including executeQuery. Raw SQL can have effects and requires the configured command permission.",
-                "Use discovered connection ids; no fallback destination or implicit connection dialog is allowed. Discover columns before composing SQL.",
+                "Use discovered connection ids; no fallback destination or implicit connection dialog is allowed. Discover tables and columns through connection.tables before composing SQL. Command catalog/schema arguments assert JDBC getCatalog/getSchema independently; they never switch the destination.",
                 "Mutation fields execute serially, without a shared transaction, rollback or automatic retry. A failure after an effect does not undo it; verify before retrying. Connection status REQUIRES_INTERACTION or PENDING is not completed success; use IDE Services when interaction is required.",
-                "SQL rows/cells are positional; labels may repeat. Respect returnedRowCount, hasNextPage and cell truncation; totalCount may be unknown.",
-                "Inspect both data and errors. Null, an empty list and a failed field have different meanings. Select only needed fields. variables must be a JSON object, not a quoted JSON string. SQL output requires subselections: columns { index label } rows { cells { columnIndex value } }."
+                "SQL rows/cells are positional; labels may repeat. Respect returnedRowCount, hasNextPage and cell truncation; totalCount may be unknown. Select hasNextPage to identify continuation; justify relevance rather than treating the first returned items as a complete or ranked result.",
+                "Inspect both data and errors. Null, an empty list and a failed field have different meanings. Select only needed fields. Omit variables when not needed or pass an object: variables: {}. Never pass a quoted JSON string. After an argument-binding rejection, create a new corrected call; editing or retrying the rejected call cannot invoke it. SQL output requires subselections: columns { index label } rows { cells { columnIndex value } }."
         );
     }
 
@@ -241,7 +241,7 @@ public class Database extends GraphQLToolkit implements ConnectionListener {
             + "Review document and variables before approval. Fields are serial, not one transaction; no rollback or automatic retry.")
     public GraphQLExecutionInfo mutate(
             @AgiToolParam("One GraphQL Mutation document; discover commands with schema().") String document,
-            @AgiToolParam(value = "Variable values, including the exact connection id and SQL to authorize.", required = false) Map<String, Object> variables) {
+            @AgiToolParam(value = "JSON object of variables, including the exact connection id and SQL to authorize. Omit when unused or pass an empty object; never a quoted JSON string.", required = false) Map<String, Object> variables) {
         return super.mutate(document, variables);
     }
 

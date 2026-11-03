@@ -74,6 +74,64 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
     private transient AtomicBoolean executing = new AtomicBoolean(false);
 
     /**
+     * Reports an argument rejection from existing call state, or the existing
+     * restriction on failed command-enabled GraphQL responses. Ordinary tools
+     * keep their current retry controls and authorization. This read-only hint
+     * performs no conversion, JDBC work or execution; status clearing cannot
+     * turn rejected partial arguments into an executable call.
+     *
+     * @return safe guidance, or null when this response adds no restriction
+     */
+    @Override
+    @JsonIgnore
+    public String getExecutionBlockReason() {
+        if (getCall().getTool().getToolkitInstance() instanceof GraphQLToolkit gql
+                && gql.isCommandToolkit()
+                && (getStatus() == ToolExecutionStatus.FAILED || argumentRejection() != null)) {
+            return "Create a new corrected GraphQL tool call. This rejected or failed call cannot be retried; inspect the original diagnostic and any prior effects first.";
+        }
+        return null;
+    }
+
+    /**
+     * Recognizes binding rejection from the original arguments, converted
+     * values and last execution snapshot already persisted by the call
+     * protocol. Current unexecuted edits are not interpreted as an earlier
+     * failure. This keeps the original cause recoverable without adding fields
+     * to shared session state.
+     *
+     * @return authored binding diagnostic, or null when no rejection is
+     * established
+     */
+    private String argumentRejection() {
+        if (!(getCall().getTool().getToolkitInstance() instanceof GraphQLToolkit gql) || !gql.isCommandToolkit()) {
+            return null;
+        }
+        try {
+            Object original = getCall().getRawArgs().get("variables");
+            if (original != null) {
+                GraphQLArgumentBindingException.requireObject(original);
+            }
+            Object executedEdit = getModifiedArgs().get("variables");
+            if (executedEdit != null) {
+                GraphQLArgumentBindingException.requireObject(executedEdit);
+            }
+        } catch (GraphQLArgumentBindingException rejected) {
+            return rejected.getMessage();
+        }
+        for (var parameter : getCall().getTool().getParameters()) {
+            String name = parameter.getName();
+            if (parameter.isRequired() && !getCall().getRawArgs().containsKey(name)) {
+                return "Tool call rejected: Missing required parameter: " + name;
+            }
+            if (getCall().getRawArgs().get(name) != null && !getCall().getArgs().containsKey(name)) {
+                return "Invalid GraphQL arguments (phase ARGUMENT_BINDING; effects NOT_STARTED). Provide document text and an object of variables in a new call.";
+            }
+        }
+        return null;
+    }
+
+    /**
      * Constructs a new JavaMethodToolResponse for a specific call.
      *
      * @param call The originating tool call.
@@ -123,9 +181,16 @@ public class JavaMethodToolResponse extends AbstractToolResponse<JavaMethodToolC
      */
     @Override
     public void execute() {
-        if (getStatus() == ToolExecutionStatus.FAILED
-                && getCall().getTool().getToolkitInstance() instanceof GraphQLToolkit gql && gql.isCommandToolkit()) {
-            addError("Issue a new GraphQL tool call after a protocol rejection; rejected arguments cannot be executed.");
+        String blockReason = getExecutionBlockReason();
+        if (blockReason != null) {
+            String cause = argumentRejection();
+            if (cause != null && (getErrors() == null || !getErrors().contains(cause))) {
+                addError(cause);
+            }
+            if (getErrors() == null || !getErrors().contains(blockReason)) {
+                addError(blockReason);
+            }
+            setStatus(ToolExecutionStatus.FAILED);
             return;
         }
         if (!executing.compareAndSet(false, true)) {

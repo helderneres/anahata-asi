@@ -95,6 +95,49 @@ class GraphQLArgumentBindingTest {
         assertEquals(0, toolkit.invocations.get());
     }
 
+    @Test
+    void rejectedArgumentsKeepTheirCauseAcrossRepeatedExecutionAndStatusClearing() {
+        JavaMethodToolCall call = method.createCall(message, "rejected", Map.of(
+                "document", "mutation { run }", "variables", "{}"));
+        String original = call.getResponse().getErrors();
+        assertNotNull(call.getResponse().getExecutionBlockReason());
+        call.getResponse().execute();
+        String once = call.getResponse().getErrors();
+        assertTrue(once.startsWith(original));
+        call.getResponse().execute();
+        assertEquals(once, call.getResponse().getErrors());
+        call.getResponse().decline();
+        call.getResponse().rebind();
+        call.setModifiedArgument("variables", Map.of());
+        call.getResponse().setStatus(ToolExecutionStatus.PENDING);
+        call.getResponse().execute();
+        assertTrue(call.getResponse().getErrors().contains(original));
+        assertEquals(ToolExecutionStatus.FAILED, call.getResponse().getStatus());
+        assertEquals(0, toolkit.invocations.get());
+
+        JavaMethodToolCall corrected = method.createCall(message, "corrected", Map.of(
+                "document", "mutation { run }", "variables", Map.of()));
+        assertNull(corrected.getResponse().getExecutionBlockReason());
+        corrected.getResponse().execute();
+        assertEquals(ToolExecutionStatus.EXECUTED, corrected.getResponse().getStatus());
+        assertEquals(1, toolkit.invocations.get());
+    }
+
+    @Test
+    void editedRejectionCannotBeClearedIntoAnExecutablePartialCall() {
+        JavaMethodToolCall call = method.createCall(message, "edited-clear", Map.of(
+                "document", "mutation { run }", "variables", Map.of()));
+        call.setModifiedArgument("variables", "{}");
+        call.getResponse().execute();
+        call.getResponse().decline();
+        call.getResponse().rebind();
+        call.setModifiedArgument("variables", Map.of());
+        call.getResponse().execute();
+        assertEquals(ToolExecutionStatus.FAILED, call.getResponse().getStatus());
+        assertTrue(call.getResponse().getErrors().contains("ARGUMENT_BINDING"));
+        assertEquals(0, toolkit.invocations.get());
+    }
+
     /**
      * Synthetic command-enabled fixture; invocation count excludes all JDBC/IDE
      * APIs.

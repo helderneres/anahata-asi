@@ -310,3 +310,29 @@ Empacotar NBM não significa instalar: instalação e smoke test da nova versão
 etapas separadas. Não houve instalação nesta execução, chamadas a provedores ou
 SQL em banco real. Testes mockados provam chamadas externas selecionadas; não
 substituem uma medição de desempenho ou teste de instalação/classloader real.
+
+## Rejeições de argumentos e recuperação
+
+Uma rejeição de binding preserva a causa original e bloqueia esse objeto de
+chamada. Retry não corrige tipos de argumentos: criar outra chamada corrigida,
+omitindo variables quando não houver variáveis ou usando um objeto JSON.
+Limpar a resposta ou alterar seu status não torna argumentos parciais executáveis.
+A interface desabilita execução, limpeza e troca de status quando a resposta
+informa esse bloqueio. Os controles dos toolkits comuns mantêm seu comportamento.
+
+Os diagnósticos são acumulados em ordem, sem sobrescrever a causa anterior.
+Catálogo e schema em comandos são asserções independentes sobre getCatalog e
+getSchema do JDBC; mensagens identificam qual argumento divergiu sem expor seus
+valores. Não se deve remover a proteção de destino para contornar uma divergência.
+
+O relatório automático de componentes da IDE omite integralmente rótulos que
+contenham JDBC, inclusive sufixos de usuário. Os rótulos visíveis na IDE não são
+alterados. Isso é uma proteção localizada do contexto, não sanitização universal
+de todo conteúdo de arquivos, histórico, entrada do usuário ou logs existentes.
+O adaptador OpenAI Compatible não registra mais o conteúdo integral de cada delta.
+
+Para validação funcional, preferir connection.tables e selecionar somente os
+filhos necessários, incluindo hasNextPage quando a continuidade importar. Uma
+amostra limitada não prova completude nem relevância de domínio. PK/FK, cache,
+paginação, perfis e prazos possuem testes com mocks; um teste no driver real é
+uma etapa separada, com autorização explícita de conexão e operação.
